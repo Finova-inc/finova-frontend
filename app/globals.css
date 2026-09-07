@@ -1,26 +1,409 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   1. ESTRATEGIA DE TEMA OSCURO
+   ==========================================================================
+   Tailwind v4 usa por defecto la estrategia `prefers-color-scheme`, donde las
+   utilidades dark: siguen al sistema operativo y no se pueden controlar desde
+   la aplicación.
+
+   Esta línea cambia a estrategia de clase: dark: aplica cuando <html> tiene la
+   clase .dark. Sin ella el botón de tema parece no hacer nada.
+
+   El :where() mantiene la especificidad en 0 para que las utilidades dark: no
+   le ganen a otras reglas por accidente.
+   ========================================================================== */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ==========================================================================
+   2. TOKENS DE DISEÑO
+   ==========================================================================
+   Se usa @theme (y no @theme inline) a propósito: `inline` fija los valores en
+   tiempo de build, lo que anularía los overrides de .dark en runtime.
+
+   La paleta parte de una idea concreta: naranjo y amarillo son colores de
+   DESTACADOR, el lápiz con que un contador marca un formulario en papel. Por
+   eso el naranjo es el acento de acción y el amarillo el del resaltado de texto.
+   ========================================================================== */
+@theme {
+    /* Tipografías.
+       next/font expone --font-space-grotesk y --font-inter (ver lib/fonts.ts).
+       Aquí se mapean a los tokens que consume Tailwind, de modo que queden
+       disponibles las utilidades font-display y font-sans.
+
+       Los nombres de origen y destino son distintos a propósito: si ambos se
+       llamaran --font-display, la variable se referenciaría a sí misma y la
+       declaración quedaría inválida. */
+    --font-display: var(--font-space-grotesk), system-ui, sans-serif;
+    --font-sans: var(--font-inter), system-ui, sans-serif;
+
+    /* Paleta base */
+    --color-ink: #0b0b0c; /* negro tinta */
+    --color-paper: #ffffff; /* blanco papel */
+    --color-bone: #f7f6f3; /* papel apagado */
+    --color-cream: #f7f4ec; /* blanco crema: barra de navegacion */
+    --color-marker: #ff6a1a; /* naranjo destacador: acciones */
+    --color-marker-soft: #ff8642; /* naranjo desaturado para tema oscuro */
+    --color-highlight: #ffc53d; /* amarillo destacador: resaltado */
+    --color-graphite: #6b6b70; /* gris de apoyo */
+
+    /* Animaciones. Se declaran como tokens para poder usar animate-* en Tailwind. */
+    --animate-fade-up: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+
+    @keyframes fade-up {
+        from {
+            opacity: 0;
+            transform: translateY(1rem);
+        }
+        to {
+            opacity: 1;
+            transform: none;
+        }
+    }
+
+    /* Entrada de las filas de DTE en la animación del hero. */
+    @keyframes dte-row-in {
+        0% {
+            opacity: 0;
+            transform: translateX(-1.5rem);
+        }
+        100% {
+            opacity: 1;
+            transform: none;
+        }
+    }
+
+    /* Relleno progresivo de las celdas del formulario. */
+    @keyframes cell-fill {
+        0% {
+            transform: scaleX(0);
+        }
+        100% {
+            transform: scaleX(1);
+        }
+    }
+
+    /* Resolución de la celda de total: pulso de resaltado. */
+    @keyframes total-resolve {
+        0% {
+            opacity: 0;
+            transform: scale(0.96);
+        }
+        60% {
+            transform: scale(1.02);
+        }
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    /* Aparición del check del copiloto al cerrar el ciclo. */
+    @keyframes check-pop {
+        0% {
+            opacity: 0;
+            transform: scale(0.5);
+        }
+        70% {
+            transform: scale(1.15);
+        }
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    /* Carrusel horizontal de módulos en ASCII.
+       Recorre exactamente la mitad del contenido, porque la lista se renderiza
+       duplicada: al llegar al 50% el fotograma es idéntico al inicial y el
+       bucle no tiene costura visible. */
+    @keyframes marquee-scroll {
+        from {
+            transform: translateX(0);
+        }
+        to {
+            transform: translateX(-50%);
+        }
+    }
+
+    /* Paso activo en la secuencia de procesos contables. */
+    @keyframes step-cycle {
+        0%,
+        18% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        25%,
+        100% {
+            opacity: 0.28;
+            transform: translateY(0);
+        }
+    }
+
+    /* Barra de progreso que recorre cada paso. */
+    @keyframes progress-sweep {
+        0% {
+            transform: scaleX(0);
+        }
+        18% {
+            transform: scaleX(1);
+        }
+        25%,
+        100% {
+            transform: scaleX(1);
+        }
+    }
+
+    /* Crecimiento vertical de las barras del grafico de maqueta. */
+    @keyframes grow-up {
+        from {
+            transform: scaleY(0);
+        }
+        to {
+            transform: scaleY(1);
+        }
+    }
+
+    /* Latido suave del cursor de terminal en el bloque ASCII. */
+    @keyframes caret-blink {
+        0%,
+        49% {
+            opacity: 1;
+        }
+        50%,
+        100% {
+            opacity: 0;
+        }
+    }
+}
+
+/* ==========================================================================
+   3. SUPERFICIES SEMÁNTICAS
+   ==========================================================================
+   Estas variables cambian con el tema. Los componentes las consumen por rol
+   (fondo, texto, borde) en vez de por color literal, de modo que una sola
+   definición sirve para ambos temas.
+   ========================================================================== */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+    --background: var(--color-paper);
+    --background-raised: var(--color-bone);
+    --foreground: var(--color-ink);
+    --foreground-muted: var(--color-graphite);
+    --border-subtle: rgb(11 11 12 / 0.1);
+    --accent: var(--color-marker);
+
+    /* Header: color plano blanco crema, sin transparencia ni desenfoque.
+       El mismo color en ambos temas, para que la barra sea un elemento
+       constante de la marca y no cambie de identidad al alternar el tema. */
+    /* Cristal crema. El alfa es lo que permite ver el contenido pasar por
+       detras; con un color opaco el efecto de vidrio desaparece. */
+    --header-surface: rgb(247 244 236 / 0.72);
+    --header-surface-top: rgb(255 253 248 / 0.86);
+    --header-border: rgb(11 11 12 / 0.07);
+    --header-sheen: rgb(255 255 255 / 0.65);
+    --header-ink: var(--color-ink);
+    --header-ink-muted: rgb(11 11 12 / 0.6);
+    --header-hover: rgb(11 11 12 / 0.05);
+    --header-divider: rgb(11 11 12 / 0.12);
+    --header-cta-bg: var(--color-ink);
+    --header-cta-ink: var(--color-cream);
+    /* Pastilla del item activo, tomada del mockup: en images/Header.png el
+       enlace vigente va dentro de una capsula de color suave y el resto son
+       texto plano. Aqui se usa el ambar de la paleta en lugar del lavanda. */
+    --header-pill-bg: rgb(255 197 61 / 0.4);
+    --header-pill-ink: var(--color-ink);
+    /* Boton secundario: contorno sin relleno, como el "Login" del mockup. */
+    --header-ghost-border: rgb(11 11 12 / 0.18);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+.dark {
+    --background: var(--color-ink);
+    --background-raised: #17171a;
+    --foreground: #f4f3f0;
+    --foreground-muted: #a1a1a8;
+    --border-subtle: rgb(255 255 255 / 0.12);
+    /* El naranjo puro vibra sobre negro; en oscuro se usa la versión suave. */
+    --accent: var(--color-marker-soft);
+
+    /* El header conserva el crema tambien en tema oscuro: es un elemento
+       constante de la marca. Se ajustan los alfas para que el vidrio siga
+       leyendose sobre un fondo oscuro. */
+    --header-surface: rgb(247 244 236 / 0.82);
+    --header-surface-top: rgb(255 253 248 / 0.92);
+    --header-border: rgb(255 255 255 / 0.14);
+    --header-sheen: rgb(255 255 255 / 0.5);
+    --header-pill-bg: rgb(255 197 61 / 0.5);
+    --header-ghost-border: rgb(11 11 12 / 0.22);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ==========================================================================
+   4. ESTILOS BASE
+   ========================================================================== */
+@layer base {
+    html {
+        scroll-behavior: smooth;
+        /* Margen de respiro al saltar a un ancla. Ya no compensa un header
+           fijo —el header no lo es—, solo evita que el titulo quede pegado
+           al borde superior de la ventana. */
+        scroll-padding-top: 2rem;
+    }
+
+    body {
+        background: var(--background);
+        color: var(--foreground);
+        font-family: var(--font-sans);
+        /* Red de seguridad contra el scroll horizontal. La causa siempre se
+           corrige en el elemento culpable —normalmente falta un min-w-0 en un
+           hijo de grid o flex—, pero esto evita que un descuido futuro rompa la
+           lectura en móvil. */
+        overflow-x: hidden;
+    }
+
+    /* Foco visible y consistente en todo el sitio. Requisito de accesibilidad:
+       quien navega con teclado tiene que saber siempre dónde está parado. */
+    :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+        border-radius: 2px;
+    }
+
+    /* Cifras tabulares para que los montos no bailen al cambiar de valor. */
+    .tabular {
+        font-variant-numeric: tabular-nums;
+    }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ==========================================================================
+   5. REVELADO AL HACER SCROLL
+   ==========================================================================
+   El componente Reveal solo cambia el atributo data-reveal; la transición la
+   hace CSS. Escribir un atributo evita un re-render de React por cada sección
+   que entra en pantalla.
+   ========================================================================== */
+@layer components {
+    /* ----------------------------------------------------------------------
+       BARRA DE NAVEGACION
+       ----------------------------------------------------------------------
+       Color plano, sin transparencia ni desenfoque, y de ancho completo con
+       esquinas rectas. Al ser opaca no necesita backdrop-filter, que es un
+       filtro caro de componer en cada scroll.
+       ---------------------------------------------------------------------- */
+    .site-header-bar {
+        position: relative;
+
+        /* Capa 1 - el vidrio.
+           Un degradado vertical, mas opaco arriba que abajo, imita como la luz
+           entra por el canto superior de una lamina de cristal. Un color plano
+           se ve como una barra pintada; el degradado se ve como vidrio. */
+        background: linear-gradient(
+            to bottom,
+            var(--header-surface-top),
+            var(--header-surface)
+        );
+
+        /* Capa 2 - la refraccion.
+           blur difumina lo que pasa por detras; saturate compensa el lavado de
+           color que produce el propio desenfoque, y sin el el vidrio se ve
+           grisaceo. */
+        backdrop-filter: blur(20px) saturate(190%);
+        -webkit-backdrop-filter: blur(20px) saturate(190%);
+
+        border-bottom: 1px solid var(--header-border);
+
+        /* Capa 3 - el volumen.
+           La sombra interior superior es el brillo del canto; la exterior
+           despega la barra de la pagina. */
+        box-shadow:
+            inset 0 1px 0 var(--header-sheen),
+            0 1px 24px rgb(0 0 0 / 0.06);
+    }
+
+    /* Capa 4 - el filo inferior.
+       Una linea de un pixel que se desvanece hacia los extremos: es el detalle
+       que separa un vidrio bien hecho de un rectangulo translucido. Va en un
+       pseudoelemento para no gastar un div en decoracion. */
+    .site-header-bar::after {
+        content: "";
+        position: absolute;
+        inset-inline: 0;
+        bottom: -1px;
+        height: 1px;
+        background: linear-gradient(
+            to right,
+            transparent,
+            var(--accent) 22%,
+            var(--accent) 78%,
+            transparent
+        );
+        opacity: 0.32;
+        pointer-events: none;
+    }
+
+    /* Sin soporte de backdrop-filter (navegadores antiguos), el fondo se vuelve
+       opaco: un vidrio sin desenfoque deja el texto de la pagina asomando
+       detras del header y lo hace ilegible. */
+    @supports not (backdrop-filter: blur(1px)) {
+        .site-header-bar {
+            background: var(--color-cream);
+        }
+    }
+
+    /* ----------------------------------------------------------------------
+       PANEL DE VIDRIO
+       ----------------------------------------------------------------------
+       Version neutra del glassmorfismo del header: sigue el color de fondo del
+       tema en vez de invertirlo. Se usa en las maquetas de pantalla y en la
+       secuencia de procesos.
+       ---------------------------------------------------------------------- */
+    .glass-panel {
+        background: color-mix(in srgb, var(--background) 72%, transparent);
+        border: 1px solid var(--border-subtle);
+        backdrop-filter: blur(12px) saturate(150%);
+        -webkit-backdrop-filter: blur(12px) saturate(150%);
+        box-shadow: 0 4px 24px rgb(0 0 0 / 0.06);
+    }
+
+    [data-reveal] {
+        opacity: 0;
+        transform: translateY(1.25rem);
+        transition:
+            opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+            transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    [data-reveal="true"] {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* ==========================================================================
+   6. MOVIMIENTO REDUCIDO
+   ==========================================================================
+   Quien activa "reducir movimiento" en su sistema suele hacerlo por trastornos
+   vestibulares o sensibilidad al movimiento: para esas personas la animación no
+   es un adorno, es un síntoma.
+
+   El !important en opacity es deliberado y no es pereza: si el revelado quedara
+   en opacity 0 sin animación que lo suba, el contenido sería invisible. Ante la
+   duda, siempre visible.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    [data-reveal] {
+        opacity: 1 !important;
+        transform: none !important;
+    }
 }
