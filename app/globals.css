@@ -37,15 +37,32 @@
     --font-display: var(--font-space-grotesk), system-ui, sans-serif;
     --font-sans: var(--font-inter), system-ui, sans-serif;
 
-    /* Paleta base */
-    --color-ink: #0b0b0c; /* negro tinta */
-    --color-paper: #ffffff; /* blanco papel */
-    --color-bone: #f7f6f3; /* papel apagado */
+    /* ----------------------------------------------------------------------
+       Paleta base
+
+       Ningún fondo es blanco puro ni negro puro, y no es una decisión
+       estética sin más.
+
+       El blanco puro (#FFF) sobre una pantalla brillante produce más
+       deslumbramiento del necesario, y esta es una herramienta donde alguien
+       va a pasar horas revisando montos. El negro puro (#000) tiene el
+       problema inverso: contra texto claro genera un halo por dispersión que
+       cansa la vista, y en pantallas OLED provoca arrastre al hacer scroll.
+
+       Los dos fondos comparten temperatura CÁLIDA a propósito. La paleta de
+       acento ya es de destacador —naranjo y amarillo—, y un fondo neutro frío
+       peleaba con ella: el naranjo se veía sucio sobre gris azulado. Con un
+       papel y una tinta café, el acento se apoya sobre la misma familia
+       cromática en vez de contradecirla.
+       ---------------------------------------------------------------------- */
+    --color-ink: #14110f; /* tinta café: fondo en oscuro, texto en claro */
+    --color-paper: #faf7f2; /* papel cálido: fondo en claro */
+    --color-bone: #f1ebe1; /* papel sombreado: superficies elevadas en claro */
     --color-cream: #f7f4ec; /* blanco crema: barra de navegacion */
     --color-marker: #ff6a1a; /* naranjo destacador: acciones */
     --color-marker-soft: #ff8642; /* naranjo desaturado para tema oscuro */
     --color-highlight: #ffc53d; /* amarillo destacador: resaltado */
-    --color-graphite: #6b6b70; /* gris de apoyo */
+    --color-graphite: #6e6459; /* gris cálido de apoyo */
 
     /* Animaciones. Se declaran como tokens para poder usar animate-* en Tailwind. */
     --animate-fade-up: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -189,7 +206,10 @@
     --background-raised: var(--color-bone);
     --foreground: var(--color-ink);
     --foreground-muted: var(--color-graphite);
-    --border-subtle: rgb(11 11 12 / 0.1);
+    /* Los bordes se derivan de la tinta, no de un gris arbitrario: así toman
+       la misma temperatura cálida que el resto y no aparecen azulados sobre
+       el papel. */
+    --border-subtle: rgb(20 17 15 / 0.1);
     --accent: var(--color-marker);
 
     /* Header: color plano blanco crema, sin transparencia ni desenfoque.
@@ -199,12 +219,12 @@
        detras; con un color opaco el efecto de vidrio desaparece. */
     --header-surface: rgb(247 244 236 / 0.72);
     --header-surface-top: rgb(255 253 248 / 0.86);
-    --header-border: rgb(11 11 12 / 0.07);
+    --header-border: rgb(20 17 15 / 0.07);
     --header-sheen: rgb(255 255 255 / 0.65);
     --header-ink: var(--color-ink);
-    --header-ink-muted: rgb(11 11 12 / 0.6);
-    --header-hover: rgb(11 11 12 / 0.05);
-    --header-divider: rgb(11 11 12 / 0.12);
+    --header-ink-muted: rgb(20 17 15 / 0.6);
+    --header-hover: rgb(20 17 15 / 0.05);
+    --header-divider: rgb(20 17 15 / 0.12);
     --header-cta-bg: var(--color-ink);
     --header-cta-ink: var(--color-cream);
     /* Pastilla del item activo, tomada del mockup: en images/Header.png el
@@ -213,14 +233,18 @@
     --header-pill-bg: rgb(255 197 61 / 0.4);
     --header-pill-ink: var(--color-ink);
     /* Boton secundario: contorno sin relleno, como el "Login" del mockup. */
-    --header-ghost-border: rgb(11 11 12 / 0.18);
+    --header-ghost-border: rgb(20 17 15 / 0.18);
 }
 
 .dark {
     --background: var(--color-ink);
-    --background-raised: #17171a;
-    --foreground: #f4f3f0;
-    --foreground-muted: #a1a1a8;
+    /* Un paso por encima del fondo, hacia el café, no hacia el gris: elevar
+       una superficie desaturándola la haría parecer de otro material. */
+    --background-raised: #1e1a17;
+    /* Blanco roto cálido. El blanco puro sobre fondo oscuro produce halo por
+       dispersión y cansa en lecturas largas. */
+    --foreground: #f4f1ec;
+    --foreground-muted: #a8a099;
     --border-subtle: rgb(255 255 255 / 0.12);
     /* El naranjo puro vibra sobre negro; en oscuro se usa la versión suave. */
     --accent: var(--color-marker-soft);
@@ -233,7 +257,7 @@
     --header-border: rgb(255 255 255 / 0.14);
     --header-sheen: rgb(255 255 255 / 0.5);
     --header-pill-bg: rgb(255 197 61 / 0.5);
-    --header-ghost-border: rgb(11 11 12 / 0.22);
+    --header-ghost-border: rgb(20 17 15 / 0.22);
 }
 
 /* ==========================================================================

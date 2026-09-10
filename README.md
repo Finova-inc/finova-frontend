@@ -120,6 +120,9 @@ finova-frontend/
 ├── app/                        Rutas (App Router)
 │   ├── layout.tsx              Layout raíz: fuentes, metadata, script de tema
 │   ├── globals.css             Tokens de diseño + animaciones (Tailwind v4)
+│   ├── favicon.ico             Icono 16/32/48/64 — Next lo enlaza solo
+│   ├── icon.png                Icono 256 px para navegadores modernos
+│   ├── apple-icon.png          Icono 180 px para iOS
 │   ├── page.tsx                Landing pública — solo composición de secciones
 │   ├── login/page.tsx          Pantalla de acceso (dos columnas)
 │   ├── dashboard/
@@ -207,16 +210,23 @@ los `href` del `Sidebar`), o convertir el layout en un grupo de rutas
 La paleta parte de una idea concreta y no de un gusto: son **colores de
 destacador**, el lápiz con que un contador marca un formulario en papel.
 
+**Ningún fondo es blanco ni negro puro.** El blanco puro deslumbra en una
+herramienta donde se pasan horas revisando montos; el negro puro genera halo
+contra texto claro y arrastre al hacer scroll en pantallas OLED. Ambos fondos
+comparten temperatura cálida a propósito: con un fondo neutro frío el naranjo
+de acento se veía sucio. En oscuro la superficie elevada es `#1E1A17` y el
+texto `#F4F1EC`; en claro, `#F1EBE1` y `#14110F`.
+
 | Token | Valor | Uso |
 |---|---|---|
-| `--color-ink` | `#0B0B0C` | Texto en claro, fondo en oscuro |
-| `--color-paper` | `#FFFFFF` | Fondo en claro |
-| `--color-bone` | `#F7F6F3` | Superficies elevadas en claro |
+| `--color-ink` | `#14110F` | Tinta café: texto en claro, fondo en oscuro |
+| `--color-paper` | `#FAF7F2` | Papel cálido: fondo en claro |
+| `--color-bone` | `#F1EBE1` | Papel sombreado: superficies elevadas en claro |
 | `--color-cream` | `#F7F4EC` | Barra de navegación |
 | `--color-marker` | `#FF6A1A` | Acento principal, botones |
 | `--color-marker-soft` | `#FF8642` | El mismo naranjo en tema oscuro (el puro vibra sobre negro) |
 | `--color-highlight` | `#FFC53D` | Resaltado de texto |
-| `--color-graphite` | `#6B6B70` | Texto secundario |
+| `--color-graphite` | `#6E6459` | Gris cálido: texto secundario |
 
 **Tipografía:** Space Grotesk para titulares (`font-display`), Inter para cuerpo
 e interfaz (`font-sans`). Ambas autohospedadas por `next/font`, sin petición a
