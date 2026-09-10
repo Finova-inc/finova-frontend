@@ -29,6 +29,34 @@ import type { NextConfig } from "next";
  */
 const IS_DEVELOPMENT = process.env.NODE_ENV === "development";
 
+/**
+ * Orígenes externos a los que el navegador puede abrir conexiones.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUÉ ESTO NO PUEDE QUEDAR EN 'self'
+ * ---------------------------------------------------------------------------
+ * El backend NestJS vive en otro dominio que el frontend en Vercel. Con
+ * connect-src 'self' a secas, el navegador bloquea cada fetch hacia la API
+ * ANTES de que salga de la máquina. El síntoma es engañoso: no hay error de
+ * red ni respuesta 4xx, solo una línea de CSP en la consola, así que es fácil
+ * perder horas culpando a CORS o al backend.
+ *
+ * El origen se lee de CSP_CONNECT_SRC (ver .env.example) y no se escribe fijo
+ * aquí porque cambia entre local, Preview y Production. Se leen SOLO esquema y
+ * host, nunca rutas ni comodines abiertos.
+ *
+ * Es una variable de build: Next evalúa este archivo al compilar, así que
+ * cambiarla en Vercel exige un redespliegue para que tenga efecto.
+ */
+const EXTRA_CONNECT_SRC = (process.env.CSP_CONNECT_SRC ?? "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .join(" ");
+
+const CONNECT_SRC = ["connect-src 'self'", EXTRA_CONNECT_SRC]
+    .filter(Boolean)
+    .join(" ");
+
 const CONTENT_SECURITY_POLICY = [
     "default-src 'self'",
     /**
@@ -49,7 +77,8 @@ const CONTENT_SECURITY_POLICY = [
     // next/font autohospeda las tipografías, así que basta con 'self'.
     "font-src 'self'",
     "img-src 'self' data: blob:",
-    "connect-src 'self'",
+    // Backend NestJS y cualquier otro origen declarado. Ver EXTRA_CONNECT_SRC.
+    CONNECT_SRC,
     // Impide que la página sea embebida en un iframe ajeno (clickjacking).
     "frame-ancestors 'none'",
     // Impide que un <base> inyectado reescriba las URL relativas.
