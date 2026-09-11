@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -28,7 +29,7 @@ export const metadata: Metadata = {
  * llegar a lo único que la persona vino a hacer.
  *
  * Es un componente de SERVIDOR: solo arma la estructura y delega la parte
- * interactiva en LoginForm. El formulario no tiene lógica de autenticación —es
+ * interactiva en LoginForm. El formulario envía las credenciales a /api/auth/login —es
  * el esquema visual que se pidió— y así se declara en la propia pantalla.
  */
 
@@ -157,7 +158,11 @@ export default function LoginPage() {
                         Accede a tu estudio contable en Finova.
                     </p>
 
-                    <LoginForm />
+                    {/* useSearchParams() dentro de LoginForm obliga a este
+                        límite de Suspense para poder prerenderizar la página. */}
+                    <Suspense fallback={null}>
+                        <LoginForm />
+                    </Suspense>
 
                     {/* Enlace de registro. La ruta todavía no existe, así que se
                         deja como texto: un enlace a una página inexistente
@@ -173,12 +178,6 @@ export default function LoginPage() {
                     <p className="mt-8 flex items-center justify-center gap-2 border-t border-white/10 pt-8 text-[13px] text-white/40">
                         <Icon name="shield" className="size-3.5" />
                         Conexión cifrada
-                    </p>
-
-                    {/* Aviso honesto: esta pantalla todavía no autentica a nadie. */}
-                    <p className="mt-6 border border-white/10 bg-white/5 px-4 py-3 text-[13px] leading-relaxed text-white/50">
-                        Esta pantalla es una maqueta: todavía no hay servidor de
-                        autenticación conectado.
                     </p>
                 </div>
             </section>

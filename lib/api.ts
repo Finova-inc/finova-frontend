@@ -183,27 +183,75 @@ export const api = {
    ========================================================================== */
 
 /**
+ * Usuario.
+ *
+ * Forma confirmada contra finova-backend/src/users/entities/user.entity.ts.
+ * `password_hash` es `select:false` en el backend, asi que nunca llega aqui.
+ */
+export interface Usuario {
+    readonly id_usuario: string;
+    readonly id_empresa: string;
+    readonly correo: string;
+    readonly nombre_completo: string;
+}
+
+/**
  * Empresa.
  *
- * ATENCIÓN: hoy `Empresa` en el backend es una clase vacía, y los DTO también
- * (src/empresas/entities/empresa.entity.ts). Estos campos son la forma
- * esperada, no la confirmada. Al definir la entidad real hay que sincronizar
- * esta interfaz.
+ * Forma confirmada contra finova-backend/src/empresas/entities/empresa.entity.ts
+ * y verificada con una respuesta real de GET /empresas.
+ *
+ * Notas:
+ * - `idEmpresa` es un uuid (string), no un entero.
+ * - `createdAt` / `deletedAt` llegan como ISO string: JSON no tiene tipo fecha.
+ * - `usuarios` viene incluido porque EmpresasService carga la relacion.
  */
 export interface Empresa {
-    readonly id: number;
+    readonly idEmpresa: string;
     readonly rut: string;
     readonly razonSocial: string;
-    readonly giro?: string;
+    readonly createdAt: string;
+    readonly deletedAt: string | null;
+    readonly usuarios?: readonly Usuario[];
+}
+
+/**
+ * Campos que acepta POST /empresas.
+ *
+ * Se declara explicito en vez de derivarlo de `Empresa` con Omit porque el
+ * backend usa ValidationPipe con `forbidNonWhitelisted: true`: mandar un
+ * campo de mas (createdAt, usuarios...) devuelve 400, no se ignora.
+ */
+export interface CrearEmpresaInput {
+    readonly rut: string;
+    readonly razonSocial: string;
 }
 
 export const empresasApi = {
-    listar: () => api.get<Empresa[]>("/empresas"),
-    obtener: (id: number) => api.get<Empresa>(`/empresas/${id}`),
-    crear: (datos: Omit<Empresa, "id">) => api.post<Empresa>("/empresas", datos),
-    actualizar: (id: number, datos: Partial<Omit<Empresa, "id">>) =>
-        api.patch<Empresa>(`/empresas/${id}`, datos),
-    eliminar: (id: number) => api.delete<void>(`/empresas/${id}`),
+    listar: (opciones?: ApiFetchOptions) => api.get<Empresa[]>("/empresas", opciones),
+    obtener: (id: string, opciones?: ApiFetchOptions) =>
+        api.get<Empresa>(`/empresas/${id}`, opciones),
+    crear: (datos: CrearEmpresaInput, opciones?: ApiFetchOptions) =>
+        api.post<Empresa>("/empresas", datos, opciones),
+    actualizar: (id: string, datos: Partial<CrearEmpresaInput>, opciones?: ApiFetchOptions) =>
+        api.patch<Empresa>(`/empresas/${id}`, datos, opciones),
+    eliminar: (id: string, opciones?: ApiFetchOptions) =>
+        api.delete<{ message: string }>(`/empresas/${id}`, opciones),
+};
+
+/** Respuesta de POST /auth/login. */
+export interface LoginResponse {
+    readonly access_token: string;
+    readonly user: Usuario;
+}
+
+export const authApi = {
+    /**
+     * Se llama SOLO desde el servidor (route handler de Next), nunca desde el
+     * navegador: el access_token no debe pasar por JavaScript del cliente.
+     */
+    login: (correo: string, password: string) =>
+        api.post<LoginResponse>("/auth/login", { correo, password }),
 };
 
 /**

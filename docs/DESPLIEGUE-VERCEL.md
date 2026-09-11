@@ -112,7 +112,7 @@ El repositorio ya apunta a `https://github.com/BrokenPeter16/finova-frontend.git
    ahorra el paso de conectar la integración después.
 2. **Add New → Project**.
 3. Importa `BrokenPeter16/finova-frontend`.
-
+haz 
 ### B.2 Configuración de build
 
 Vercel detecta Next.js y rellena todo solo. **No cambies nada**:
@@ -240,18 +240,32 @@ esté, `/empresas` no puede devolver datos reales.
 
 ### C.3 Publicar
 
-**Railway** o **Render** son los caminos más directos: conectas el repositorio de
-GitHub, detectan Node, y despliegan. En ambos defines las variables:
+> **Estado real (septiembre 2026):** esta fase YA ESTÁ HECHA. El backend vive en
+> Render en `https://finova-backend-qkq0.onrender.com` y la base en Neon
+> (proyecto `finova-database-neon`, región `aws-sa-east-1`). El repositorio
+> `Finova-inc/finova-backend` trae un `render.yaml` que crea el servicio desde
+> **New > Blueprint**, así que no hay que rellenar el formulario a mano. Lo que
+> sigue queda como referencia de qué configura ese blueprint.
+
+**Render** es el camino usado: conectas el repositorio de GitHub y el
+`render.yaml` define el servicio. Las variables que pide:
 
 | Variable | Valor |
 |---|---|
-| `DATABASE_URL` | cadena de conexión de la Fase C.1 |
+| `DATABASE_URL` | cadena de Neon, con el host `-pooler` y `?sslmode=require` |
 | `NODE_ENV` | `production` |
-| `PORT` | el que asigne el proveedor (suele inyectarse solo) |
+| `PORT` | lo inyecta Render solo (10000); `main.ts` ya lo respeta |
+| `JWT_SECRET` | lo genera Render (`generateValue: true`); no se escribe a mano |
 | `CORS_ORIGINS` | se rellena en la Fase D.1 |
 
-Al terminar tendrás una URL **HTTPS** como `https://finova-backend.up.railway.app`.
-Anótala: es la pieza que falta.
+La URL resultante es `https://finova-backend-qkq0.onrender.com`. Comprobación
+rápida de que quedó sano: `GET /health` responde
+`{"status":"ok","database":"conectada"}`.
+
+> **Plan free de Render:** el servicio se duerme tras ~15 min sin tráfico y la
+> siguiente petición tarda ~50 s. `lib/api.ts` aborta a los 15 s, así que el
+> primer login tras una pausa larga puede fallar por tiempo de espera y hay que
+> reintentar. Para uso real hace falta un plan de pago.
 
 > Si prefieres usar el `docker-compose.yml` que ya existe, Fly.io o un VPS con
 > Docker son la vía. Es más control y más trabajo: te haces cargo del
@@ -269,7 +283,7 @@ coincidir, y cada una falla de forma distinta.
 En el proveedor del backend, define:
 
 ```
-CORS_ORIGINS=https://finova-frontend.vercel.app,https://finova.cl
+CORS_ORIGINS=https://finova-frontend-livid.vercel.app
 ```
 
 Sin puerto, sin barra final, con el esquema. Redespliega el backend.
@@ -290,8 +304,8 @@ En **Settings → Environment Variables**, ahora con los valores reales:
 
 | Nombre | Production | Preview |
 |---|---|---|
-| `NEXT_PUBLIC_API_URL` | `https://finova-backend.up.railway.app` | igual, o una API de staging |
-| `CSP_CONNECT_SRC` | `https://finova-backend.up.railway.app` | igual |
+| `NEXT_PUBLIC_API_URL` | `https://finova-backend-qkq0.onrender.com` | igual, o una API de staging |
+| `CSP_CONNECT_SRC` | `https://finova-backend-qkq0.onrender.com` | igual |
 
 **Sin barra final** en ninguna de las dos.
 

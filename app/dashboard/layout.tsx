@@ -1,4 +1,5 @@
 import Sidebar from "@/components/Sidebar";
+import { CerrarSesionBoton } from "@/components/CerrarSesionBoton";
 
 export default function DashboardLayout({
     children,
@@ -17,9 +18,7 @@ export default function DashboardLayout({
                             Panel de control
                         </h2>
 
-                        <div className="text-sm text-slate-600">
-                            Usuario
-                        </div>
+                        <CerrarSesionBoton />
                     </header>
 
                     <section className="p-8">

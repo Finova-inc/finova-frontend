@@ -26,14 +26,14 @@ export default function Sidebar() {
                 </Link>
 
                 <Link
-                    href="/empresas"
+                    href="/dashboard/empresas"
                     className="mt-1 block rounded-lg px-3 py-2 text-sm hover:bg-slate-800"
                 >
                     Empresas
                 </Link>
 
                 <Link
-                    href="/documentos"
+                    href="/dashboard/documentos"
                     className="mt-1 block rounded-lg px-3 py-2 text-sm hover:bg-slate-800"
                 >
                     Documentos Tributarios
@@ -44,14 +44,14 @@ export default function Sidebar() {
                 </p>
 
                 <Link
-                    href="/core-contable"
+                    href="/dashboard/core-contable"
                     className="block rounded-lg px-3 py-2 text-sm hover:bg-slate-800"
                 >
                     Core Contable
                 </Link>
 
                 <Link
-                    href="/f29"
+                    href="/dashboard/f29"
                     className="mt-1 block rounded-lg px-3 py-2 text-sm hover:bg-slate-800"
                 >
                     Formulario F29
@@ -62,14 +62,14 @@ export default function Sidebar() {
                 </p>
 
                 <Link
-                    href="/copiloto"
+                    href="/dashboard/copiloto"
                     className="block rounded-lg px-3 py-2 text-sm hover:bg-slate-800"
                 >
                     Copiloto IA
                 </Link>
 
                 <Link
-                    href="/auditoria"
+                    href="/dashboard/auditoria"
                     className="mt-1 block rounded-lg px-3 py-2 text-sm hover:bg-slate-800"
                 >
                     Auditoría

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { Icon } from "@/components/ui/Icon";
@@ -11,11 +12,11 @@ import {
 } from "@/lib/validation";
 
 /**
- * Formulario de acceso — ESQUEMA VISUAL, SIN LÓGICA DE AUTENTICACIÓN.
+ * Formulario de acceso — CONECTADO al backend.
  *
- * No hay backend detrás: no se envía nada a ningún servidor y no se valida
- * ninguna credencial. Lo que sí demuestra es la higiene con que debe construirse
- * un formulario de credenciales, que es lo que se pidió.
+ * Envía las credenciales a /api/auth/login (route handler del propio Next),
+ * que a su vez llama a NestJS y guarda el JWT en una cookie httpOnly. El token
+ * nunca pasa por este componente ni por ningún JavaScript del navegador.
  *
  * ---------------------------------------------------------------------------
  * DECISIONES DE SEGURIDAD Y POR QUÉ
@@ -51,6 +52,9 @@ const LOCKOUT_SECONDS = 30;
 export function LoginForm() {
     // useId genera identificadores estables entre servidor y cliente, necesarios
     // para asociar cada <label> con su campo y cada error con su input.
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
     const emailFieldId = useId();
     const passwordFieldId = useId();
     const formErrorId = useId();
@@ -105,7 +109,7 @@ export function LoginForm() {
      * lo esperado: el objetivo es mostrar el comportamiento de la interfaz, no
      * simular una sesión.
      */
-    function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         // Impide la navegación por defecto, que expondría las credenciales.
         event.preventDefault();
 
@@ -149,14 +153,37 @@ export function LoginForm() {
             attemptCountRef.current = 0;
         }
 
-        // Se simula la latencia de red para que el estado de carga sea visible.
-        window.setTimeout(() => {
-            setIsSubmitting(false);
-            // Mensaje deliberadamente genérico: no revela si el correo existe.
-            setFormError("No pudimos validar esas credenciales.");
-            // La contraseña se descarta tras un intento fallido.
+        try {
+            const respuesta = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                // Necesario para que la cookie de sesión que devuelve el
+                // handler se guarde en el navegador.
+                credentials: "include",
+                body: JSON.stringify({ correo: email.trim().toLowerCase(), password }),
+            });
+
+            if (respuesta.ok) {
+                // La contraseña se descarta en cuanto deja de hacer falta.
+                setPassword("");
+                const destino = searchParams.get("redirigir") ?? "/dashboard";
+                // refresh() es imprescindible: obliga a los Server Components a
+                // volver a ejecutarse y leer la cookie recién creada.
+                router.replace(destino.startsWith("/") ? destino : "/dashboard");
+                router.refresh();
+                return;
+            }
+
+            const datos = (await respuesta.json().catch(() => null)) as { error?: string } | null;
+            // Mensaje genérico salvo que el servidor dé uno más útil (429).
+            setFormError(datos?.error ?? "No pudimos validar esas credenciales.");
             setPassword("");
-        }, 600);
+        } catch {
+            setFormError("No pudimos contactar al servidor. Revisa tu conexión.");
+            setPassword("");
+        } finally {
+            setIsSubmitting(false);
+        }
     }
 
     return (
