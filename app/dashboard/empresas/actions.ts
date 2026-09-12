@@ -29,7 +29,7 @@ export async function crearEmpresa(
     const token = await exigirTokenSesion();
 
     const rut = String(datosFormulario.get("rut") ?? "").trim().toUpperCase();
-    const razonSocial = String(datosFormulario.get("razonSocial") ?? "").trim();
+    const razon_social = String(datosFormulario.get("razon_social") ?? "").trim();
 
     // Se valida aquí además de en el navegador: un cliente puede saltarse la
     // validación del formulario. Replica las reglas del DTO del backend para
@@ -37,12 +37,12 @@ export async function crearEmpresa(
     if (!PATRON_RUT.test(rut)) {
         return { error: "El RUT debe tener el formato 76.123.456-7 (con puntos y guión)." };
     }
-    if (razonSocial.length < 3 || razonSocial.length > 150) {
+    if (razon_social.length < 3 || razon_social.length > 150) {
         return { error: "La razón social debe tener entre 3 y 150 caracteres." };
     }
 
     try {
-        await empresasApi.crear({ rut, razonSocial }, { token });
+        await empresasApi.crear({ rut, razon_social }, { token });
     } catch (error) {
         if (error instanceof ApiError) {
             if (error.status === 401) redirect("/login");
@@ -57,11 +57,11 @@ export async function crearEmpresa(
     return { ok: true };
 }
 
-export async function eliminarEmpresa(idEmpresa: string): Promise<EstadoFormulario> {
+export async function eliminarEmpresa(id_empresa: string): Promise<EstadoFormulario> {
     const token = await exigirTokenSesion();
 
     try {
-        await empresasApi.eliminar(idEmpresa, { token });
+        await empresasApi.eliminar(id_empresa, { token });
     } catch (error) {
         if (error instanceof ApiError && error.status === 401) redirect("/login");
         return { error: "No pudimos eliminar la empresa." };

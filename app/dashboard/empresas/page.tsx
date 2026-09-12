@@ -73,20 +73,20 @@ export default async function EmpresasPage() {
                         <tbody>
                             {empresas.map((empresa) => (
                                 <tr
-                                    key={empresa.idEmpresa}
+                                    key={empresa.id_empresa}
                                     className="border-b border-slate-100 last:border-0"
                                 >
                                     <td className="px-6 py-4 font-mono text-slate-900">
                                         {empresa.rut}
                                     </td>
                                     <td className="px-6 py-4 text-slate-900">
-                                        {empresa.razonSocial}
+                                        {empresa.razon_social}
                                     </td>
                                     <td className="px-6 py-4 text-slate-600">
                                         {empresa.usuarios?.length ?? 0}
                                     </td>
                                     <td className="px-6 py-4 text-slate-600">
-                                        {formatearFecha(empresa.createdAt)}
+                                        {formatearFecha(empresa.created_at)}
                                     </td>
                                 </tr>
                             ))}

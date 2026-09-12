@@ -43,12 +43,12 @@ export function NuevaEmpresaForm() {
                 </div>
 
                 <div className="flex flex-[2] flex-col gap-2">
-                    <label htmlFor="razonSocial" className="text-sm font-medium text-slate-700">
+                    <label htmlFor="razon_social" className="text-sm font-medium text-slate-700">
                         Razón social
                     </label>
                     <input
-                        id="razonSocial"
-                        name="razonSocial"
+                        id="razon_social"
+                        name="razon_social"
                         required
                         minLength={3}
                         maxLength={150}

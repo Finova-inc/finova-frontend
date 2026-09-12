@@ -202,16 +202,16 @@ export interface Usuario {
  * y verificada con una respuesta real de GET /empresas.
  *
  * Notas:
- * - `idEmpresa` es un uuid (string), no un entero.
- * - `createdAt` / `deletedAt` llegan como ISO string: JSON no tiene tipo fecha.
+ * - `id_empresa` es un uuid (string), no un entero.
+ * - `created_at` / `deleted_at` llegan como ISO string: JSON no tiene tipo fecha.
  * - `usuarios` viene incluido porque EmpresasService carga la relacion.
  */
 export interface Empresa {
-    readonly idEmpresa: string;
+    readonly id_empresa: string;
     readonly rut: string;
-    readonly razonSocial: string;
-    readonly createdAt: string;
-    readonly deletedAt: string | null;
+    readonly razon_social: string;
+    readonly created_at: string;
+    readonly deleted_at: string | null;
     readonly usuarios?: readonly Usuario[];
 }
 
@@ -220,11 +220,11 @@ export interface Empresa {
  *
  * Se declara explicito en vez de derivarlo de `Empresa` con Omit porque el
  * backend usa ValidationPipe con `forbidNonWhitelisted: true`: mandar un
- * campo de mas (createdAt, usuarios...) devuelve 400, no se ignora.
+ * campo de mas (created_at, usuarios...) devuelve 400, no se ignora.
  */
 export interface CrearEmpresaInput {
     readonly rut: string;
-    readonly razonSocial: string;
+    readonly razon_social: string;
 }
 
 export const empresasApi = {

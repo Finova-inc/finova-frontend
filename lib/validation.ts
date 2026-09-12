@@ -26,8 +26,24 @@ export type ValidationResult =
 /** Longitud máxima aceptada en el campo de correo. */
 export const EMAIL_MAX_LENGTH = 254;
 
-/** Longitud mínima de contraseña que se pide en la interfaz. */
+/**
+ * Longitud mínima al INICIAR SESIÓN.
+ *
+ * Es a propósito más laxa que la política de creación: una cuenta creada antes
+ * de endurecer las reglas debe poder entrar igual. El backend tampoco exige
+ * composición en el login, por la misma razón.
+ */
 export const PASSWORD_MIN_LENGTH = 8;
+
+/**
+ * Longitud mínima al CREAR o CAMBIAR una contraseña.
+ *
+ * Debe coincidir con PASSWORD_MIN_LENGTH de
+ * finova-backend/src/common/validators/password.validator.ts. Si aquí se pide
+ * menos que allá, la persona rellena el formulario y recibe un 400 del
+ * servidor que este formulario debió anticipar.
+ */
+export const PASSWORD_NUEVA_MIN_LENGTH = 12;
 
 /** Longitud máxima de contraseña, para acotar el input. */
 export const PASSWORD_MAX_LENGTH = 128;
@@ -66,13 +82,13 @@ export function validateEmail(rawEmail: string): ValidationResult {
 }
 
 /**
- * Valida la contraseña.
+ * Valida la contraseña AL INICIAR SESIÓN.
  *
- * Solo se exige largo mínimo. No se piden mayúsculas, dígitos ni símbolos a
- * propósito: las reglas de composición empujan a la gente hacia contraseñas
- * predecibles ("Password1!") y hoy tanto NIST como el OWASP recomiendan
- * priorizar longitud y comparación contra listas de contraseñas filtradas,
- * lo que corresponde hacer en el servidor.
+ * Solo se comprueba el largo, nunca la composición. Exigir mayúscula o símbolo
+ * en el login dejaría fuera a quien tenga una contraseña anterior a la política
+ * actual, y además le describiría las reglas a quien esté probando credenciales
+ * ajenas antes de autenticarse. Para crear o cambiar una contraseña se usa
+ * validateNuevaPassword().
  */
 export function validatePassword(password: string): ValidationResult {
     if (password.length === 0) {
@@ -88,6 +104,58 @@ export function validatePassword(password: string): ValidationResult {
 
     if (password.length > PASSWORD_MAX_LENGTH) {
         return { isValid: false, message: "La contraseña es demasiado larga." };
+    }
+
+    return { isValid: true };
+}
+
+/**
+ * Requisitos de composición al crear o cambiar una contraseña.
+ *
+ * Réplica exacta de las reglas de
+ * finova-backend/src/common/validators/password.validator.ts. Se validan por
+ * separado, y no con una sola expresión con lookaheads, para poder decir qué
+ * falta en concreto en vez de un genérico "no cumple el formato".
+ */
+const REQUISITOS_PASSWORD: readonly { readonly patron: RegExp; readonly nombre: string }[] = [
+    { patron: /[a-z]/, nombre: "una minúscula" },
+    { patron: /[A-Z]/, nombre: "una mayúscula" },
+    { patron: /\d/, nombre: "un número" },
+    { patron: /[!@#$%^&*()\-_=+[\]{};:'",.<>\/?\\|`~]/, nombre: "un símbolo" },
+];
+
+/**
+ * Valida una contraseña NUEVA (registro o cambio).
+ *
+ * ADVERTENCIA: como el resto de este archivo, esto es experiencia de usuario,
+ * no un control de seguridad. Quien quiera saltárselo solo tiene que llamar a
+ * la API directamente; por eso el backend valida lo mismo desde cero.
+ */
+export function validateNuevaPassword(password: string): ValidationResult {
+    if (password.length === 0) {
+        return { isValid: false, message: "Escribe una contraseña." };
+    }
+
+    if (password.length < PASSWORD_NUEVA_MIN_LENGTH) {
+        return {
+            isValid: false,
+            message: `La contraseña necesita al menos ${PASSWORD_NUEVA_MIN_LENGTH} caracteres.`,
+        };
+    }
+
+    if (password.length > PASSWORD_MAX_LENGTH) {
+        return { isValid: false, message: "La contraseña es demasiado larga." };
+    }
+
+    const faltantes = REQUISITOS_PASSWORD.filter(({ patron }) => !patron.test(password)).map(
+        ({ nombre }) => nombre,
+    );
+
+    if (faltantes.length > 0) {
+        return {
+            isValid: false,
+            message: `La contraseña necesita ${faltantes.join(", ")}.`,
+        };
     }
 
     return { isValid: true };
