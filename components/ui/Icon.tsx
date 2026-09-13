@@ -118,6 +118,77 @@ const ICON_PATHS = {
             <path d="M8 6h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15v4M8 19h4" />
         </>
     ),
+
+    /* ----------------------------------------------------------------------
+       Iconografía del panel de control.
+
+       Se añaden aquí y no en un registro aparte por el mismo motivo que
+       explica la cabecera del archivo: varios se repiten entre la barra
+       lateral y el cuerpo del panel (`document` ya existía y lo usan las dos),
+       y separarlos haría que el grosor de línea se desviara con el tiempo.
+       ---------------------------------------------------------------------- */
+
+    /** Panel de control: cuadrícula de módulos. */
+    grid: (
+        <>
+            <rect x="3" y="3" width="7" height="9" rx="1" />
+            <rect x="14" y="3" width="7" height="5" rx="1" />
+            <rect x="14" y="12" width="7" height="9" rx="1" />
+            <rect x="3" y="16" width="7" height="5" rx="1" />
+        </>
+    ),
+    /** Terceros: clientes y proveedores. */
+    users: (
+        <>
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M22 21v-2a4 4 0 0 0-3-3.9" />
+        </>
+    ),
+    /** Plan de cuentas: estructura jerárquica. */
+    ledger: (
+        <>
+            <path d="M4 4h16v16H4z" />
+            <path d="M4 9h16M9 9v11M12 13h5M12 16h5" />
+        </>
+    ),
+    /** Banco: frontis con columnas. */
+    bank: (
+        <>
+            <path d="M3 10h18L12 4 3 10z" />
+            <path d="M5 10v8M10 10v8M14 10v8M19 10v8M3 20h18" />
+        </>
+    ),
+    /** Notificaciones. */
+    bell: (
+        <>
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+            <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+        </>
+    ),
+    /** Búsqueda. */
+    search: (
+        <>
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+        </>
+    ),
+    /** Añadir: acción rápida. */
+    plus: <path d="M12 5v14M5 12h14" />,
+    /** Información y notas al pie. */
+    info: (
+        <>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 8h.01M11 12h1v4h1" />
+        </>
+    ),
+    /** Salir de la sesión. */
+    logout: (
+        <>
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <path d="M16 17l5-5-5-5M21 12H9" />
+        </>
+    ),
 } as const;
 
 /** Nombres válidos de icono. Tipar esto da autocompletado y error de compilación ante un typo. */

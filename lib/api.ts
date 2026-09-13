@@ -239,6 +239,102 @@ export const empresasApi = {
         api.delete<{ message: string }>(`/empresas/${id}`, opciones),
 };
 
+/* --------------------------------------------------------------------------
+   MODULOS CONTABLES
+
+   Formas confirmadas contra las entidades del backend. Los montos llegan como
+   STRING y no como number: TypeORM entrega asi las columnas numeric(19,4),
+   porque 19 digitos no caben en el double de JavaScript. Se usa formatearCLP()
+   de lib/formato.ts para mostrarlos; nunca se suman con `+` en el cliente.
+   -------------------------------------------------------------------------- */
+
+/** Tercero: cliente o proveedor. `tipo_persona` 'N' natural, 'J' juridica. */
+export interface Tercero {
+    readonly id_tercero: string;
+    readonly id_empresa: string;
+    readonly rut: string;
+    readonly razon_social: string;
+    readonly tipo_persona: "N" | "J";
+    readonly created_at: string;
+    readonly deleted_at: string | null;
+}
+
+/**
+ * Documento tributario.
+ *
+ * ADVERTENCIA: GET /documentos no carga relaciones, asi que `id_tercero` y
+ * `codigo_sii` llegan crudos, sin el nombre del tercero ni el del tipo de
+ * documento. Mostrarlos tal cual pondria UUIDs en pantalla. Se resuelve en la
+ * Fase 4 anadiendo `relations` en documentos.service.ts.
+ *
+ * Tampoco existen todavia fecha_emision ni fecha_vencimiento: la unica fecha
+ * es created_at, que es cuando se inserto la fila.
+ */
+export interface Documento {
+    readonly id_documento: string;
+    readonly id_empresa: string;
+    readonly id_tercero: string;
+    readonly codigo_sii: string;
+    readonly codigo_iso: string;
+    readonly monto_neto: string;
+    readonly monto_total: string;
+    readonly estado: string;
+    readonly created_at: string;
+}
+
+/** Asiento contable. Sus movimientos solo vienen en GET /asientos-contables/:id. */
+export interface AsientoContable {
+    readonly id_asiento: string;
+    readonly id_empresa: string;
+    readonly id_periodo: string;
+    readonly id_documento: string | null;
+    readonly glosa: string;
+    readonly fecha_contable: string;
+    readonly created_at: string;
+}
+
+/** Cuenta del plan contable. */
+export interface CuentaContable {
+    readonly id_cuenta: string;
+    readonly id_empresa: string;
+    readonly codigo: string;
+    readonly nombre: string;
+    readonly id_tipo_cuenta: number;
+    readonly is_active: boolean;
+}
+
+/** Periodo contable. `estado` es 'abierto' o 'cerrado'. */
+export interface PeriodoContable {
+    readonly id_periodo: string;
+    readonly id_empresa: string;
+    readonly anio: number;
+    readonly mes: number;
+    readonly estado: string;
+}
+
+export const tercerosApi = {
+    listar: (opciones?: ApiFetchOptions) => api.get<Tercero[]>("/terceros", opciones),
+};
+
+export const documentosApi = {
+    listar: (opciones?: ApiFetchOptions) => api.get<Documento[]>("/documentos", opciones),
+};
+
+export const asientosApi = {
+    listar: (opciones?: ApiFetchOptions) =>
+        api.get<AsientoContable[]>("/asientos-contables", opciones),
+};
+
+export const cuentasApi = {
+    listar: (opciones?: ApiFetchOptions) =>
+        api.get<CuentaContable[]>("/cuentas-contables", opciones),
+};
+
+export const periodosApi = {
+    listar: (opciones?: ApiFetchOptions) =>
+        api.get<PeriodoContable[]>("/periodos-contables", opciones),
+};
+
 /** Respuesta de POST /auth/login. */
 export interface LoginResponse {
     readonly access_token: string;

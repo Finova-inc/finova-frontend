@@ -234,6 +234,44 @@
     --header-pill-ink: var(--color-ink);
     /* Boton secundario: contorno sin relleno, como el "Login" del mockup. */
     --header-ghost-border: rgb(20 17 15 / 0.18);
+
+    /* ----------------------------------------------------------------------
+       Colores semanticos de estado
+
+       Son DELIBERADAMENTE distintos del acento. El naranjo de la paleta
+       significa "accion": es el color de los botones y los enlaces. Si ademas
+       significara "peligro", una alerta critica y un boton primario se
+       leerian igual, y el panel perderia justo la jerarquia que necesita
+       cuando algo va mal.
+
+       Van sesgados a calido —el rojo hacia el ladrillo, el verde hacia el
+       oliva— por la misma razon que el resto de la paleta: sobre el papel
+       calido, un rojo o un verde frios se ven como un cuerpo extrano.
+
+       Cada color trae su variante de fondo, siempre con alfa: asi la pastilla
+       se apoya sobre la superficie que tenga debajo sin necesidad de una
+       version por tema.
+       ---------------------------------------------------------------------- */
+    --critico: #b3261e;
+    --critico-bg: rgb(179 38 30 / 0.09);
+    --aviso: #8a6a00;
+    --aviso-bg: rgb(255 197 61 / 0.18);
+    --positivo: #2f6b4f;
+    --positivo-bg: rgb(47 107 79 / 0.1);
+
+    /* Superficie de tarjeta, un punto por encima del fondo. En claro es casi
+       blanco pero no llega a serlo; en oscuro se eleva hacia el cafe. */
+    --surface: #fffdfa;
+    --border-strong: rgb(20 17 15 / 0.18);
+
+    /* Barra lateral del panel. Mas oscura que --color-ink incluso en tema
+       claro: es un elemento de navegacion permanente, no una superficie de
+       lectura, y el contraste con el lienzo ayuda a ignorarla mientras se
+       trabaja. */
+    --sidebar-bg: #17130f;
+    --sidebar-ink: #f0ece5;
+    --sidebar-muted: #968c81;
+    --sidebar-hover: rgb(255 255 255 / 0.06);
 }
 
 .dark {
@@ -258,6 +296,22 @@
     --header-sheen: rgb(255 255 255 / 0.5);
     --header-pill-bg: rgb(255 197 61 / 0.5);
     --header-ghost-border: rgb(20 17 15 / 0.22);
+
+    /* Estados en tema oscuro.
+       Los tonos planos de arriba no sirven aqui: un rojo #b3261e sobre fondo
+       tinta queda por debajo del contraste minimo legible. Se aclaran y se
+       desaturan, que es lo mismo que ya hace el acento con --color-marker-soft. */
+    --critico: #ff8a7a;
+    --critico-bg: rgb(255 138 122 / 0.12);
+    --aviso: #ffc53d;
+    --aviso-bg: rgb(255 197 61 / 0.14);
+    --positivo: #7fc9a3;
+    --positivo-bg: rgb(127 201 163 / 0.12);
+
+    --surface: #1b1714;
+    --border-strong: rgb(255 255 255 / 0.2);
+
+    --sidebar-bg: #0f0c0a;
 }
 
 /* ==========================================================================
