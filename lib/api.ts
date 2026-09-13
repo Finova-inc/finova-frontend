@@ -341,6 +341,19 @@ export interface LoginResponse {
     readonly user: Usuario;
 }
 
+/**
+ * Una empresa a la que el usuario tiene acceso, con su rol EN ella.
+ *
+ * El rol es por empresa, no por persona: el mismo usuario puede ser
+ * administrador en una y solo-consulta en otra.
+ */
+export interface EmpresaDelUsuario {
+    readonly id_empresa: string;
+    readonly razon_social: string | null;
+    readonly rut: string | null;
+    readonly id_rol: number;
+}
+
 export const authApi = {
     /**
      * Se llama SOLO desde el servidor (route handler de Next), nunca desde el
@@ -348,6 +361,19 @@ export const authApi = {
      */
     login: (correo: string, password: string) =>
         api.post<LoginResponse>("/auth/login", { correo, password }),
+
+    /** Empresas del usuario, para poblar el selector de la cabecera. */
+    misEmpresas: (opciones?: ApiFetchOptions) =>
+        api.get<EmpresaDelUsuario[]>("/auth/mis-empresas", opciones),
+
+    /**
+     * Pide un token nuevo para otra empresa.
+     *
+     * El backend comprueba la pertenencia antes de firmar: si el usuario no
+     * tiene acceso a esa empresa responde 404 y no devuelve token alguno.
+     */
+    cambiarEmpresa: (id_empresa: string, opciones?: ApiFetchOptions) =>
+        api.post<LoginResponse>("/auth/cambiar-empresa", { id_empresa }, opciones),
 };
 
 /**

@@ -25,7 +25,6 @@ import { PanelConciliacion } from "@/components/dashboard/PanelConciliacion";
 import { TablaCartera } from "@/components/dashboard/TablaCartera";
 import { ZonaAlertas } from "@/components/dashboard/ZonaAlertas";
 import { Etiqueta } from "@/components/ui/Etiqueta";
-import { Icon } from "@/components/ui/Icon";
 import {
     ApiError,
     cuentasApi,
@@ -40,7 +39,7 @@ import {
     CONCILIACION_EJEMPLO,
     FLUJO_EJEMPLO,
 } from "@/lib/datos-ejemplo";
-import { formatearRut, nombreMes } from "@/lib/formato";
+import { nombreMes } from "@/lib/formato";
 import { exigirTokenSesion } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -126,18 +125,8 @@ export default async function DashboardPage() {
                     Panel de control
                 </h1>
 
-                {resumen.empresa ? (
-                    <span className="inline-flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--background-raised)] px-3 py-1.5 text-[13px] font-medium">
-                        <Icon name="building" className="size-3.5" />
-                        {resumen.empresa}
-                        {resumen.rut ? (
-                            <span className="tabular text-[12px] text-[var(--foreground-muted)]">
-                                {formatearRut(resumen.rut)}
-                            </span>
-                        ) : null}
-                    </span>
-                ) : null}
-
+                {/* La empresa activa ya la muestra el selector de la cabecera:
+                    repetirla aquí diría lo mismo dos veces en la misma pantalla. */}
                 {resumen.periodo ? (
                     <span className="ml-auto inline-flex items-center gap-2 text-[12px] text-[var(--foreground-muted)]">
                         <span

@@ -16,10 +16,11 @@
 import { NextResponse } from "next/server";
 import { authApi, ApiError } from "@/lib/api";
 import { validateEmail, validatePassword } from "@/lib/validation";
-import { NOMBRE_COOKIE_SESION } from "@/lib/session";
-
-/** Debe ir alineado con JWT_EXPIRES_IN del backend (1d). */
-const DURACION_SESION_SEGUNDOS = 60 * 60 * 24;
+import {
+    DURACION_SESION_SEGUNDOS,
+    NOMBRE_COOKIE_SESION,
+    OPCIONES_COOKIE_SESION,
+} from "@/lib/session";
 
 const ERROR_GENERICO = "No pudimos validar esas credenciales.";
 
@@ -59,10 +60,7 @@ export async function POST(request: Request) {
         respuesta.cookies.set({
             name: NOMBRE_COOKIE_SESION,
             value: access_token,
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            path: "/",
+            ...OPCIONES_COOKIE_SESION,
             maxAge: DURACION_SESION_SEGUNDOS,
         });
 

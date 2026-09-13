@@ -1,7 +1,10 @@
 import Sidebar from "@/components/Sidebar";
 import { CerrarSesionBoton } from "@/components/CerrarSesionBoton";
+import { SelectorEmpresa } from "@/components/dashboard/SelectorEmpresa";
 import { Icon } from "@/components/ui/Icon";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { authApi, type EmpresaDelUsuario } from "@/lib/api";
+import { exigirTokenSesion, obtenerEmpresaDelToken } from "@/lib/session";
 
 /* ============================================================================
    Estructura del panel: barra lateral fija + cabecera pegajosa + lienzo.
@@ -20,11 +23,23 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
    cabecera, que es donde se puede comprobar.
    ========================================================================== */
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
     children,
 }: Readonly<{
     children: React.ReactNode;
 }>) {
+    const token = await exigirTokenSesion();
+    const idEmpresaActual = await obtenerEmpresaDelToken();
+
+    // Un fallo aquí no debe tumbar el panel: sin empresas el selector
+    // simplemente no se dibuja, y el resto de la pantalla sigue funcionando.
+    let empresas: EmpresaDelUsuario[] = [];
+    try {
+        empresas = await authApi.misEmpresas({ token, cache: "no-store" });
+    } catch {
+        empresas = [];
+    }
+
     return (
         <div className="flex min-h-screen flex-col bg-[var(--background)] md:flex-row">
             <Sidebar />
@@ -34,7 +49,14 @@ export default function DashboardLayout({
                     sigan al alcance al recorrer una tabla larga. z-10 la mantiene
                     sobre el contenido al desplazarse. */}
                 <header className="sticky top-0 z-10 flex h-[60px] items-center gap-4 border-b border-[var(--border-subtle)] bg-[var(--surface)] px-4 sm:px-6">
-                    <label className="hidden min-w-0 max-w-[420px] flex-1 items-center gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--background)] px-3 py-1.5 text-[var(--foreground-muted)] sm:flex">
+                    {empresas.length > 0 ? (
+                        <SelectorEmpresa
+                            empresas={empresas}
+                            idEmpresaActual={idEmpresaActual}
+                        />
+                    ) : null}
+
+                    <label className="hidden min-w-0 max-w-[420px] flex-1 items-center gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--background)] px-3 py-1.5 text-[var(--foreground-muted)] lg:flex">
                         <Icon name="search" className="size-4 shrink-0" />
                         <input
                             id="busqueda-panel"
