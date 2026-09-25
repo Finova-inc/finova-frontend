@@ -189,6 +189,27 @@ const ICON_PATHS = {
             <path d="M16 17l5-5-5-5M21 12H9" />
         </>
     ),
+    /** Quitar una línea o descartar un borrador. */
+    trash: (
+        <>
+            <path d="M3 6h18M8 6V4h8v2" />
+            <path d="M19 6l-1 14H6L5 6M10 11v6M14 11v6" />
+        </>
+    ),
+    /** Revertir un asiento: flecha que vuelve. */
+    undo: (
+        <>
+            <path d="M9 14 4 9l5-5" />
+            <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+        </>
+    ),
+    /** Periodo cerrado. */
+    lock: (
+        <>
+            <rect x="4" y="11" width="16" height="10" rx="2" />
+            <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+        </>
+    ),
 } as const;
 
 /** Nombres válidos de icono. Tipar esto da autocompletado y error de compilación ante un typo. */

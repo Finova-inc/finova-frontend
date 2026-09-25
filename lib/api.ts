@@ -282,15 +282,166 @@ export interface Documento {
     readonly created_at: string;
 }
 
-/** Asiento contable. Sus movimientos solo vienen en GET /asientos-contables/:id. */
-export interface AsientoContable {
+/* --------------------------------------------------------------------------
+   ASIENTOS CONTABLES
+
+   Formas confirmadas contra finova-backend/src/asientos-contables/asientos.tipos.ts.
+
+   - `fecha_contable` llega como 'YYYY-MM-DD' (columna date, sin hora). Se
+     muestra con formatearFechaContable(), NUNCA con new Date(): leida como
+     medianoche UTC, en Chile se veria el dia anterior.
+   - Los importes son pesos enteros con 4 decimales en cero ('119000.0000').
+     Se suman con lib/decimal.ts, no con `+`.
+   -------------------------------------------------------------------------- */
+
+/** I ingreso, E egreso, T traspaso: los tipos del formato de libros electronicos del SII. */
+export type TipoComprobante = "I" | "E" | "T";
+
+export type OrigenAsiento = "manual" | "apertura" | "reversa" | "documento";
+
+/** Como se cita un comprobante desde otro (reversa <-> original). */
+export interface ReferenciaComprobante {
     readonly id_asiento: string;
-    readonly id_empresa: string;
-    readonly id_periodo: string;
-    readonly id_documento: string | null;
-    readonly glosa: string;
+    readonly tipo_comprobante: TipoComprobante;
+    readonly numero: number;
+    readonly anio: number;
     readonly fecha_contable: string;
+}
+
+export interface AsientoResumen extends ReferenciaComprobante {
+    readonly glosa: string;
+    readonly origen: OrigenAsiento;
+    readonly valor_comprobante: string;
+    readonly id_asiento_revertido: string | null;
+    readonly created_by: string;
     readonly created_at: string;
+}
+
+export interface AsientoListado extends AsientoResumen {
+    readonly revertido_por: ReferenciaComprobante | null;
+}
+
+export interface MovimientoContable {
+    readonly id_movimiento: string;
+    readonly orden: number;
+    readonly id_cuenta: string;
+    readonly cuenta: { readonly codigo: string; readonly nombre: string } | null;
+    readonly debe: string;
+    readonly haber: string;
+    readonly glosa: string | null;
+    readonly id_tercero: string | null;
+    readonly tercero: { readonly rut: string; readonly razon_social: string } | null;
+    readonly id_documento: string | null;
+    readonly codigo_iso: string | null;
+    readonly monto_moneda_original: string | null;
+    readonly tipo_cambio: string | null;
+}
+
+export interface AsientoDetalle extends AsientoResumen {
+    readonly id_periodo: string;
+    readonly periodo: { readonly anio: number; readonly mes: number; readonly estado: string } | null;
+    readonly id_documento: string | null;
+    /** Si este asiento es una reversa, el que corrige. */
+    readonly revierte_a: ReferenciaComprobante | null;
+    /** Si este asiento fue revertido, su reversa. */
+    readonly revertido_por: ReferenciaComprobante | null;
+    readonly movimientos: readonly MovimientoContable[];
+}
+
+export interface Paginado<T> {
+    readonly items: readonly T[];
+    readonly total: number;
+    readonly pagina: number;
+    readonly por_pagina: number;
+}
+
+export interface AsientoDelLibro extends AsientoResumen {
+    readonly movimientos: readonly MovimientoContable[];
+}
+
+/** Un dia del libro, con los totales del "Resumen Diario" del formato LCE. */
+export interface DiaLibroDiario {
+    readonly fecha: string;
+    readonly cantidad_comprobantes: number;
+    readonly cantidad_movimientos: number;
+    readonly suma_valor: string;
+    readonly comprobantes: readonly AsientoDelLibro[];
+}
+
+export interface LibroDiario {
+    readonly desde: string;
+    readonly hasta: string;
+    readonly dias: readonly DiaLibroDiario[];
+    readonly totales: {
+        readonly cantidad_comprobantes: number;
+        readonly cantidad_movimientos: number;
+        readonly total_debe: string;
+        readonly total_haber: string;
+    };
+}
+
+/** Linea como la acepta el backend: solo digitos en debe/haber, campos vacios omitidos. */
+export interface MovimientoInput {
+    readonly id_cuenta: string;
+    readonly debe?: string;
+    readonly haber?: string;
+    readonly glosa?: string;
+    readonly id_tercero?: string;
+}
+
+/** POST /asientos-contables. No lleva periodo: el backend lo deduce de la fecha. */
+export interface CrearAsientoInput {
+    readonly tipo_comprobante: TipoComprobante;
+    readonly fecha_contable: string;
+    readonly glosa: string;
+    readonly idempotency_key?: string;
+    readonly movimientos: readonly MovimientoInput[];
+}
+
+export interface FiltroAsientos {
+    readonly desde?: string;
+    readonly hasta?: string;
+    readonly tipo?: TipoComprobante;
+    readonly texto?: string;
+    readonly pagina?: number;
+}
+
+/** Linea de borrador: cualquier campo puede faltar. */
+export interface LineaBorrador {
+    readonly id_cuenta?: string;
+    readonly debe?: string;
+    readonly haber?: string;
+    readonly glosa?: string;
+    readonly id_tercero?: string;
+}
+
+export interface AsientoBorrador {
+    readonly id_borrador: string;
+    readonly tipo_comprobante: TipoComprobante | null;
+    readonly fecha_contable: string | null;
+    readonly glosa: string | null;
+    readonly lineas: readonly LineaBorrador[];
+    /** Bloqueo optimista: el guardado exige la version que se leyo. */
+    readonly version: number;
+    readonly created_at: string;
+    readonly updated_at: string;
+}
+
+export interface GuardarBorradorInput {
+    readonly tipo_comprobante?: TipoComprobante | null;
+    readonly fecha_contable?: string | null;
+    readonly glosa?: string | null;
+    readonly lineas?: readonly LineaBorrador[];
+}
+
+/** Arma la query string omitiendo los filtros vacios. */
+function consulta(parametros: Record<string, string | number | undefined>): string {
+    const pares = Object.entries(parametros).filter(
+        (par): par is [string, string | number] => par[1] !== undefined && par[1] !== "",
+    );
+    return pares.length === 0
+        ? ""
+        : `?${new URLSearchParams(pares.map(([clave, valor]) => [clave, String(valor)])).toString()}`;
 }
 
 /** Cuenta del plan contable. */
@@ -299,6 +450,7 @@ export interface CuentaContable {
     readonly id_empresa: string;
     readonly codigo: string;
     readonly nombre: string;
+    /** 1 Activo, 2 Pasivo, 3 Patrimonio, 4 Ingreso, 5 Gasto. */
     readonly id_tipo_cuenta: number;
     readonly is_active: boolean;
 }
@@ -310,6 +462,9 @@ export interface PeriodoContable {
     readonly anio: number;
     readonly mes: number;
     readonly estado: string;
+    readonly cerrado_at?: string | null;
+    readonly cerrado_por?: string | null;
+    readonly motivo_reapertura?: string | null;
 }
 
 export const tercerosApi = {
@@ -321,19 +476,95 @@ export const documentosApi = {
 };
 
 export const asientosApi = {
+    listar: (filtros: FiltroAsientos = {}, opciones?: ApiFetchOptions) =>
+        api.get<Paginado<AsientoListado>>(
+            `/asientos-contables${consulta({ ...filtros })}`,
+            opciones,
+        ),
+    obtener: (id: string, opciones?: ApiFetchOptions) =>
+        api.get<AsientoDetalle>(`/asientos-contables/${encodeURIComponent(id)}`, opciones),
+    crear: (datos: CrearAsientoInput, opciones?: ApiFetchOptions) =>
+        api.post<AsientoDetalle>("/asientos-contables", datos, opciones),
+    /** Art. 32 del Codigo de Comercio: el error se salva con un asiento nuevo. */
+    revertir: (
+        id: string,
+        datos: { readonly fecha_contable?: string; readonly motivo: string },
+        opciones?: ApiFetchOptions,
+    ) =>
+        api.post<AsientoDetalle>(
+            `/asientos-contables/${encodeURIComponent(id)}/reversion`,
+            datos,
+            opciones,
+        ),
+    libroDiario: (desde: string, hasta: string, opciones?: ApiFetchOptions) =>
+        api.get<LibroDiario>(`/asientos-contables/libro-diario${consulta({ desde, hasta })}`, opciones),
+};
+
+export const borradoresApi = {
     listar: (opciones?: ApiFetchOptions) =>
-        api.get<AsientoContable[]>("/asientos-contables", opciones),
+        api.get<AsientoBorrador[]>("/asientos-borradores", opciones),
+    obtener: (id: string, opciones?: ApiFetchOptions) =>
+        api.get<AsientoBorrador>(`/asientos-borradores/${encodeURIComponent(id)}`, opciones),
+    crear: (datos: GuardarBorradorInput, opciones?: ApiFetchOptions) =>
+        api.post<AsientoBorrador>("/asientos-borradores", datos, opciones),
+    guardar: (
+        id: string,
+        datos: GuardarBorradorInput & { readonly version: number },
+        opciones?: ApiFetchOptions,
+    ) => api.patch<AsientoBorrador>(`/asientos-borradores/${encodeURIComponent(id)}`, datos, opciones),
+    descartar: (id: string, opciones?: ApiFetchOptions) =>
+        api.delete<{ message: string }>(`/asientos-borradores/${encodeURIComponent(id)}`, opciones),
+    contabilizar: (id: string, opciones?: ApiFetchOptions) =>
+        api.post<AsientoDetalle>(
+            `/asientos-borradores/${encodeURIComponent(id)}/contabilizar`,
+            {},
+            opciones,
+        ),
 };
 
 export const cuentasApi = {
     listar: (opciones?: ApiFetchOptions) =>
         api.get<CuentaContable[]>("/cuentas-contables", opciones),
+    /** Solo administrador, y solo en una empresa sin cuentas. */
+    cargarPlantilla: (opciones?: ApiFetchOptions) =>
+        api.post<{ cuentas_creadas: number }>("/cuentas-contables/plantilla", {}, opciones),
 };
 
 export const periodosApi = {
     listar: (opciones?: ApiFetchOptions) =>
         api.get<PeriodoContable[]>("/periodos-contables", opciones),
+    crear: (datos: { readonly anio: number; readonly mes: number }, opciones?: ApiFetchOptions) =>
+        api.post<PeriodoContable>("/periodos-contables", datos, opciones),
+    cerrar: (id: string, opciones?: ApiFetchOptions) =>
+        api.patch<PeriodoContable>(`/periodos-contables/${encodeURIComponent(id)}/cerrar`, {}, opciones),
+    /** Solo administrador; el motivo queda registrado. */
+    reabrir: (id: string, motivo: string, opciones?: ApiFetchOptions) =>
+        api.patch<PeriodoContable>(
+            `/periodos-contables/${encodeURIComponent(id)}/reabrir`,
+            { motivo },
+            opciones,
+        ),
 };
+
+/**
+ * Mensajes que el backend escribio para la persona usuaria.
+ *
+ * Los 400, 404 y 409 del modulo contable traen mensajes en espanol pensados
+ * para mostrarse ("El periodo 9/2026 esta cerrado..."). Un 500 no: su cuerpo
+ * es generico o tecnico, y ahi se usa el mensaje por defecto de quien llama.
+ */
+export function mensajesDelBackend(error: unknown): string[] | null {
+    if (!(error instanceof ApiError) || ![400, 404, 409].includes(error.status)) {
+        return null;
+    }
+    const cuerpo = error.body as { message?: unknown } | null;
+    const mensaje = cuerpo?.message;
+    if (typeof mensaje === "string") return [mensaje];
+    if (Array.isArray(mensaje) && mensaje.every((m) => typeof m === "string")) {
+        return mensaje as string[];
+    }
+    return null;
+}
 
 /** Respuesta de POST /auth/login. */
 export interface LoginResponse {

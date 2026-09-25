@@ -54,6 +54,7 @@ const GRUPOS: readonly GrupoNav[] = [
         enlaces: [
             { href: "/dashboard/core-contable", etiqueta: "Libro diario", icono: "calculator" },
             { href: "/dashboard/plan-cuentas", etiqueta: "Plan de cuentas", icono: "ledger" },
+            { href: "/dashboard/periodos", etiqueta: "Períodos", icono: "lock" },
             { href: "/dashboard/f29", etiqueta: "Formulario F29", icono: "check" },
         ],
     },

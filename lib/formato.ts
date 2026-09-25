@@ -131,11 +131,70 @@ export function formatearRut(rut: string): string {
     return `${cuerpo.replace(/\B(?=(\d{3})+(?!\d))/g, ".")}-${verificador}`;
 }
 
+/**
+ * Fecha contable 'YYYY-MM-DD' como "30-09-2026".
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUE NO USA formatearFecha
+ * ---------------------------------------------------------------------------
+ * formatearFecha hace new Date(iso). Una fecha sin hora ('2026-09-30') se lee
+ * como medianoche UTC, y en Chile (UTC-3 o UTC-4) eso es el 29 de septiembre:
+ * el asiento apareceria un dia antes, y el del ultimo dia del mes, en el mes
+ * anterior. Aqui se reordena el texto sin convertirlo nunca en instante.
+ */
+export function formatearFechaContable(fecha: string | null | undefined): string {
+    const partes = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fecha ?? "");
+    return partes ? `${partes[3]}-${partes[2]}-${partes[1]}` : "—";
+}
+
+/**
+ * La fecha de hoy en Chile, 'YYYY-MM-DD'.
+ *
+ * Vercel ejecuta el servidor en UTC: toISOString() daria la fecha de manana
+ * desde las 20:00 o 21:00 de Chile. Se arma con formatToParts para no depender
+ * del orden de dia y mes de un locale.
+ */
+export function hoyEnChile(ahora: Date = new Date()): string {
+    const partes = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/Santiago",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    }).formatToParts(ahora);
+    const parte = (tipo: Intl.DateTimeFormatPartTypes) =>
+        partes.find((p) => p.type === tipo)?.value ?? "";
+    return `${parte("year")}-${parte("month")}-${parte("day")}`;
+}
+
+/** Nombre de cada tipo de comprobante del formato de libros electronicos del SII. */
+export const NOMBRE_TIPO_COMPROBANTE: Record<string, string> = {
+    I: "Ingreso",
+    E: "Egreso",
+    T: "Traspaso",
+    U: "Único",
+    O: "Otro",
+};
+
+/** "T-12 / 2026": como se cita un comprobante. */
+export function formatearComprobante(tipo: string, numero: number, anio: number): string {
+    return `${tipo}-${numero} / ${anio}`;
+}
+
 /** Nombres de los meses en español, para ejes y rotulos de periodo. */
 const MESES = [
     "ene", "feb", "mar", "abr", "may", "jun",
     "jul", "ago", "sep", "oct", "nov", "dic",
 ] as const;
+
+const MESES_LARGOS = [
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+] as const;
+
+/** "septiembre 2026", para periodos contables. */
+export function nombrePeriodo(anio: number, mes: number): string {
+    return `${MESES_LARGOS[mes - 1] ?? ""} ${anio}`.trim();
+}
 
 /**
  * Nombre corto del mes a partir del numero 1-12 que usa `periodo_contable.mes`.
