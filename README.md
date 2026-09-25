@@ -9,10 +9,10 @@ Este repositorio contiene **solo el frontend**. La lógica de negocio, la base d
 datos y la integración con el SII viven en `finova-backend` (NestJS + PostgreSQL
 + Docker).
 
-> **Estado del proyecto:** la landing pública y la pantalla de acceso están
-> terminadas y pulidas. El área privada (dashboard y módulos) son maquetas
-> estáticas: **todavía no hay ninguna llamada real al backend**. Ver
-> [Estado real de cada ruta](#estado-real-de-cada-ruta).
+> **Estado del proyecto:** la landing, el acceso y el núcleo contable (libro
+> diario, asientos, períodos y plan de cuentas) funcionan contra el backend
+> real. Documentos, terceros, F29, copiloto y auditoría siguen como pantallas
+> pendientes. Ver [Estado real de cada ruta](#estado-real-de-cada-ruta).
 
 ---
 
@@ -188,20 +188,19 @@ entre ambas sin pensar en eso.
 | Ruta | Estado | Detalle |
 |---|---|---|
 | `/` | ✅ Terminada | Landing de 8 secciones, tema claro/oscuro, animaciones CSS. |
-| `/login` | ⚠️ Maqueta | Formulario completo y accesible, con validación de cliente y límite de intentos, pero **no autentica a nadie**: no hay servidor detrás. La propia pantalla lo declara. |
-| `/dashboard` | ⚠️ Maqueta | Tarjetas de métricas fijas en cero. Sin datos reales. |
-| `/empresas`, `/documentos`, `/core-contable`, `/f29`, `/copiloto`, `/auditoria` | 🚧 Placeholder | Siete líneas cada una: un `<h1>` y un párrafo. |
+| `/login` | ✅ Real | Autentica contra el backend; el JWT queda en una cookie httpOnly. |
+| `/dashboard` | ⚠️ Mixta | Conteos reales (empresas, documentos, terceros, cuentas, períodos); gráficos y cartera con datos de ejemplo, marcados como tales. |
+| `/dashboard/empresas` | ✅ Real | Listado y alta. |
+| `/dashboard/core-contable` | ✅ Real | Libro diario: comprobantes con filtros y paginación, vista de libro imprimible con resumen por día, borradores. |
+| `/dashboard/core-contable/nuevo` y `/borradores/[id]` | ✅ Real | Formulario de asiento: líneas dinámicas, cuadre en vivo con aritmética exacta (`lib/decimal.ts`), guardar borrador y contabilizar con confirmación. |
+| `/dashboard/core-contable/[id]` | ✅ Real | Detalle del comprobante y reversión (art. 32 del Código de Comercio). |
+| `/dashboard/periodos` | ✅ Real | Abrir mes, cerrar (administrador o contador) y reabrir con motivo (solo administrador). |
+| `/dashboard/plan-cuentas` | ⚠️ Parcial | Solo lectura, más la carga del plan base PYME en una empresa sin cuentas. La edición del plan es un módulo aparte. |
+| `/dashboard/documentos`, `/terceros`, `/f29`, `/copiloto`, `/auditoria` | 🚧 Placeholder | `PantallaPendiente` con los endpoints que usará cada una. |
 
-### ⚠️ Las rutas de módulos están fuera del layout privado
-
-`app/dashboard/layout.tsx` aplica la barra lateral únicamente al subárbol
-`app/dashboard/`. Las páginas de módulos viven en la raíz de `app/`, así que
-**se renderizan sin sidebar y sin cabecera**: el `Sidebar` enlaza a `/empresas`
-y al hacer clic la navegación desaparece.
-
-La corrección es mover esas carpetas dentro de `app/dashboard/` (y actualizar
-los `href` del `Sidebar`), o convertir el layout en un grupo de rutas
-`app/(privado)/`. Está pendiente.
+Los botones que registran (nuevo asiento, revertir, cerrar período) se ocultan
+al rol "consulta" leyendo el rol del JWT (`obtenerRolDelToken`). Es solo
+presentación: el backend responde 403 igual si alguien fuerza la llamada.
 
 ---
 

@@ -82,6 +82,30 @@ export async function exigirTokenSesion(): Promise<string> {
  * decodificar no debe tumbar el panel entero.
  */
 export async function obtenerEmpresaDelToken(): Promise<string | null> {
+    const payload = await leerCargaDelToken();
+    return typeof payload?.empresaId === "string" ? payload.empresaId : null;
+}
+
+/** Roles de cat_rol en el backend. El rol es el de la empresa activa. */
+export const ROL = { ADMINISTRADOR: 1, CONTADOR: 2, CONSULTA: 3 } as const;
+
+/**
+ * Lee el rol del JWT, sin verificar la firma. Mismo criterio que
+ * obtenerEmpresaDelToken: sirve para mostrar u ocultar botones, NO para
+ * autorizar. Quien autoriza es el RolesGuard del backend, que responde 403 si
+ * alguien fuerza la llamada.
+ */
+export async function obtenerRolDelToken(): Promise<number | null> {
+    const payload = await leerCargaDelToken();
+    return typeof payload?.rol === "number" ? payload.rol : null;
+}
+
+/** Administrador o contador: los roles que registran en el libro. */
+export function puedeRegistrar(rol: number | null): boolean {
+    return rol === ROL.ADMINISTRADOR || rol === ROL.CONTADOR;
+}
+
+async function leerCargaDelToken(): Promise<{ empresaId?: unknown; rol?: unknown } | null> {
     const token = await obtenerTokenSesion();
     if (!token) return null;
 
@@ -93,9 +117,7 @@ export async function obtenerEmpresaDelToken(): Promise<string | null> {
         // '-' y '_' sustituyen a '+' y '/'.
         const normalizada = carga.replace(/-/g, "+").replace(/_/g, "/");
         const json = Buffer.from(normalizada, "base64").toString("utf8");
-        const payload = JSON.parse(json) as { empresaId?: unknown };
-
-        return typeof payload.empresaId === "string" ? payload.empresaId : null;
+        return JSON.parse(json) as { empresaId?: unknown; rol?: unknown };
     } catch {
         return null;
     }

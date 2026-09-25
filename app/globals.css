@@ -349,6 +349,22 @@
     .tabular {
         font-variant-numeric: tabular-nums;
     }
+
+    /* Impresion del libro diario: el papel no tiene barra lateral, cabecera
+       ni filtros. `.no-imprimir` marca los controles de pantalla; la barra y
+       la cabecera del panel son el aside y el header del layout. */
+    @media print {
+        aside,
+        header,
+        .no-imprimir {
+            display: none !important;
+        }
+
+        main {
+            max-width: none !important;
+            padding: 0 !important;
+        }
+    }
 }
 
 /* ==========================================================================
