@@ -17,6 +17,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Panel } from "@/components/ui/Panel";
 import type { AsientoBorrador, TipoComprobante } from "@/lib/api";
 import { CERO, formatearPesos, separarMiles, soloDigitos, sumarPesos, tieneMonto } from "@/lib/decimal";
+import { CLASES_DE_CUENTA } from "@/lib/planCuentas";
 import {
     contabilizarBorrador,
     contabilizarNuevo,
@@ -52,14 +53,6 @@ const TIPOS: readonly { valor: TipoComprobante; nombre: string; ayuda: string }[
     { valor: "E", nombre: "Egreso", ayuda: "Sale dinero de caja o banco" },
     { valor: "T", nombre: "Traspaso", ayuda: "Sin movimiento de dinero" },
 ];
-
-const GRUPOS_CUENTA: Record<number, string> = {
-    1: "Activo",
-    2: "Pasivo",
-    3: "Patrimonio",
-    4: "Ingresos",
-    5: "Gastos",
-};
 
 const LARGO_GLOSA = 120;
 
@@ -235,9 +228,9 @@ export function FormularioAsiento({ cuentas, terceros, hoy, borrador = null }: F
     }
 
     const nombreTipo = TIPOS.find((t) => t.valor === tipo)?.nombre ?? "";
-    const cuentasPorGrupo = Object.entries(GRUPOS_CUENTA).map(([id, nombre]) => ({
+    const cuentasPorGrupo = CLASES_DE_CUENTA.map(({ id, nombre }) => ({
         nombre,
-        cuentas: cuentas.filter((cuenta) => cuenta.id_tipo_cuenta === Number(id)),
+        cuentas: cuentas.filter((cuenta) => cuenta.id_tipo_cuenta === id),
     }));
 
     return (

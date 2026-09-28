@@ -453,7 +453,31 @@ export interface CuentaContable {
     /** 1 Activo, 2 Pasivo, 3 Patrimonio, 4 Ingreso, 5 Gasto. */
     readonly id_tipo_cuenta: number;
     readonly is_active: boolean;
+    /** Cuenta padre, o null si es de primer nivel (clase). */
+    readonly id_cuenta_padre: string | null;
+    /** false = cuenta de agrupación: no admite movimientos, solo ordena el árbol. */
+    readonly acepta_movimiento: boolean;
+    /** Código del Diccionario de Cuentas LCE del SII, si se conoce. */
+    readonly codigo_sii: string | null;
 }
+
+export interface CrearCuentaInput {
+    readonly id_tipo_cuenta: number;
+    readonly codigo: string;
+    readonly nombre: string;
+    readonly id_cuenta_padre?: string;
+    readonly acepta_movimiento?: boolean;
+    readonly codigo_sii?: string | null;
+}
+
+/** id_cuenta_padre acepta null explícito (quitar el padre), a diferencia de
+ *  CrearCuentaInput donde solo puede omitirse. */
+export type ActualizarCuentaInput = Partial<Omit<CrearCuentaInput, 'id_cuenta_padre'>> & {
+    readonly id_cuenta_padre?: string | null;
+    /** Para reactivar una cuenta desactivada (no existe en CrearCuentaInput:
+     *  una cuenta nueva siempre nace activa). */
+    readonly is_active?: boolean;
+};
 
 /** Periodo contable. `estado` es 'abierto' o 'cerrado'. */
 export interface PeriodoContable {
@@ -528,6 +552,12 @@ export const cuentasApi = {
     /** Solo administrador, y solo en una empresa sin cuentas. */
     cargarPlantilla: (opciones?: ApiFetchOptions) =>
         api.post<{ cuentas_creadas: number }>("/cuentas-contables/plantilla", {}, opciones),
+    crear: (datos: CrearCuentaInput, opciones?: ApiFetchOptions) =>
+        api.post<CuentaContable>("/cuentas-contables", datos, opciones),
+    actualizar: (id: string, datos: ActualizarCuentaInput, opciones?: ApiFetchOptions) =>
+        api.patch<CuentaContable>(`/cuentas-contables/${encodeURIComponent(id)}`, datos, opciones),
+    desactivar: (id: string, opciones?: ApiFetchOptions) =>
+        api.delete<{ message: string }>(`/cuentas-contables/${encodeURIComponent(id)}`, opciones),
 };
 
 export const periodosApi = {

@@ -2,12 +2,14 @@ import { ApiError, cuentasApi, tercerosApi } from "@/lib/api";
 import type { CuentaOpcion, TerceroOpcion } from "./FormularioAsiento";
 
 /**
- * Cuentas activas y terceros para el formulario de asiento.
+ * Cuentas activas e imputables, y terceros, para el formulario de asiento.
  *
- * Solo cuentas ACTIVAS: una desactivada no admite movimientos nuevos (el
- * backend la rechaza), asi que ofrecerla solo llevaria a un error al final.
- * Solo se envian los campos que el formulario usa: el tercero completo trae
- * datos que no hacen falta en el navegador.
+ * Solo cuentas ACTIVAS y que ACEPTEN MOVIMIENTO: una desactivada, o una de
+ * agrupacion (acepta_movimiento:false, solo ordena el arbol del plan de
+ * cuentas), no admite movimientos nuevos (el backend la rechaza), asi que
+ * ofrecerla solo llevaria a un error al final. Solo se envian los campos que
+ * el formulario usa: el tercero completo trae datos que no hacen falta en el
+ * navegador.
  */
 export async function cargarOpcionesDelFormulario(token: string): Promise<{
     readonly cuentas: CuentaOpcion[];
@@ -27,7 +29,7 @@ export async function cargarOpcionesDelFormulario(token: string): Promise<{
         cuentas:
             cuentas.status === "fulfilled"
                 ? cuentas.value
-                      .filter((cuenta) => cuenta.is_active)
+                      .filter((cuenta) => cuenta.is_active && cuenta.acepta_movimiento)
                       .map(({ id_cuenta, codigo, nombre, id_tipo_cuenta }) => ({
                           id_cuenta,
                           codigo,
