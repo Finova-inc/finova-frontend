@@ -45,6 +45,8 @@ const ICON_PATHS = {
     check: <path d="M20 6 9 17l-5-5" />,
     /** Flecha de avance en botones y enlaces. */
     arrowRight: <path d="M5 12h14M13 6l6 6-6 6" />,
+    /** Desplegar y plegar una sección: apunta a la derecha y gira al abrir. */
+    chevron: <path d="m9 6 6 6-6 6" />,
     /** Documento tributario. */
     document: (
         <>

@@ -5,6 +5,7 @@
    del Codigo de Comercio). La unica accion es revertirlo (art. 32).
    ========================================================================== */
 
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Panel } from "@/components/ui/Panel";
 import { Etiqueta } from "@/components/ui/Etiqueta";
@@ -140,8 +141,15 @@ export default async function DetalleAsientoPage({ params }: { params: Promise<{
                                 <tr key={movimiento.id_movimiento} className="border-b border-[var(--border-subtle)] align-top">
                                     <td className="tabular px-4 py-2.5 text-[var(--foreground-muted)]">{movimiento.orden}</td>
                                     <td className="px-4 py-2.5">
-                                        <span className="tabular font-medium">{movimiento.cuenta?.codigo ?? "—"}</span>{" "}
-                                        <span className="text-[var(--foreground-muted)]">{movimiento.cuenta?.nombre}</span>
+                                        {/* A los demás asientos de la cuenta: en papel, su libro mayor. */}
+                                        <Link
+                                            href={`/dashboard/core-contable?cuenta=${movimiento.id_cuenta}`}
+                                            title="Ver los asientos de esta cuenta"
+                                            className="underline-offset-4 hover:underline"
+                                        >
+                                            <span className="tabular font-medium">{movimiento.cuenta?.codigo ?? "—"}</span>{" "}
+                                            <span className="text-[var(--foreground-muted)]">{movimiento.cuenta?.nombre}</span>
+                                        </Link>
                                     </td>
                                     <td className="px-4 py-2.5 text-[var(--foreground-muted)]">
                                         {movimiento.glosa ?? ""}

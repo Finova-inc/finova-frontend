@@ -39,7 +39,7 @@ export default async function NuevoAsientoPage() {
         );
     }
 
-    const { cuentas, terceros, error } = await cargarOpcionesDelFormulario(token);
+    const { cuentas, terceros, periodos, error } = await cargarOpcionesDelFormulario(token);
     if (error?.status === 401) redirect("/login");
 
     if (error) {
@@ -71,7 +71,13 @@ export default async function NuevoAsientoPage() {
     return (
         <div>
             {encabezado}
-            <FormularioAsiento cuentas={cuentas} terceros={terceros} hoy={hoyEnChile()} />
+            <FormularioAsiento
+                cuentas={cuentas}
+                terceros={terceros}
+                periodos={periodos}
+                puedeAbrirPeriodo
+                hoy={hoyEnChile()}
+            />
         </div>
     );
 }

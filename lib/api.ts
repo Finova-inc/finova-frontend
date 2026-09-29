@@ -402,6 +402,8 @@ export interface FiltroAsientos {
     readonly desde?: string;
     readonly hasta?: string;
     readonly tipo?: TipoComprobante;
+    /** Solo asientos que mueven esta cuenta. */
+    readonly id_cuenta?: string;
     readonly texto?: string;
     readonly pagina?: number;
 }
@@ -453,7 +455,54 @@ export interface CuentaContable {
     /** 1 Activo, 2 Pasivo, 3 Patrimonio, 4 Ingreso, 5 Gasto. */
     readonly id_tipo_cuenta: number;
     readonly is_active: boolean;
+    /** Cuenta padre, o null si es de primer nivel (clase). */
+    readonly id_cuenta_padre: string | null;
+    /** false = cuenta de agrupación: no admite movimientos, solo ordena el árbol. */
+    readonly acepta_movimiento: boolean;
+    /** Código del Diccionario de Cuentas LCE del SII, si se conoce. */
+    readonly codigo_sii: string | null;
+    /** Ya tiene asientos: su código, tipo e imputabilidad quedan fijos (art. 31 CCom). */
+    readonly tiene_movimientos: boolean;
 }
+
+/** Fila del plan base NIIF, tal como la devuelve GET /cuentas-contables/plantilla. */
+export interface FilaPlantilla {
+    readonly codigo: string;
+    readonly nombre: string;
+    readonly id_tipo_cuenta: number;
+    /** false = agrupación; omitido = cuenta imputable. */
+    readonly acepta_movimiento?: boolean;
+    readonly codigoPadre?: string;
+}
+
+/** El plan base y lo que haría falta para aplicarlo al plan actual de la empresa. */
+export interface PlantillaCuentas {
+    readonly cuentas: readonly FilaPlantilla[];
+    /** Cuentas que se crearían. */
+    readonly insertar: number;
+    /** Cuentas existentes que pasarían a colgar de su rubro NIIF. */
+    readonly reubicar: number;
+    /** Por qué no se puede aplicar (plan propio, código en conflicto), o null. */
+    readonly conflicto: string | null;
+}
+
+export interface CrearCuentaInput {
+    readonly id_tipo_cuenta: number;
+    readonly codigo: string;
+    readonly nombre: string;
+    readonly id_cuenta_padre?: string;
+    readonly acepta_movimiento?: boolean;
+    readonly codigo_sii?: string | null;
+}
+
+/** id_cuenta_padre acepta null explícito (quitar el padre), a diferencia de
+ *  CrearCuentaInput donde solo puede omitirse. */
+export type ActualizarCuentaInput = Partial<Omit<CrearCuentaInput, 'id_cuenta_padre'>> & {
+    readonly id_cuenta_padre?: string | null;
+    /** Para reactivar una cuenta desactivada (no existe en CrearCuentaInput:
+     *  una cuenta nueva siempre nace activa). */
+    readonly is_active?: boolean;
+};
 
 /** Periodo contable. `estado` es 'abierto' o 'cerrado'. */
 export interface PeriodoContable {
@@ -465,6 +514,10 @@ export interface PeriodoContable {
     readonly cerrado_at?: string | null;
     readonly cerrado_por?: string | null;
     readonly motivo_reapertura?: string | null;
+    /** Asientos contabilizados en el mes (incluidas reversas). */
+    readonly cantidad_asientos: number;
+    /** Borradores con fecha de ese mes: quedarían sin contabilizar si se cierra. */
+    readonly cantidad_borradores: number;
 }
 
 export const tercerosApi = {
@@ -525,9 +578,21 @@ export const borradoresApi = {
 export const cuentasApi = {
     listar: (opciones?: ApiFetchOptions) =>
         api.get<CuentaContable[]>("/cuentas-contables", opciones),
-    /** Solo administrador, y solo en una empresa sin cuentas. */
+    plantilla: (opciones?: ApiFetchOptions) =>
+        api.get<PlantillaCuentas>("/cuentas-contables/plantilla", opciones),
+    /** Solo administrador. Carga el plan base, o completa su estructura sobre un plan que viene de él. */
     cargarPlantilla: (opciones?: ApiFetchOptions) =>
-        api.post<{ cuentas_creadas: number }>("/cuentas-contables/plantilla", {}, opciones),
+        api.post<{ cuentas_creadas: number; cuentas_reubicadas: number }>(
+            "/cuentas-contables/plantilla",
+            {},
+            opciones,
+        ),
+    crear: (datos: CrearCuentaInput, opciones?: ApiFetchOptions) =>
+        api.post<CuentaContable>("/cuentas-contables", datos, opciones),
+    actualizar: (id: string, datos: ActualizarCuentaInput, opciones?: ApiFetchOptions) =>
+        api.patch<CuentaContable>(`/cuentas-contables/${encodeURIComponent(id)}`, datos, opciones),
+    desactivar: (id: string, opciones?: ApiFetchOptions) =>
+        api.delete<{ message: string }>(`/cuentas-contables/${encodeURIComponent(id)}`, opciones),
 };
 
 export const periodosApi = {
@@ -535,6 +600,9 @@ export const periodosApi = {
         api.get<PeriodoContable[]>("/periodos-contables", opciones),
     crear: (datos: { readonly anio: number; readonly mes: number }, opciones?: ApiFetchOptions) =>
         api.post<PeriodoContable>("/periodos-contables", datos, opciones),
+    /** Los doce meses del ejercicio; solo crea los que faltan. */
+    abrirEjercicio: (anio: number, opciones?: ApiFetchOptions) =>
+        api.post<PeriodoContable[]>("/periodos-contables/ejercicio", { anio }, opciones),
     cerrar: (id: string, opciones?: ApiFetchOptions) =>
         api.patch<PeriodoContable>(`/periodos-contables/${encodeURIComponent(id)}/cerrar`, {}, opciones),
     /** Solo administrador; el motivo queda registrado. */

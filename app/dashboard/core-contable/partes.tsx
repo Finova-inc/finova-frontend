@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Etiqueta } from "@/components/ui/Etiqueta";
+import { Icon } from "@/components/ui/Icon";
 import type { AsientoResumen, ReferenciaComprobante } from "@/lib/api";
 import { formatearComprobante } from "@/lib/formato";
 
@@ -54,6 +55,42 @@ export function Aviso({
         >
             {children}
         </div>
+    );
+}
+
+/**
+ * Guía plegable de buenas prácticas de una pantalla.
+ *
+ * <details> nativo: se abre con teclado y lector de pantalla sin JavaScript,
+ * y cerrada no le roba espacio a la tarea.
+ */
+export function Guia({ titulo, children }: { readonly titulo: string; readonly children: ReactNode }) {
+    return (
+        <details className="group no-imprimir rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)]">
+            <summary className="flex cursor-pointer list-none items-center gap-2.5 rounded-xl px-4 py-3 text-[13.5px] font-medium transition-colors hover:bg-[var(--background-raised)] [&::-webkit-details-marker]:hidden">
+                <Icon name="info" className="size-4 shrink-0 text-[var(--accent)]" />
+                {titulo}
+                <Icon
+                    name="chevron"
+                    className="ml-auto size-4 shrink-0 text-[var(--foreground-muted)] transition-transform duration-150 group-open:rotate-90"
+                />
+            </summary>
+            <div className="flex flex-col gap-4 border-t border-[var(--border-subtle)] p-4">{children}</div>
+        </details>
+    );
+}
+
+/** Lista de reglas de una Guia, cada una con su marca de verificación. */
+export function ReglasGuia({ reglas }: { readonly reglas: readonly string[] }) {
+    return (
+        <ul className="flex max-w-3xl flex-col gap-2 text-[13px] text-[var(--foreground-muted)]">
+            {reglas.map((regla) => (
+                <li key={regla} className="flex gap-2.5">
+                    <Icon name="check" className="mt-0.5 size-4 shrink-0 text-[var(--positivo)]" />
+                    <span>{regla}</span>
+                </li>
+            ))}
+        </ul>
     );
 }
 

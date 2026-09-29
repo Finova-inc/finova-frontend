@@ -34,25 +34,45 @@ function revalidar() {
     revalidatePath("/dashboard/core-contable");
 }
 
-export async function abrirPeriodo(
-    _estadoPrevio: EstadoPeriodo,
-    datosFormulario: FormData,
-): Promise<EstadoPeriodo> {
-    const token = await exigirTokenSesion();
-    const anio = Number(datosFormulario.get("anio"));
-    const mes = Number(datosFormulario.get("mes"));
+function anioValido(anio: number): boolean {
+    return Number.isInteger(anio) && anio >= 2000 && anio <= 2100;
+}
 
-    if (!Number.isInteger(anio) || anio < 2000 || anio > 2100) {
-        return { errores: ["El año debe estar entre 2000 y 2100."] };
-    }
-    if (!Number.isInteger(mes) || mes < 1 || mes > 12) {
-        return { errores: ["Elige un mes válido."] };
-    }
+/** Abre un mes suelto: la tarjeta del mes, el aviso del formulario de asiento. */
+export async function abrirMes(anio: number, mes: number): Promise<EstadoPeriodo> {
+    const token = await exigirTokenSesion();
+
+    if (!anioValido(anio)) return { errores: ["El año debe estar entre 2000 y 2100."] };
+    if (!Number.isInteger(mes) || mes < 1 || mes > 12) return { errores: ["Elige un mes válido."] };
 
     try {
         await periodosApi.crear({ anio, mes }, { token });
     } catch (error) {
         return { errores: traducirError(error, "No pudimos abrir el período.") };
+    }
+
+    revalidar();
+    return { ok: true };
+}
+
+/** Variante de formulario (useActionState) de abrirMes. */
+export async function abrirPeriodo(
+    _estadoPrevio: EstadoPeriodo,
+    datosFormulario: FormData,
+): Promise<EstadoPeriodo> {
+    return abrirMes(Number(datosFormulario.get("anio")), Number(datosFormulario.get("mes")));
+}
+
+/** Abre los doce meses del ejercicio; los que ya existían quedan como estaban. */
+export async function abrirEjercicio(anio: number): Promise<EstadoPeriodo> {
+    const token = await exigirTokenSesion();
+
+    if (!anioValido(anio)) return { errores: ["El año debe estar entre 2000 y 2100."] };
+
+    try {
+        await periodosApi.abrirEjercicio(anio, { token });
+    } catch (error) {
+        return { errores: traducirError(error, "No pudimos abrir el ejercicio.") };
     }
 
     revalidar();

@@ -17,6 +17,8 @@ import { Icon } from "@/components/ui/Icon";
 import { Panel } from "@/components/ui/Panel";
 import type { AsientoBorrador, TipoComprobante } from "@/lib/api";
 import { CERO, formatearPesos, separarMiles, soloDigitos, sumarPesos, tieneMonto } from "@/lib/decimal";
+import { nombreMesLargo, nombrePeriodo } from "@/lib/formato";
+import { abrirMes } from "../periodos/actions";
 import {
     contabilizarBorrador,
     contabilizarNuevo,
@@ -30,7 +32,8 @@ export interface CuentaOpcion {
     readonly id_cuenta: string;
     readonly codigo: string;
     readonly nombre: string;
-    readonly id_tipo_cuenta: number;
+    /** Rubro al que pertenece ("1101 · Efectivo y equivalentes al efectivo"): agrupa el selector. */
+    readonly grupo: string;
 }
 
 export interface TerceroOpcion {
@@ -39,9 +42,19 @@ export interface TerceroOpcion {
     readonly razon_social: string;
 }
 
+export interface PeriodoOpcion {
+    readonly anio: number;
+    readonly mes: number;
+    readonly estado: string;
+}
+
 type FormularioAsientoProps = {
     readonly cuentas: readonly CuentaOpcion[];
     readonly terceros: readonly TerceroOpcion[];
+    /** null si no se pudieron cargar: entonces no se avisa y decide el backend. */
+    readonly periodos: readonly PeriodoOpcion[] | null;
+    /** Administrador o contador: puede abrir el mes desde aquí mismo. */
+    readonly puedeAbrirPeriodo: boolean;
     /** Hoy en Chile, calculado en el servidor: el reloj del navegador puede mentir. */
     readonly hoy: string;
     readonly borrador?: AsientoBorrador | null;
@@ -52,14 +65,6 @@ const TIPOS: readonly { valor: TipoComprobante; nombre: string; ayuda: string }[
     { valor: "E", nombre: "Egreso", ayuda: "Sale dinero de caja o banco" },
     { valor: "T", nombre: "Traspaso", ayuda: "Sin movimiento de dinero" },
 ];
-
-const GRUPOS_CUENTA: Record<number, string> = {
-    1: "Activo",
-    2: "Pasivo",
-    3: "Patrimonio",
-    4: "Ingresos",
-    5: "Gastos",
-};
 
 const LARGO_GLOSA = 120;
 
@@ -122,7 +127,14 @@ function CampoPesos({
     );
 }
 
-export function FormularioAsiento({ cuentas, terceros, hoy, borrador = null }: FormularioAsientoProps) {
+export function FormularioAsiento({
+    cuentas,
+    terceros,
+    periodos,
+    puedeAbrirPeriodo,
+    hoy,
+    borrador = null,
+}: FormularioAsientoProps) {
     const idBase = useId();
     const [tipo, setTipo] = useState<TipoComprobante | "">(borrador?.tipo_comprobante ?? "T");
     const [fecha, setFecha] = useState(borrador?.fecha_contable ?? hoy);
@@ -137,6 +149,35 @@ export function FormularioAsiento({ cuentas, terceros, hoy, borrador = null }: F
     const [aviso, setAviso] = useState<string | null>(null);
     const [confirmando, setConfirmando] = useState(false);
     const [enCurso, iniciar] = useTransition();
+    // Meses abiertos desde este mismo formulario, sin esperar a recargar la página.
+    const [abiertosAqui, setAbiertosAqui] = useState<ReadonlySet<string>>(new Set());
+    const [erroresPeriodo, setErroresPeriodo] = useState<readonly string[]>([]);
+    const [abriendoPeriodo, iniciarApertura] = useTransition();
+
+    // Estado del período del mes de la fecha elegida: un asiento solo se
+    // registra en un mes abierto (el backend lo exige igual).
+    const [anioFecha, mesFecha] = fecha ? fecha.split("-").map(Number) : [0, 0];
+    const clavePeriodo = `${anioFecha}-${mesFecha}`;
+    const estadoPeriodo: "abierto" | "cerrado" | "sin-abrir" | null =
+        !periodos || !anioFecha
+            ? null
+            : abiertosAqui.has(clavePeriodo)
+              ? "abierto"
+              : periodos.find((p) => p.anio === anioFecha && p.mes === mesFecha)?.estado === "cerrado"
+                ? "cerrado"
+                : periodos.some((p) => p.anio === anioFecha && p.mes === mesFecha)
+                  ? "abierto"
+                  : "sin-abrir";
+    const nombreDelPeriodo = anioFecha ? nombrePeriodo(anioFecha, mesFecha) : "";
+
+    function abrirPeriodoDeLaFecha() {
+        setErroresPeriodo([]);
+        iniciarApertura(async () => {
+            const resultado = await abrirMes(anioFecha, mesFecha);
+            if (resultado.errores) setErroresPeriodo(resultado.errores);
+            else setAbiertosAqui((actuales) => new Set(actuales).add(clavePeriodo));
+        });
+    }
 
     const totalDebe = sumarPesos(lineas.map((linea) => linea.debe));
     const totalHaber = sumarPesos(lineas.map((linea) => linea.haber));
@@ -149,6 +190,8 @@ export function FormularioAsiento({ cuentas, terceros, hoy, borrador = null }: F
     if (!tipo) faltantes.push("Elige el tipo de comprobante");
     if (!fecha) faltantes.push("Indica la fecha contable");
     if (fecha > hoy) faltantes.push("La fecha no puede ser posterior a hoy");
+    if (estadoPeriodo === "sin-abrir") faltantes.push(`Abre el período de ${nombreDelPeriodo}`);
+    if (estadoPeriodo === "cerrado") faltantes.push(`${nombreDelPeriodo} está cerrado; usa una fecha de un mes abierto`);
     if (glosa.trim().length < 3) faltantes.push("Escribe una glosa de al menos 3 caracteres");
     const conDatos = lineas.filter(
         (l) => l.id_cuenta || tieneMonto(l.debe) || tieneMonto(l.haber) || l.glosa.trim(),
@@ -235,10 +278,13 @@ export function FormularioAsiento({ cuentas, terceros, hoy, borrador = null }: F
     }
 
     const nombreTipo = TIPOS.find((t) => t.valor === tipo)?.nombre ?? "";
-    const cuentasPorGrupo = Object.entries(GRUPOS_CUENTA).map(([id, nombre]) => ({
-        nombre,
-        cuentas: cuentas.filter((cuenta) => cuenta.id_tipo_cuenta === Number(id)),
-    }));
+    // Las cuentas llegan por código, así que los rubros quedan en el orden del plan.
+    const cuentasPorGrupo: { nombre: string; cuentas: CuentaOpcion[] }[] = [];
+    for (const cuenta of cuentas) {
+        const grupo = cuentasPorGrupo.find((g) => g.nombre === cuenta.grupo);
+        if (grupo) grupo.cuentas.push(cuenta);
+        else cuentasPorGrupo.push({ nombre: cuenta.grupo, cuentas: [cuenta] });
+    }
 
     return (
         <form onSubmit={(evento) => evento.preventDefault()} className="flex flex-col gap-4">
@@ -325,6 +371,57 @@ export function FormularioAsiento({ cuentas, terceros, hoy, borrador = null }: F
                         />
                     </div>
                 </div>
+
+                {estadoPeriodo ? (
+                    <div
+                        aria-live="polite"
+                        className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-[var(--border-subtle)] pt-3 text-[12.5px]"
+                    >
+                        {estadoPeriodo === "abierto" ? (
+                            <span className="inline-flex items-center gap-1.5 text-[var(--positivo)]">
+                                <Icon name="check" className="size-4 shrink-0" />
+                                Período de <span className="capitalize">{nombreDelPeriodo}</span> abierto
+                            </span>
+                        ) : estadoPeriodo === "cerrado" ? (
+                            <span className="inline-flex items-center gap-1.5 text-[var(--critico)]">
+                                <Icon name="lock" className="size-4 shrink-0" />
+                                <span>
+                                    <span className="capitalize">{nombreDelPeriodo}</span> está cerrado y no admite
+                                    asientos. Una corrección se registra con fecha de un mes abierto.
+                                </span>
+                            </span>
+                        ) : (
+                            <>
+                                <span className="inline-flex items-center gap-1.5 text-[var(--aviso)]">
+                                    <Icon name="alert" className="size-4 shrink-0" />
+                                    <span>
+                                        <span className="capitalize">{nombreDelPeriodo}</span> todavía no está abierto.
+                                    </span>
+                                </span>
+                                {puedeAbrirPeriodo ? (
+                                    <Boton variante="neutro" disabled={abriendoPeriodo} onClick={abrirPeriodoDeLaFecha}>
+                                        {abriendoPeriodo ? "Abriendo…" : `Abrir ${nombreMesLargo(mesFecha)}`}
+                                    </Boton>
+                                ) : (
+                                    <span className="text-[var(--foreground-muted)]">
+                                        Pide a un administrador o contador que lo abra.
+                                    </span>
+                                )}
+                            </>
+                        )}
+                        <Link
+                            href={`/dashboard/periodos?anio=${anioFecha}`}
+                            className="ml-auto text-[var(--foreground-muted)] underline-offset-4 hover:underline"
+                        >
+                            Ver períodos
+                        </Link>
+                        {erroresPeriodo.length > 0 ? (
+                            <p role="alert" className="w-full text-[var(--critico)]">
+                                {erroresPeriodo.join(" ")}
+                            </p>
+                        ) : null}
+                    </div>
+                ) : null}
             </Panel>
 
             <Panel sinRelleno>
