@@ -49,6 +49,7 @@ export const metadata = { title: "Libro diario" };
 type Parametros = Record<string, string | string[] | undefined>;
 
 const PATRON_FECHA = /^\d{4}-\d{2}-\d{2}$/;
+const PATRON_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TIPOS: readonly TipoComprobante[] = ["I", "E", "T"];
 const RUTA = "/dashboard/core-contable";
 
@@ -89,10 +90,15 @@ export default async function LibroDiarioPage({
     const desde = texto(parametros, "desde");
     const hasta = texto(parametros, "hasta");
     const tipo = texto(parametros, "tipo");
+    const cuenta = texto(parametros, "cuenta");
     const filtros = {
         desde: desde && PATRON_FECHA.test(desde) ? desde : undefined,
         hasta: hasta && PATRON_FECHA.test(hasta) ? hasta : undefined,
         tipo: TIPOS.includes(tipo as TipoComprobante) ? (tipo as TipoComprobante) : undefined,
+        // Llega desde el plan de cuentas ("Asientos" de una cuenta) o desde una
+        // línea de un asiento. Solo el listado filtra por cuenta: el libro
+        // diario es el libro completo del período.
+        id_cuenta: vista === "comprobantes" && cuenta && PATRON_UUID.test(cuenta) ? cuenta : undefined,
         texto: texto(parametros, "texto")?.slice(0, 100),
         pagina: Math.max(1, Number.parseInt(texto(parametros, "pagina") ?? "1", 10) || 1),
     };
@@ -130,6 +136,20 @@ export default async function LibroDiarioPage({
             ? periodos.value.find((p) => p.anio === anioHoy && p.mes === mesHoy) ?? null
             : undefined;
     const listaBorradores = borradores.status === "fulfilled" ? borradores.value : [];
+    const cuentaFiltrada =
+        filtros.id_cuenta && cuentas.status === "fulfilled"
+            ? (cuentas.value.find((c) => c.id_cuenta === filtros.id_cuenta) ?? null)
+            : null;
+    // Empresa sin un solo asiento: en vez de "no hay comprobantes", los pasos
+    // para llegar al primero.
+    const sinFiltros = !filtros.desde && !filtros.hasta && !filtros.tipo && !filtros.texto && !filtros.id_cuenta;
+    const primerosPasos =
+        vista === "comprobantes" &&
+        sinFiltros &&
+        listado.status === "fulfilled" &&
+        listado.value !== null &&
+        listado.value.total === 0 &&
+        listaBorradores.length === 0;
 
     return (
         <div className="flex flex-col gap-4">
@@ -146,7 +166,7 @@ export default async function LibroDiarioPage({
                 }
             />
 
-            {cuentas.status === "fulfilled" && !hayCuentas ? (
+            {cuentas.status === "fulfilled" && !hayCuentas && !primerosPasos ? (
                 <Aviso tono="aviso">
                     <p className="font-medium">Primero, el plan de cuentas.</p>
                     <p className="mt-1">
@@ -158,7 +178,7 @@ export default async function LibroDiarioPage({
                 </Aviso>
             ) : null}
 
-            {periodoActual === null ? (
+            {primerosPasos ? null : periodoActual === null ? (
                 <Aviso tono="aviso">
                     <span className="capitalize">{nombrePeriodo(anioHoy, mesHoy)}</span> no tiene un período
                     abierto: no se pueden registrar asientos con fecha de este mes.{" "}
@@ -193,6 +213,7 @@ export default async function LibroDiarioPage({
 
             <form method="get" action={RUTA} className="no-imprimir flex flex-wrap items-end gap-3">
                 {vista === "libro" ? <input type="hidden" name="vista" value="libro" /> : null}
+                {filtros.id_cuenta ? <input type="hidden" name="cuenta" value={filtros.id_cuenta} /> : null}
                 <label className="flex flex-col gap-1 text-[12px] text-[var(--foreground-muted)]">
                     Desde
                     <input
@@ -255,8 +276,36 @@ export default async function LibroDiarioPage({
                 ) : null}
             </form>
 
+            {filtros.id_cuenta ? (
+                <div className="no-imprimir flex flex-wrap items-center gap-2 text-[13px]">
+                    <span className="text-[var(--foreground-muted)]">Asientos que mueven</span>
+                    <span className="rounded-md bg-[var(--background-raised)] px-2 py-1 font-medium">
+                        {cuentaFiltrada ? (
+                            <>
+                                <span className="tabular">{cuentaFiltrada.codigo}</span> · {cuentaFiltrada.nombre}
+                            </>
+                        ) : (
+                            "una cuenta"
+                        )}
+                    </span>
+                    <Link
+                        href={urlCon(parametros, { cuenta: undefined, pagina: undefined })}
+                        className="text-[var(--foreground-muted)] underline-offset-4 hover:underline"
+                    >
+                        Quitar filtro
+                    </Link>
+                </div>
+            ) : null}
+
             {errorPrincipal ? (
                 <Aviso tono="critico">{errorPrincipal}</Aviso>
+            ) : primerosPasos ? (
+                <PrimerosPasos
+                    hayCuentas={hayCuentas}
+                    periodoAbierto={periodoActual?.estado === "abierto"}
+                    mesEnCurso={nombrePeriodo(anioHoy, mesHoy)}
+                    puede={puede}
+                />
             ) : vista === "comprobantes" && listado.status === "fulfilled" && listado.value ? (
                 <TablaComprobantes pagina={listado.value} parametros={parametros} />
             ) : vista === "libro" && libro.status === "fulfilled" && libro.value ? (
@@ -480,6 +529,80 @@ function ListaBorradores({ borradores }: { readonly borradores: readonly Asiento
                     </li>
                 ))}
             </ul>
+        </Panel>
+    );
+}
+
+/**
+ * Lo que falta para el primer asiento, en orden: sin plan de cuentas no hay a
+ * qué imputar, y sin un mes abierto no hay dónde registrarlo.
+ */
+function PrimerosPasos({
+    hayCuentas,
+    periodoAbierto,
+    mesEnCurso,
+    puede,
+}: {
+    readonly hayCuentas: boolean;
+    readonly periodoAbierto: boolean;
+    readonly mesEnCurso: string;
+    readonly puede: boolean;
+}) {
+    const pasos = [
+        {
+            hecho: hayCuentas,
+            titulo: "Plan de cuentas",
+            detalle: hayCuentas
+                ? "Listo: ya hay cuentas donde imputar."
+                : "Carga el plan base NIIF o crea tus cuentas.",
+            href: "/dashboard/plan-cuentas",
+            accion: "Ir al plan de cuentas",
+        },
+        {
+            hecho: periodoAbierto,
+            titulo: `Período de ${mesEnCurso}`,
+            detalle: periodoAbierto
+                ? "Abierto: admite asientos con fecha de este mes."
+                : "Abre el mes, o el ejercicio completo, para registrar asientos.",
+            href: "/dashboard/periodos",
+            accion: "Ir a períodos",
+        },
+        {
+            hecho: false,
+            titulo: "Primer asiento",
+            detalle: "Contabilízalo cuando cuadre, o guárdalo como borrador para completarlo después.",
+            href: puede && hayCuentas ? `${RUTA}/nuevo` : null,
+            accion: "Nuevo asiento",
+        },
+    ];
+
+    return (
+        <Panel>
+            <PanelCabecera titulo="Primeros pasos" nota="Todavía no hay asientos" />
+            <ol className="mt-2 divide-y divide-[var(--border-subtle)]">
+                {pasos.map((paso, indice) => (
+                    <li key={paso.titulo} className="flex flex-wrap items-center gap-3 py-3 text-[13px]">
+                        <span
+                            className={`grid size-7 shrink-0 place-items-center rounded-full text-[12px] font-semibold ${
+                                paso.hecho
+                                    ? "bg-[var(--positivo-bg)] text-[var(--positivo)]"
+                                    : "border border-[var(--border-strong)] text-[var(--foreground-muted)]"
+                            }`}
+                        >
+                            {paso.hecho ? <Icon name="check" label="Hecho" className="size-4" /> : indice + 1}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                            <p className="font-medium first-letter:uppercase">{paso.titulo}</p>
+                            <p className="text-[12.5px] text-[var(--foreground-muted)]">{paso.detalle}</p>
+                        </div>
+                        {!paso.hecho && paso.href ? (
+                            <EnlaceAccion href={paso.href} variante={indice === 2 ? "acento" : "neutro"}>
+                                {paso.accion}
+                            </EnlaceAccion>
+                        ) : null}
+                    </li>
+                ))}
+            </ol>
         </Panel>
     );
 }

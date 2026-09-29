@@ -196,6 +196,11 @@ export function nombrePeriodo(anio: number, mes: number): string {
     return `${MESES_LARGOS[mes - 1] ?? ""} ${anio}`.trim();
 }
 
+/** "septiembre", a partir del número 1-12. */
+export function nombreMesLargo(mes: number): string {
+    return MESES_LARGOS[mes - 1] ?? "";
+}
+
 /**
  * Nombre corto del mes a partir del numero 1-12 que usa `periodo_contable.mes`.
  *

@@ -15,6 +15,7 @@ import { exigirTokenSesion } from "@/lib/session";
 export interface EstadoPlantilla {
     readonly errores?: readonly string[];
     readonly creadas?: number;
+    readonly reubicadas?: number;
 }
 
 export interface EstadoCuenta {
@@ -96,15 +97,16 @@ export async function reactivarCuenta(id: string): Promise<{ errores?: readonly 
 }
 
 /**
- * Carga el plan de cuentas base PYME. El backend solo lo acepta de un
- * administrador y en una empresa sin cuentas (409 si ya tiene).
+ * Carga el plan base NIIF, o completa su estructura sobre un plan que viene de
+ * él (el plano de 47 cuentas). Solo administrador; 409 si el plan es propio.
  */
 export async function cargarPlanBase(): Promise<EstadoPlantilla> {
     const token = await exigirTokenSesion();
 
     let creadas: number;
+    let reubicadas: number;
     try {
-        creadas = (await cuentasApi.cargarPlantilla({ token })).cuentas_creadas;
+        ({ cuentas_creadas: creadas, cuentas_reubicadas: reubicadas } = await cuentasApi.cargarPlantilla({ token }));
     } catch (error) {
         if (error instanceof ApiError) {
             if (error.status === 401) redirect("/login");
@@ -115,7 +117,6 @@ export async function cargarPlanBase(): Promise<EstadoPlantilla> {
         return { errores: mensajesDelBackend(error) ?? ["No pudimos cargar el plan de cuentas."] };
     }
 
-    revalidatePath("/dashboard/plan-cuentas");
-    revalidatePath("/dashboard/core-contable");
-    return { creadas };
+    revalidar();
+    return { creadas, reubicadas };
 }
