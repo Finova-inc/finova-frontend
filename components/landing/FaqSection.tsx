@@ -80,18 +80,20 @@ const TESTIMONIALS: ReadonlyArray<{
     },
 ];
 
-/** Colores de retrato, alternados para que la grilla no se vea monótona. */
+/** Un destacador por retrato, siempre con iniciales en tinta. */
 const AVATAR_TONES = [
-    "bg-[var(--accent)] text-white",
-    "bg-[var(--color-highlight)] text-ink",
-    "bg-[var(--foreground)] text-[var(--background)]",
+    "var(--hl-orange)",
+    "var(--hl-mint)",
+    "var(--hl-pink)",
+    "var(--hl-sky)",
+    "var(--hl-yellow)",
+    "var(--hl-violet)",
 ] as const;
 
 export function FaqSection() {
     return (
         <SectionShell
             id="preguntas"
-            eyebrow="Preguntas"
             title="Lo que responden quienes ya lo usan"
             description="Las dudas que más nos llegan, contestadas por contadores y equipos de administración."
         >
@@ -115,9 +117,8 @@ export function FaqSection() {
                         <footer className="mt-6 flex items-center gap-3 border-t border-[var(--border-subtle)] pt-5">
                             <span
                                 aria-hidden
-                                className={`grid size-10 shrink-0 place-items-center rounded-full font-display text-[13px] font-bold ${
-                                    AVATAR_TONES[index % AVATAR_TONES.length]
-                                }`}
+                                className="grid size-10 shrink-0 place-items-center rounded-full font-display text-[13px] font-bold text-ink"
+                                style={{ background: AVATAR_TONES[index % AVATAR_TONES.length] }}
                             >
                                 {testimonial.initials}
                             </span>

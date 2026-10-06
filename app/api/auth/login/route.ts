@@ -15,7 +15,8 @@
 
 import { NextResponse } from "next/server";
 import { authApi, ApiError } from "@/lib/api";
-import { validateEmail, validatePassword } from "@/lib/validation";
+import { formatearRut } from "@/lib/formato";
+import { validatePassword, validateRut } from "@/lib/validation";
 import {
     DURACION_SESION_SEGUNDOS,
     NOMBRE_COOKIE_SESION,
@@ -32,26 +33,26 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Petición mal formada." }, { status: 400 });
     }
 
-    const { correo, password } = (cuerpo ?? {}) as {
-        correo?: unknown;
+    const { rut, password } = (cuerpo ?? {}) as {
+        rut?: unknown;
         password?: unknown;
     };
 
-    if (typeof correo !== "string" || typeof password !== "string") {
+    if (typeof rut !== "string" || typeof password !== "string") {
         return NextResponse.json({ error: ERROR_GENERICO }, { status: 400 });
     }
 
     // Se revalida en el servidor: la validación del formulario es de interfaz
     // y un cliente puede saltársela llamando directamente a este endpoint.
-    const correoNormalizado = correo.trim().toLowerCase();
-    const correoValido = validateEmail(correoNormalizado);
+    // El backend vuelve a normalizar y validar el DV; esto solo ahorra el viaje.
+    const rutValido = validateRut(rut);
     const passwordValida = validatePassword(password);
-    if (!correoValido.isValid || !passwordValida.isValid) {
+    if (!rutValido.isValid || !passwordValida.isValid) {
         return NextResponse.json({ error: ERROR_GENERICO }, { status: 400 });
     }
 
     try {
-        const { access_token } = await authApi.login(correoNormalizado, password);
+        const { access_token } = await authApi.login(formatearRut(rut), password);
 
         // La respuesta NO incluye el token: si viajara en el cuerpo, el
         // JavaScript de la página podría leerlo y httpOnly no serviría de nada.

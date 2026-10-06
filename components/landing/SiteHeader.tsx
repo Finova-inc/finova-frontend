@@ -1,6 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { CSSProperties } from "react";
 
+import { HeaderScroll } from "@/components/landing/HeaderScroll";
 import { Icon } from "@/components/ui/Icon";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
@@ -15,24 +17,20 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
  *
  * - El enlace vigente va dentro de una pastilla de color y el resto son texto
  *   plano. Es la seña más característica de esa barra.
- * - Los enlaces se agrupan al centro, juntos entre sí.
- * - A la derecha, dos acciones: una secundaria de contorno y una principal
- *   sólida, separadas del resto por una línea vertical.
  *
- * Lo que NO se toma: el mockup es una cápsula negra flotante. Aquí la barra es
- * de ancho completo, esquinas rectas y cristal crema, según lo ya definido.
+ * Distribución de images/image.png: la marca sola a la izquierda y, a la
+ * derecha, los enlaces, el interruptor de tema (sol y luna con una perilla que
+ * se desliza) y la acción principal.
  *
- * El efecto de vidrio se define en globals.css (.site-header-bar) y se arma en
- * cuatro capas: un degradado vertical que imita la luz entrando por el canto,
- * el desenfoque de lo que pasa por detrás, un brillo interior en el borde
- * superior, y un filo inferior en el color de acento.
+ * El efecto de vidrio se define en globals.css (.site-header-bar).
  *
- * NO es fija: se queda arriba de la página y desaparece al bajar. Consecuencia
- * a tener presente: la navegación deja de estar a mano en secciones bajas, y
- * por eso el pie repite los enlaces a todas las secciones.
+ * Es FIJA y se compacta al hacer scroll: HeaderScroll marca data-compact y,
+ * con eso, baja el alto, se achica el logo y las letras de "Finova" se pliegan
+ * hacia el símbolo (al estilo del logotipo de Anthropic). Al volver arriba se
+ * despliegan.
  *
- * Sigue siendo un componente de SERVIDOR aunque contenga el botón de tema, que
- * es de cliente. "use client" marca un módulo, no un subárbol.
+ * Sigue siendo un componente de SERVIDOR aunque contenga piezas de cliente
+ * (HeaderScroll, ThemeToggle): "use client" marca un módulo, no un subárbol.
  */
 
 /**
@@ -40,7 +38,7 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
  *
  * `isCurrent` marca cuál se muestra en la pastilla. Hoy es el primero, porque
  * la landing empieza arriba; seguir la sección visible al hacer scroll exigiría
- * convertir el header en componente de cliente para un beneficio menor.
+ * más código de cliente para un beneficio menor.
  */
 const NAV_LINKS = [
     { href: "#inicio", label: "Inicio", isCurrent: true },
@@ -50,26 +48,29 @@ const NAV_LINKS = [
     { href: "#preguntas", label: "Preguntas", isCurrent: false },
 ] as const;
 
+/** Letras del nombre, cada una se pliega por separado. */
+const WORDMARK = ["F", "i", "n", "o", "v", "a"] as const;
+
 export function SiteHeader() {
     return (
-        <header className="site-header-bar relative z-50">
+        <HeaderScroll>
             <nav
                 aria-label="Navegación principal"
-                className="mx-auto flex w-full max-w-6xl items-center gap-5 px-5 py-5 sm:px-8 sm:py-6"
+                className="mx-auto flex w-full max-w-6xl items-center gap-5 px-5 py-5 transition-[padding] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-data-[compact=true]:py-2.5 sm:px-8 sm:py-6"
             >
-                {/* Marca */}
+                {/* Marca. aria-label porque las letras sueltas van ocultas
+                    para lectores de pantalla: así el enlace se lee "Finova"
+                    y no letra por letra. */}
                 <Link
                     href="/"
-                    className="flex shrink-0 items-center gap-3 font-display text-[21px] font-bold tracking-tight text-[var(--header-ink)] sm:text-[23px]"
+                    aria-label="Finova"
+                    className="flex shrink-0 items-center font-display text-[21px] font-bold tracking-tight text-[var(--header-ink)] sm:text-[23px]"
                 >
                     {/*
                         priority: el logo está sobre la línea de flotación, así
                         que se carga sin esperar al observador de imágenes
-                        diferidas. Sin esto aparecería con un salto visible.
-
-                        Las dimensiones reales del archivo son 135x184; se
-                        declaran para que Next reserve el espacio exacto y no
-                        haya salto de layout al cargar.
+                        diferidas. Las dimensiones reales del archivo son
+                        135x184; se declaran para que no haya salto de layout.
                     */}
                     <Image
                         src="/logo-finova.png"
@@ -77,19 +78,33 @@ export function SiteHeader() {
                         width={135}
                         height={184}
                         priority
-                        className="h-10 w-auto sm:h-11"
+                        className="h-10 w-auto transition-[height] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-data-[compact=true]:h-8 sm:h-11"
                     />
-                    Finova
+
+                    <span
+                        aria-hidden
+                        className="ml-3 flex transition-[margin] duration-500 group-data-[compact=true]:ml-0"
+                    >
+                        {WORDMARK.map((letter, index) => (
+                            <span
+                                key={index}
+                                className="wordmark-letter"
+                                style={{ "--i": index } as CSSProperties}
+                            >
+                                {letter}
+                            </span>
+                        ))}
+                    </span>
                 </Link>
 
                 {/* ---------------------------------------------------------------
-                    Enlaces de sección, agrupados al centro.
+                    Enlaces de sección, agrupados a la derecha.
 
                     Se ocultan bajo md: en móvil la landing se recorre haciendo
                     scroll, y un menú desplegable exigiría estado de cliente para
                     un beneficio marginal en una página de una sola columna.
                     --------------------------------------------------------------- */}
-                <ul className="mx-auto hidden items-center gap-0.5 md:flex">
+                <ul className="ml-auto hidden items-center gap-0.5 md:flex">
                     {NAV_LINKS.map((link) => (
                         <li key={link.href}>
                             <a
@@ -110,40 +125,20 @@ export function SiteHeader() {
                     ))}
                 </ul>
 
-                {/* ---------------------------------------------------------------
-                    Acciones a la derecha.
+                {/* ml-auto sostiene la alineación cuando los enlaces están
+                    ocultos en móvil. */}
+                <div className="ml-auto flex items-center gap-3 md:ml-4">
+                    <ThemeToggle variant="switch" />
 
-                    ml-auto sostiene la alineación cuando los enlaces del centro
-                    están ocultos en móvil.
-                    --------------------------------------------------------------- */}
-                <div className="ml-auto flex items-center gap-2 md:ml-0">
-                    <ThemeToggle />
-
-                    <div
-                        aria-hidden
-                        className="mx-1.5 hidden h-6 w-px bg-[var(--header-divider)] sm:block"
-                    />
-
-                    {/* Acción secundaria: contorno sin relleno. En el mockup es
-                        "Login"; aquí lleva a la demostración, porque entrar a la
-                        cuenta es la acción principal y no puede duplicarse. */}
-                    <a
-                        href="#producto"
-                        className="hidden items-center gap-2 rounded-full border border-[var(--header-ghost-border)] px-5 py-2.5 font-display text-[15px] font-medium text-[var(--header-ink)] transition-colors hover:bg-[var(--header-hover)] sm:inline-flex"
-                    >
-                        <Icon name="eye" className="size-4" />
-                        Ver demo
-                    </a>
-
-                    {/* Acción principal: sólida, la de mayor peso visual. */}
                     <Link
                         href="/login"
-                        className="rounded-full bg-[var(--header-cta-bg)] px-5 py-2.5 font-display text-[15px] font-medium text-[var(--header-cta-ink)] transition-opacity hover:opacity-90 sm:px-6"
+                        className="inline-flex items-center gap-2 rounded-full bg-[var(--header-cta-bg)] px-5 py-2.5 font-display text-[15px] font-medium text-[var(--header-cta-ink)] transition-opacity hover:opacity-90"
                     >
                         Entrar
+                        <Icon name="arrowRight" className="size-4" />
                     </Link>
                 </div>
             </nav>
-        </header>
+        </HeaderScroll>
     );
 }

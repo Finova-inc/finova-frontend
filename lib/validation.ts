@@ -18,13 +18,18 @@
  * por comodidad, validación en el servidor por seguridad.
  */
 
+import { formatearRut } from "./formato";
+
 /** Resultado de validar un campo: válido, o inválido con un mensaje para la persona. */
 export type ValidationResult =
     | { readonly isValid: true }
     | { readonly isValid: false; readonly message: string };
 
-/** Longitud máxima aceptada en el campo de correo. */
-export const EMAIL_MAX_LENGTH = 254;
+/**
+ * Largo máximo del campo RUT. "12.345.678-9" son 12; se deja holgura para
+ * que quien escriba espacios o guiones de más no quede cortado a mitad.
+ */
+export const RUT_MAX_LENGTH = 16;
 
 /**
  * Longitud mínima al INICIAR SESIÓN.
@@ -49,33 +54,49 @@ export const PASSWORD_NUEVA_MIN_LENGTH = 12;
 export const PASSWORD_MAX_LENGTH = 128;
 
 /**
- * Patrón de correo deliberadamente conservador.
+ * RUT ya formateado por formatearRut(): "12.345.678-9".
  *
- * No intenta implementar el RFC 5322 completo: esa expresión es enorme, difícil
- * de auditar y propensa a ReDoS. Aquí solo se descartan errores de tipeo
- * evidentes; la validación real de que un correo existe es enviar un mensaje.
+ * Mismo patrón que PATRON_RUT de
+ * finova-backend/src/common/validators/rut.validator.ts.
  */
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const RUT_PATTERN = /^\d{1,2}\.\d{3}\.\d{3}-[0-9K]$/;
+
+/** Dígito verificador por módulo 11. */
+function calcularDvRut(cuerpo: string): string {
+    let suma = 0;
+    let factor = 2;
+    for (let i = cuerpo.length - 1; i >= 0; i--) {
+        suma += Number(cuerpo[i]) * factor;
+        factor = factor === 7 ? 2 : factor + 1;
+    }
+    const resto = 11 - (suma % 11);
+    return resto === 11 ? "0" : resto === 10 ? "K" : String(resto);
+}
 
 /**
- * Valida el correo.
+ * Valida un RUT escrito con o sin puntos.
  *
- * Se comprueba el largo ANTES que el patrón: así una cadena desmedida nunca
- * llega a la expresión regular.
+ * Revisa el dígito verificador: un RUT mal tipeado se corrige aquí, sin gastar
+ * uno de los intentos que el servidor cuenta. Saber que el DV no cuadra no
+ * revela nada de ninguna cuenta: se calcula sin consultar a nadie.
  */
-export function validateEmail(rawEmail: string): ValidationResult {
-    const email = rawEmail.trim();
-
-    if (email.length === 0) {
-        return { isValid: false, message: "Escribe tu correo." };
+export function validateRut(rawRut: string): ValidationResult {
+    if (rawRut.trim().length === 0) {
+        return { isValid: false, message: "Escribe tu RUT." };
     }
 
-    if (email.length > EMAIL_MAX_LENGTH) {
-        return { isValid: false, message: "El correo es demasiado largo." };
+    if (rawRut.length > RUT_MAX_LENGTH) {
+        return { isValid: false, message: "Revisa tu RUT." };
     }
 
-    if (!EMAIL_PATTERN.test(email)) {
-        return { isValid: false, message: "Revisa el formato del correo." };
+    const rut = formatearRut(rawRut);
+    if (!RUT_PATTERN.test(rut)) {
+        return { isValid: false, message: "Revisa el formato del RUT (12.345.678-9)." };
+    }
+
+    const [cuerpo, dv] = rut.replace(/\./g, "").split("-");
+    if (calcularDvRut(cuerpo) !== dv) {
+        return { isValid: false, message: "El dígito verificador no corresponde a ese RUT." };
     }
 
     return { isValid: true };

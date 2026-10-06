@@ -1,13 +1,14 @@
 import { AboutSection } from "@/components/landing/AboutSection";
-import { AsciiBanner } from "@/components/landing/AsciiBanner";
 import { FaqSection } from "@/components/landing/FaqSection";
 import { FeaturesSection } from "@/components/landing/FeaturesSection";
 import { HeroSection } from "@/components/landing/HeroSection";
+import { ModuleStrip } from "@/components/landing/ModuleStrip";
 import { PricingSection } from "@/components/landing/PricingSection";
 import { SiteFooter } from "@/components/landing/SiteFooter";
 import { SiteHeader } from "@/components/landing/SiteHeader";
 import { TrustSection } from "@/components/landing/TrustSection";
 import { Reveal } from "@/components/ui/Reveal";
+import { serifFont } from "@/lib/fonts";
 
 /**
  * Página de inicio de Finova.
@@ -16,26 +17,28 @@ import { Reveal } from "@/components/ui/Reveal";
  * secciones. Cada una vive en su archivo, lo que mantiene los archivos revisables
  * y permite mover el orden sin tocar el contenido.
  *
+ * El envoltorio .landing activa el tema oscuro propio de la landing
+ * (globals.css, `.dark:has(.landing)`); `contents` hace que no exista como
+ * caja, así que no altera el layout del body. También lleva la variable de la
+ * serifa del titular, para que next/font la precargue solo en esta página.
+ *
  * Detalle importante sobre Reveal: las secciones se pasan como `children` desde
  * aquí, que es un componente de servidor. Así siguen renderizándose en el
  * servidor aunque Reveal sea de cliente. Si se importaran dentro de Reveal
  * pasarían al bundle del navegador sin que nada lo advirtiera.
  *
- * Dos secciones quedan fuera de Reveal a propósito:
- * - HeroSection, porque está sobre la línea de flotación y animar su entrada
- *   perjudicaría la métrica LCP.
- * - AsciiBanner, porque es una banda divisoria que trae su propia animación
- *   continua; envolverla sumaría un segundo movimiento sin ganancia.
+ * HeroSection queda fuera de Reveal: trae su propia entrada escalonada, y
+ * envolverla sumaría un segundo movimiento encima.
  */
 export default function LandingPage() {
     return (
-        <>
+        <div className={`${serifFont.variable} landing contents`}>
             <SiteHeader />
 
             <main className="flex-1">
                 <HeroSection />
 
-                <AsciiBanner />
+                <ModuleStrip />
 
                 <Reveal>
                     <AboutSection />
@@ -59,6 +62,6 @@ export default function LandingPage() {
             </main>
 
             <SiteFooter />
-        </>
+        </div>
     );
 }
