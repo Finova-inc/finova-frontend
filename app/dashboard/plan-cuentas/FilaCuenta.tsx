@@ -160,13 +160,22 @@ export function FilaCuenta({
                 <td className="whitespace-nowrap px-2 py-1 text-right align-middle">
                     <div className="flex justify-end gap-0.5">
                         {!esAgrupacion && cuenta.tiene_movimientos ? (
-                            <Link
-                                href={`/dashboard/core-contable?cuenta=${cuenta.id_cuenta}`}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-transparent px-3.5 py-2 text-[13px] font-medium text-[var(--foreground-muted)] transition-colors hover:bg-[var(--background-raised)] hover:text-[var(--foreground)]"
-                            >
-                                Asientos
-                                <Icon name="arrowRight" className="size-3.5" />
-                            </Link>
+                            <>
+                                <Link
+                                    href={`/dashboard/libro-mayor?cuenta=${cuenta.id_cuenta}`}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-transparent px-3.5 py-2 text-[13px] font-medium text-[var(--foreground-muted)] transition-colors hover:bg-[var(--background-raised)] hover:text-[var(--foreground)]"
+                                >
+                                    Mayor
+                                    <Icon name="arrowRight" className="size-3.5" />
+                                </Link>
+                                <Link
+                                    href={`/dashboard/core-contable?cuenta=${cuenta.id_cuenta}`}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-transparent px-3.5 py-2 text-[13px] font-medium text-[var(--foreground-muted)] transition-colors hover:bg-[var(--background-raised)] hover:text-[var(--foreground)]"
+                                >
+                                    Asientos
+                                    <Icon name="arrowRight" className="size-3.5" />
+                                </Link>
+                            </>
                         ) : null}
                         {puedeEditar && modo === "nada" ? (
                             inactiva ? (

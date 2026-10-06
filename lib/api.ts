@@ -382,6 +382,42 @@ export interface LibroDiario {
     };
 }
 
+/** Un movimiento de la cuenta con el saldo que deja despues de aplicarlo. */
+export interface MovimientoDelMayor {
+    readonly id_movimiento: string;
+    readonly id_asiento: string;
+    readonly fecha_contable: string;
+    readonly tipo_comprobante: TipoComprobante;
+    readonly numero: number;
+    readonly anio: number;
+    readonly origen: OrigenAsiento;
+    readonly glosa_asiento: string;
+    readonly glosa: string | null;
+    readonly debe: string;
+    readonly haber: string;
+    readonly saldo: string;
+}
+
+export interface LibroMayor {
+    readonly cuenta: {
+        readonly id_cuenta: string;
+        readonly codigo: string;
+        readonly nombre: string;
+        /** "D" deudora, "H" acreedora: decide el signo del saldo. */
+        readonly naturaleza: "D" | "H";
+    };
+    readonly desde: string;
+    readonly hasta: string;
+    /** Todo el historico previo a `desde`. */
+    readonly saldo_anterior: string;
+    readonly movimientos: readonly MovimientoDelMayor[];
+    readonly totales: {
+        readonly total_debe: string;
+        readonly total_haber: string;
+        readonly saldo_final: string;
+    };
+}
+
 /** Linea como la acepta el backend: solo digitos en debe/haber, campos vacios omitidos. */
 export interface MovimientoInput {
     readonly id_cuenta: string;
@@ -553,6 +589,11 @@ export const asientosApi = {
         ),
     libroDiario: (desde: string, hasta: string, opciones?: ApiFetchOptions) =>
         api.get<LibroDiario>(`/asientos-contables/libro-diario${consulta({ desde, hasta })}`, opciones),
+    libroMayor: (id_cuenta: string, desde: string, hasta: string, opciones?: ApiFetchOptions) =>
+        api.get<LibroMayor>(
+            `/asientos-contables/libro-mayor${consulta({ id_cuenta, desde, hasta })}`,
+            opciones,
+        ),
 };
 
 export const borradoresApi = {

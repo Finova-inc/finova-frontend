@@ -440,7 +440,12 @@ function VistaLibro({ libro }: { readonly libro: LibroDiario }) {
                                 </th>
                             </tr>
                             {dia.comprobantes.map((comprobante) => (
-                                <FilasComprobante key={comprobante.id_asiento} comprobante={comprobante} />
+                                <FilasComprobante
+                                    key={comprobante.id_asiento}
+                                    comprobante={comprobante}
+                                    desde={libro.desde}
+                                    hasta={libro.hasta}
+                                />
                             ))}
                         </tbody>
                     ))}
@@ -464,7 +469,16 @@ function VistaLibro({ libro }: { readonly libro: LibroDiario }) {
     );
 }
 
-function FilasComprobante({ comprobante }: { readonly comprobante: LibroDiario["dias"][number]["comprobantes"][number] }) {
+function FilasComprobante({
+    comprobante,
+    desde,
+    hasta,
+}: {
+    readonly comprobante: LibroDiario["dias"][number]["comprobantes"][number];
+    /** El rango del libro que se está mirando: el mayor se abre con el mismo. */
+    readonly desde: string;
+    readonly hasta: string;
+}) {
     return (
         <>
             <tr>
@@ -481,8 +495,14 @@ function FilasComprobante({ comprobante }: { readonly comprobante: LibroDiario["
             {comprobante.movimientos.map((movimiento) => (
                 <tr key={movimiento.id_movimiento} className="align-top">
                     <td className="py-1 pl-8 pr-4">
-                        <span className="tabular">{movimiento.cuenta?.codigo}</span>{" "}
-                        <span className="text-[var(--foreground-muted)]">{movimiento.cuenta?.nombre}</span>
+                        <Link
+                            href={`/dashboard/libro-mayor?cuenta=${movimiento.id_cuenta}&desde=${desde}&hasta=${hasta}`}
+                            title="Ver el libro mayor de esta cuenta"
+                            className="underline-offset-4 hover:underline"
+                        >
+                            <span className="tabular">{movimiento.cuenta?.codigo}</span>{" "}
+                            <span className="text-[var(--foreground-muted)]">{movimiento.cuenta?.nombre}</span>
+                        </Link>
                     </td>
                     <td className="px-4 py-1 text-[var(--foreground-muted)]">{movimiento.glosa ?? ""}</td>
                     <td className="tabular px-4 py-1 text-[var(--foreground-muted)]">
