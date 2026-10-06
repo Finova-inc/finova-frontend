@@ -37,7 +37,7 @@
  * font-display. Nunca se referencia el nombre de la familia directamente.
  */
 
-import { Inter, Space_Grotesk } from "next/font/google";
+import { Instrument_Serif, Inter, Space_Grotesk } from "next/font/google";
 
 /**
  * Tipografía de titulares.
@@ -60,6 +60,20 @@ export const displayFont = Space_Grotesk({
 export const bodyFont = Inter({
     subsets: ["latin"],
     variable: "--font-inter",
+    display: "swap",
+});
+
+/**
+ * Serifa editorial, SOLO para el titular del hero de la landing.
+ *
+ * Su variable se aplica en el envoltorio .landing de app/page.tsx y no en
+ * <html>: así next/font la precarga únicamente en "/", y el panel y el login
+ * no descargan una fuente que no usan.
+ */
+export const serifFont = Instrument_Serif({
+    subsets: ["latin"],
+    weight: "400",
+    variable: "--font-instrument-serif",
     display: "swap",
 });
 

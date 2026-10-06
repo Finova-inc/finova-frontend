@@ -132,6 +132,24 @@ export function formatearRut(rut: string): string {
 }
 
 /**
+ * Formatea un RUT MIENTRAS se escribe: "1" -> "1", "12" -> "1-2",
+ * "12345" -> "1.234-5", "123456789" -> "12.345.678-9".
+ *
+ * El último carácter siempre se trata como dígito verificador, igual que en
+ * cualquier formulario chileno. Descarta lo que no sea número o K, acepta la K
+ * solo como verificador y corta en 9 caracteres (8 de cuerpo + DV), así nunca
+ * se puede escribir un RUT más largo que el que guarda el backend.
+ */
+export function formatearRutAlEscribir(valor: string): string {
+    const limpio = valor.replace(/[^0-9kK]/g, "").toUpperCase();
+    const cuerpo = limpio.slice(0, -1).replace(/K/g, "").slice(0, 8);
+    const verificador = limpio.slice(-1);
+
+    if (!cuerpo) return verificador;
+    return formatearRut(cuerpo + verificador);
+}
+
+/**
  * Fecha contable 'YYYY-MM-DD' como "30-09-2026".
  *
  * ---------------------------------------------------------------------------

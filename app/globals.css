@@ -36,6 +36,8 @@
        declaración quedaría inválida. */
     --font-display: var(--font-space-grotesk), system-ui, sans-serif;
     --font-sans: var(--font-inter), system-ui, sans-serif;
+    /* Solo el titular del hero (lib/fonts.ts, serifFont). */
+    --font-serif: var(--font-instrument-serif), Georgia, serif;
 
     /* ----------------------------------------------------------------------
        Paleta base
@@ -64,8 +66,52 @@
     --color-highlight: #ffc53d; /* amarillo destacador: resaltado */
     --color-graphite: #6e6459; /* gris cálido de apoyo */
 
+    /* El resto del estuche de destacadores. Naranjo y amarillo siguen siendo
+       acción y resaltado; estos dan variedad sin salir de la familia: todos
+       son tintas saturadas de destacador. Los componentes los consumen por
+       las variables --hl-* (sección 3), que se aclaran en tema oscuro. */
+    --color-mint: #14b386; /* verde destacador */
+    --color-pink: #ff4f8b; /* rosa destacador */
+    --color-sky: #2f8cff; /* celeste destacador */
+    --color-violet: #8b5cf6; /* lila destacador: lo que hace la IA */
+
     /* Animaciones. Se declaran como tokens para poder usar animate-* en Tailwind. */
     --animate-fade-up: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+
+    /* Carrusel del login (components/login/CarruselLogin.tsx).
+       Van como tokens --animate-*: Tailwind v4 descarta los @keyframes de
+       @theme que ningun token referencia. Solo opacity y transform, que los
+       resuelve el compositor sin repintar. */
+
+    /* Aparicion con rebote corto: sellos y tarjetas flotantes. */
+    --animate-pop: pop 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+
+    /* Relleno del segmento activo. Dura lo mismo que DURACION_MS de
+       CarruselLogin.tsx, que es quien cambia la diapositiva. */
+    --animate-carrusel: carrusel-avance 8s linear forwards;
+
+    @keyframes pop {
+        0% {
+            opacity: 0;
+            transform: scale(0.7);
+        }
+        70% {
+            transform: scale(1.06);
+        }
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    @keyframes carrusel-avance {
+        from {
+            transform: scaleX(0);
+        }
+        to {
+            transform: scaleX(1);
+        }
+    }
 
     @keyframes fade-up {
         from {
@@ -75,121 +121,6 @@
         to {
             opacity: 1;
             transform: none;
-        }
-    }
-
-    /* Entrada de las filas de DTE en la animación del hero. */
-    @keyframes dte-row-in {
-        0% {
-            opacity: 0;
-            transform: translateX(-1.5rem);
-        }
-        100% {
-            opacity: 1;
-            transform: none;
-        }
-    }
-
-    /* Relleno progresivo de las celdas del formulario. */
-    @keyframes cell-fill {
-        0% {
-            transform: scaleX(0);
-        }
-        100% {
-            transform: scaleX(1);
-        }
-    }
-
-    /* Resolución de la celda de total: pulso de resaltado. */
-    @keyframes total-resolve {
-        0% {
-            opacity: 0;
-            transform: scale(0.96);
-        }
-        60% {
-            transform: scale(1.02);
-        }
-        100% {
-            opacity: 1;
-            transform: scale(1);
-        }
-    }
-
-    /* Aparición del check del copiloto al cerrar el ciclo. */
-    @keyframes check-pop {
-        0% {
-            opacity: 0;
-            transform: scale(0.5);
-        }
-        70% {
-            transform: scale(1.15);
-        }
-        100% {
-            opacity: 1;
-            transform: scale(1);
-        }
-    }
-
-    /* Carrusel horizontal de módulos en ASCII.
-       Recorre exactamente la mitad del contenido, porque la lista se renderiza
-       duplicada: al llegar al 50% el fotograma es idéntico al inicial y el
-       bucle no tiene costura visible. */
-    @keyframes marquee-scroll {
-        from {
-            transform: translateX(0);
-        }
-        to {
-            transform: translateX(-50%);
-        }
-    }
-
-    /* Paso activo en la secuencia de procesos contables. */
-    @keyframes step-cycle {
-        0%,
-        18% {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        25%,
-        100% {
-            opacity: 0.28;
-            transform: translateY(0);
-        }
-    }
-
-    /* Barra de progreso que recorre cada paso. */
-    @keyframes progress-sweep {
-        0% {
-            transform: scaleX(0);
-        }
-        18% {
-            transform: scaleX(1);
-        }
-        25%,
-        100% {
-            transform: scaleX(1);
-        }
-    }
-
-    /* Crecimiento vertical de las barras del grafico de maqueta. */
-    @keyframes grow-up {
-        from {
-            transform: scaleY(0);
-        }
-        to {
-            transform: scaleY(1);
-        }
-    }
-
-    /* Latido suave del cursor de terminal en el bloque ASCII. */
-    @keyframes caret-blink {
-        0%,
-        49% {
-            opacity: 1;
-        }
-        50%,
-        100% {
-            opacity: 0;
         }
     }
 }
@@ -272,6 +203,32 @@
     --sidebar-ink: #f0ece5;
     --sidebar-muted: #968c81;
     --sidebar-hover: rgb(255 255 255 / 0.06);
+
+    /* Vitrina del login (.login-vitrina). */
+    --vitrina-bg: var(--color-bone);
+    --vitrina-ink: var(--color-ink);
+    --vitrina-muted: rgb(20 17 15 / 0.85);
+    --vitrina-pista: rgb(20 17 15 / 0.12);
+    --vitrina-pasado: rgb(20 17 15 / 0.4);
+    --vitrina-brillo: 0.16;
+
+    /* Placeholder de los campos. Tinta con alfa, no --foreground-muted: el
+       gris calido al 60% sobre papel casi no se leia. */
+    --placeholder: rgb(20 17 15 / 0.6);
+
+    /* Estuche de destacadores por rol. Se usan como relleno, tinte o ícono,
+       nunca como color de texto sobre papel: a ese tamaño ninguno llega al
+       contraste mínimo. Sobre ellos el texto va en tinta. */
+    --hl-orange: var(--color-marker);
+    --hl-yellow: var(--color-highlight);
+    --hl-mint: var(--color-mint);
+    --hl-pink: var(--color-pink);
+    --hl-sky: var(--color-sky);
+    --hl-violet: var(--color-violet);
+
+    /* Intensidad de los halos de color de la landing. En oscuro sube: sobre
+       papel un halo fuerte ensucia, sobre tinta apenas se nota. */
+    --halo: 14%;
 }
 
 .dark {
@@ -312,6 +269,64 @@
     --border-strong: rgb(255 255 255 / 0.2);
 
     --sidebar-bg: #0f0c0a;
+
+    --vitrina-bg: #17130f;
+    --vitrina-ink: #ffffff;
+    --vitrina-muted: rgb(255 255 255 / 0.6);
+    --vitrina-pista: rgb(255 255 255 / 0.15);
+    --vitrina-pasado: rgb(255 255 255 / 0.45);
+    --vitrina-brillo: 0.22;
+
+    --placeholder: rgb(244 241 236 / 0.4);
+
+    /* Destacadores aclarados: los saturados de claro vibran sobre tinta. */
+    --hl-orange: var(--color-marker-soft);
+    --hl-mint: #3ddba8;
+    --hl-pink: #ff7aa8;
+    --hl-sky: #5aa8ff;
+    --hl-violet: #a78bfa;
+
+    --halo: 24%;
+}
+
+/* Tema oscuro SOLO de la landing (app/page.tsx envuelve todo en .landing).
+   Un negro cálido más profundo que el del panel, para que los halos de color
+   tengan contra qué brillar. Va por :has() para que también lo tome el body;
+   la especificidad (0,2,0) le gana a .dark sin !important, y el panel y el
+   login conservan su tema. */
+/* La serifa del titular se carga solo en la landing: su variable vive en el
+   envoltorio .landing (app/page.tsx), no en <html>. Por eso --font-serif se
+   vuelve a declarar aquí. El de @theme se resuelve en :root, donde la
+   variable de la fuente no existe; la declaración queda inválida y todo cae
+   en Inter sin ningún error visible. */
+.landing {
+    --font-serif: var(--font-instrument-serif), Georgia, serif;
+}
+
+.dark:has(.landing) {
+    --background: #0e0b09;
+    --background-raised: #17120f;
+    --surface: #1c1612;
+    --border-subtle: rgb(255 255 255 / 0.1);
+}
+
+/* Banda de tinta (sección "Qué es Finova"): oscura en ambos temas, así que
+   fija los valores de tema oscuro para todo lo que contiene. */
+.band-ink {
+    --foreground: #f4f1ec;
+    --foreground-muted: #b8afa6;
+    --border-subtle: rgb(255 255 255 / 0.12);
+    --hl-orange: var(--color-marker-soft);
+    --hl-mint: #3ddba8;
+    --hl-pink: #ff7aa8;
+    --hl-sky: #5aa8ff;
+    --hl-violet: #a78bfa;
+    color: var(--foreground);
+    background: var(--color-ink);
+}
+
+.dark .band-ink {
+    background: #17120f;
 }
 
 /* ==========================================================================
@@ -320,10 +335,9 @@
 @layer base {
     html {
         scroll-behavior: smooth;
-        /* Margen de respiro al saltar a un ancla. Ya no compensa un header
-           fijo —el header no lo es—, solo evita que el titulo quede pegado
-           al borde superior de la ventana. */
-        scroll-padding-top: 2rem;
+        /* Margen al saltar a un ancla: el header de la landing es fijo, y sin
+           esto taparía el título de la sección de destino. */
+        scroll-padding-top: 5rem;
     }
 
     body {
@@ -378,12 +392,17 @@
     /* ----------------------------------------------------------------------
        BARRA DE NAVEGACION
        ----------------------------------------------------------------------
-       Color plano, sin transparencia ni desenfoque, y de ancho completo con
-       esquinas rectas. Al ser opaca no necesita backdrop-filter, que es un
-       filtro caro de componer en cada scroll.
+       Vidrio crema de ancho completo, FIJO arriba. Es fixed y no sticky a
+       proposito: al achicarse con el scroll, un header sticky cambia la
+       altura del documento, el navegador compensa el scroll (scroll
+       anchoring), el centinela vuelve a verse y el header parpadea entre
+       grande y chico. Fixed no ocupa espacio, asi que no hay nada que
+       compensar; el hero reserva su alto con padding.
        ---------------------------------------------------------------------- */
     .site-header-bar {
-        position: relative;
+        position: fixed;
+        inset-inline: 0;
+        top: 0;
 
         /* Capa 1 - el vidrio.
            Un degradado vertical, mas opaco arriba que abajo, imita como la luz
@@ -398,9 +417,14 @@
         /* Capa 2 - la refraccion.
            blur difumina lo que pasa por detras; saturate compensa el lavado de
            color que produce el propio desenfoque, y sin el el vidrio se ve
-           grisaceo. */
-        backdrop-filter: blur(20px) saturate(190%);
+           grisaceo.
+
+           El prefijo va PRIMERO a proposito: con el orden inverso Lightning
+           CSS (el compilador de Tailwind v4) descarta la version sin prefijo,
+           y Chrome/Edge ignoran -webkit-backdrop-filter: el vidrio quedaba
+           sin desenfoque y el texto de la pagina se leia a traves del header. */
         -webkit-backdrop-filter: blur(20px) saturate(190%);
+        backdrop-filter: blur(20px) saturate(190%);
 
         border-bottom: 1px solid var(--header-border);
 
@@ -442,6 +466,27 @@
         }
     }
 
+    /* Nombre "Finova" que se pliega hacia el logo al hacer scroll.
+       HeaderScroll.tsx pone data-compact="true" en el header; cada letra
+       lleva --i (0-5). Al plegarse sale primero la ultima letra, de derecha a
+       izquierda; al desplegarse vuelven en orden inverso, desde la F. */
+    .wordmark-letter {
+        display: inline-block;
+        max-width: 1em;
+        transition:
+            max-width 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+            opacity 0.3s ease,
+            transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+        transition-delay: calc(var(--i) * 35ms);
+    }
+
+    [data-compact="true"] .wordmark-letter {
+        max-width: 0;
+        opacity: 0;
+        transform: translateX(-0.4em);
+        transition-delay: calc((5 - var(--i)) * 35ms);
+    }
+
     /* ----------------------------------------------------------------------
        PANEL DE VIDRIO
        ----------------------------------------------------------------------
@@ -452,9 +497,26 @@
     .glass-panel {
         background: color-mix(in srgb, var(--background) 72%, transparent);
         border: 1px solid var(--border-subtle);
-        backdrop-filter: blur(12px) saturate(150%);
+        /* Prefijo primero: ver la nota de .site-header-bar. */
         -webkit-backdrop-filter: blur(12px) saturate(150%);
+        backdrop-filter: blur(12px) saturate(150%);
         box-shadow: 0 4px 24px rgb(0 0 0 / 0.06);
+    }
+
+    /* ----------------------------------------------------------------------
+       PANEL DEL CARRUSEL DEL LOGIN
+       ----------------------------------------------------------------------
+       Sigue el tema: papel calido en claro, tinta cafe en oscuro, siempre con
+       un brillo de destacador naranjo y otro amarillo. Los colores salen de
+       las variables --vitrina-* (seccion 3). Estatico: no cuesta nada tras el
+       primer pintado.
+       ---------------------------------------------------------------------- */
+    .login-vitrina {
+        color: var(--vitrina-ink);
+        background:
+            radial-gradient(circle at 50% 18%, rgb(255 106 26 / var(--vitrina-brillo)), transparent 55%),
+            radial-gradient(circle at 100% 100%, rgb(255 197 61 / var(--vitrina-brillo)), transparent 45%),
+            var(--vitrina-bg);
     }
 
     [data-reveal] {
@@ -468,6 +530,404 @@
     [data-reveal="true"] {
         opacity: 1;
         transform: none;
+    }
+
+    /* Secciones de la landing bajo el hero: el navegador no las maqueta ni
+       las pinta hasta que se acercan a la pantalla (medido: el layout de la
+       carga baja casi a la mitad). `auto` en el tamaño intrínseco recuerda el
+       alto real una vez pintadas, así el scroll de vuelta no salta. */
+    .landing main > [data-reveal] {
+        content-visibility: auto;
+        contain-intrinsic-size: auto 900px;
+    }
+}
+
+/* ==========================================================================
+   5b. ANIMACIONES DE LA LANDING
+   ==========================================================================
+   Fuera de @theme a propósito: Tailwind v4 descarta los @keyframes de @theme
+   que ningún token --animate-* referencia, y estos se usan desde style inline.
+
+   Solo se animan propiedades que compone la GPU (opacity, translate, scale,
+   transform). Nada de clip-path, mask, width ni filtros: esas repintan en
+   cada fotograma en el hilo principal.
+
+   DEMO DEL HERO (components/landing/HeroDemo.tsx)
+   Ciclo de 16 s; los porcentajes son de ese ciclo (1 s = 6,25%). Dos tipos:
+   - De estado (demo-camera, demo-empty, demo-select, demo-in-*, demo-window,
+     demo-chip-out): sus instantes van dentro del keyframe y corren sin
+     retraso. Todo se reinicia junto entre 13,5 y 14 s (84,4–87,5%), oculto
+     detrás de la cortina del cierre.
+   - Cierre (demo-curtain, demo-rise-*): a los 12,2 s una cortina sube desde
+     abajo, aparece "Finova" con su lema y a los 15,2 s la cortina sigue hacia
+     arriba y descubre el dashboard ya reiniciado.
+   - De gesto (demo-tap, demo-ripple, demo-press, demo-focus): empiezan en
+     0% y se ubican en el ciclo con animation-delay.
+
+   Regla para movimiento reducido: el estilo BASE de cada elemento es su
+   estado final (dashboard completo, sin cursor ni anillos). Los keyframes
+   solo lo esconden o lo mueven, así que con la animación anulada (sección 6)
+   todo queda completo y quieto.
+
+   Se anima `translate` y `scale`, no `transform`, para no pisar las
+   transformaciones propias de cada elemento. La cámara y las barras de los
+   capítulos usan `transform` porque no tienen otras.
+   ========================================================================== */
+
+/* Cámara: general → bandeja (desde su borde, x = 13 em) → editor arriba →
+   editor abajo → general.
+   Escala 1,6 sobre un lienzo de 80 x 46 em, con origen arriba a la izquierda:
+   translate = -(esquina del encuadre) x 1,6. */
+@keyframes demo-camera {
+    0%,
+    9.4% {
+        transform: none;
+    }
+    16.3%,
+    21.3% {
+        transform: translate(-20.8em, -4.8em) scale(1.6);
+    }
+    28.8%,
+    41.3% {
+        transform: translate(-48em, -4.8em) scale(1.6);
+    }
+    47.5%,
+    62.5% {
+        transform: translate(-48em, -22.4em) scale(1.6);
+    }
+    70%,
+    76.25% {
+        transform: none;
+    }
+    /* Retrocede al 94% centrado: translate = (1 - 0,94) x centro (40, 23). */
+    80.6%,
+    84.4% {
+        transform: translate(2.4em, 1.38em) scale(0.94);
+    }
+    84.5%,
+    100% {
+        transform: none;
+    }
+}
+
+/* Editor vacío, hasta que se elige la factura (base: opacity 0). */
+@keyframes demo-empty {
+    0%,
+    22.5% {
+        opacity: 1;
+    }
+    25%,
+    84.4% {
+        opacity: 0;
+    }
+    87.5%,
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Fila seleccionada tras el clic de los 3,2 s. */
+@keyframes demo-select {
+    0%,
+    19.5% {
+        opacity: 0;
+    }
+    21%,
+    84.4% {
+        opacity: 1;
+    }
+    87.5%,
+    100% {
+        opacity: 0;
+    }
+}
+
+/* Entradas de estado: aparecen en su instante y se quedan hasta el reinicio.
+   a 4,2 s copiloto y campos · b 6,0 s línea 1 · c 6,5 s línea 2 y total debe
+   d 7,6 s línea 3, total haber y "Cuadrado" · e 9,9 s aviso de contabilizado
+   f 10,6 s la fila pasa a "Contabilizado". */
+@keyframes demo-in-a {
+    0%,
+    24.75% {
+        opacity: 0;
+        translate: 0 0.5em;
+    }
+    26.25%,
+    84.4% {
+        opacity: 1;
+        translate: none;
+    }
+    87.5%,
+    100% {
+        opacity: 0;
+        translate: none;
+    }
+}
+
+@keyframes demo-in-b {
+    0%,
+    36% {
+        opacity: 0;
+        translate: 0 0.5em;
+    }
+    37.5%,
+    84.4% {
+        opacity: 1;
+        translate: none;
+    }
+    87.5%,
+    100% {
+        opacity: 0;
+        translate: none;
+    }
+}
+
+@keyframes demo-in-c {
+    0%,
+    39.1% {
+        opacity: 0;
+        translate: 0 0.5em;
+    }
+    40.6%,
+    84.4% {
+        opacity: 1;
+        translate: none;
+    }
+    87.5%,
+    100% {
+        opacity: 0;
+        translate: none;
+    }
+}
+
+@keyframes demo-in-d {
+    0%,
+    46% {
+        opacity: 0;
+        translate: 0 0.5em;
+    }
+    47.5%,
+    84.4% {
+        opacity: 1;
+        translate: none;
+    }
+    87.5%,
+    100% {
+        opacity: 0;
+        translate: none;
+    }
+}
+
+@keyframes demo-in-e {
+    0%,
+    60.4% {
+        opacity: 0;
+        translate: 0 0.5em;
+    }
+    61.9%,
+    84.4% {
+        opacity: 1;
+        translate: none;
+    }
+    87.5%,
+    100% {
+        opacity: 0;
+        translate: none;
+    }
+}
+
+@keyframes demo-in-f {
+    0%,
+    64.75% {
+        opacity: 0;
+        translate: 0 0.5em;
+    }
+    66.25%,
+    84.4% {
+        opacity: 1;
+        translate: none;
+    }
+    87.5%,
+    100% {
+        opacity: 0;
+        translate: none;
+    }
+}
+
+/* "Descuadre", solo entre la línea 2 y la 3 (base: opacity 0). */
+@keyframes demo-window {
+    0%,
+    39.1% {
+        opacity: 0;
+    }
+    40.6%,
+    46% {
+        opacity: 1;
+    }
+    47.5%,
+    100% {
+        opacity: 0;
+    }
+}
+
+/* "Por clasificar" se apaga al contabilizar (base: opacity 0). */
+@keyframes demo-chip-out {
+    0%,
+    64.75% {
+        opacity: 1;
+    }
+    66.25%,
+    84.4% {
+        opacity: 0;
+    }
+    87.5%,
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Cursor: entra en diagonal, llega al 12% (1,92 s), hace clic y se va. */
+@keyframes demo-tap {
+    0% {
+        opacity: 0;
+        translate: 4em 3em;
+        scale: 1;
+    }
+    4% {
+        opacity: 1;
+    }
+    12% {
+        translate: none;
+        scale: 1;
+    }
+    13% {
+        scale: 0.85;
+    }
+    14.5% {
+        scale: 1;
+    }
+    20% {
+        opacity: 1;
+        translate: none;
+    }
+    24%,
+    100% {
+        opacity: 0;
+        translate: 0.6em 0.4em;
+    }
+}
+
+/* Onda del clic. */
+@keyframes demo-ripple {
+    0% {
+        opacity: 0.45;
+        scale: 0.3;
+    }
+    5%,
+    100% {
+        opacity: 0;
+        scale: 1.8;
+    }
+}
+
+/* Botón que se hunde con el clic. */
+@keyframes demo-press {
+    0%,
+    100% {
+        scale: 1;
+    }
+    1.5% {
+        scale: 0.93;
+    }
+    4% {
+        scale: 1;
+    }
+}
+
+/* Anillo de foco con su etiqueta: ~2 s visible. */
+@keyframes demo-focus {
+    0% {
+        opacity: 0;
+        scale: 1.06;
+    }
+    3%,
+    13% {
+        opacity: 1;
+        scale: 1;
+    }
+    16%,
+    100% {
+        opacity: 0;
+        scale: 1;
+    }
+}
+
+/* Cierre: la cortina sube desde abajo (12,2–12,9 s), se queda mientras
+   aparece la marca y sigue hacia arriba (15,2–15,9 s). Es la técnica de
+   "cortina" de transitions.dev: mover un panel con translate se compone en
+   GPU, mientras que una máscara animada repintaría en cada fotograma.
+   Base: fuera de cuadro, abajo. */
+@keyframes demo-curtain {
+    0%,
+    76.25% {
+        translate: 0 100%;
+    }
+    80.6%,
+    95% {
+        translate: none;
+    }
+    99.4%,
+    100% {
+        translate: 0 -100%;
+    }
+}
+
+/* Texto que sube desde detrás de su línea (envoltorio con overflow hidden):
+   1 la marca, 2 el lema, un poco después. Salen junto con la cortina. */
+@keyframes demo-rise-1 {
+    0%,
+    80.6% {
+        translate: 0 110%;
+    }
+    83.1%,
+    100% {
+        translate: none;
+    }
+}
+
+@keyframes demo-rise-2 {
+    0%,
+    81.9% {
+        translate: 0 110%;
+    }
+    84.4%,
+    100% {
+        translate: none;
+    }
+}
+
+/* Entrada del hero: corta y con poco recorrido, para que acompañe la carga
+   sin hacerla esperar. */
+@keyframes soft-in {
+    from {
+        opacity: 0;
+        translate: 0 0.375rem;
+    }
+    to {
+        opacity: 1;
+        translate: none;
+    }
+}
+
+/* Carrusel de módulos. Recorre exactamente la mitad del contenido, porque la
+   lista se renderiza duplicada: al llegar al 50% el fotograma es idéntico al
+   inicial y el bucle no tiene costura visible. */
+@keyframes marquee-scroll {
+    from {
+        transform: translateX(0);
+    }
+    to {
+        transform: translateX(-50%);
     }
 }
 
@@ -492,12 +952,23 @@
     *::after {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
+        /* Sin esto, lo que entra con retraso (y fill: both) quedaría
+           invisible durante el retraso aunque no haya animación. */
+        animation-delay: 0s !important;
         transition-duration: 0.01ms !important;
+        transition-delay: 0s !important;
         scroll-behavior: auto !important;
     }
 
     [data-reveal] {
         opacity: 1 !important;
         transform: none !important;
+    }
+
+    /* Excepcion: la barra de progreso del carrusel del login. Es un relleno
+       lineal y fino, no un desplazamiento que maree, y sin ella no se sabe
+       cuando cambia la diapositiva. Gana al selector * por especificidad. */
+    [data-progreso-carrusel] {
+        animation-duration: 8s !important;
     }
 }

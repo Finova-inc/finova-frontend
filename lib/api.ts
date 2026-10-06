@@ -191,6 +191,8 @@ export const api = {
 export interface Usuario {
     readonly id_usuario: string;
     readonly id_empresa: string;
+    /** Credencial de acceso. null en usuarios creados antes del login por RUT. */
+    readonly rut: string | null;
     readonly correo: string;
     readonly nombre_completo: string;
 }
@@ -658,8 +660,8 @@ export const authApi = {
      * Se llama SOLO desde el servidor (route handler de Next), nunca desde el
      * navegador: el access_token no debe pasar por JavaScript del cliente.
      */
-    login: (correo: string, password: string) =>
-        api.post<LoginResponse>("/auth/login", { correo, password }),
+    login: (rut: string, password: string) =>
+        api.post<LoginResponse>("/auth/login", { rut, password }),
 
     /** Empresas del usuario, para poblar el selector de la cabecera. */
     misEmpresas: (opciones?: ApiFetchOptions) =>

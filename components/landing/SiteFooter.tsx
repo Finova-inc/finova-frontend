@@ -50,11 +50,28 @@ const LEGAL_LINKS = [
     { label: "Tratamiento de datos", pending: true },
 ] as const;
 
+const FOOTER_STRIP = [
+    "var(--hl-orange)",
+    "var(--hl-yellow)",
+    "var(--hl-mint)",
+    "var(--hl-sky)",
+    "var(--hl-violet)",
+    "var(--hl-pink)",
+] as const;
+
 export function SiteFooter() {
     const currentYear = new Date().getFullYear();
 
     return (
-        <footer className="border-t border-[var(--border-subtle)] bg-[var(--background-raised)]">
+        <footer className="bg-[var(--background-raised)]">
+            {/* Franja con el estuche completo de destacadores: cierra la
+                página con la misma paleta con que la abrió el hero. */}
+            <div aria-hidden className="flex h-1">
+                {FOOTER_STRIP.map((color) => (
+                    <span key={color} className="flex-1" style={{ background: color }} />
+                ))}
+            </div>
+
             <div className="mx-auto w-full max-w-6xl px-5 py-16 sm:px-8">
                 {/* -----------------------------------------------------------
                     Bloque principal: identidad + tres columnas de navegación

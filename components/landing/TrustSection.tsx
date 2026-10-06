@@ -17,27 +17,33 @@ const TRUST_POINTS: ReadonlyArray<{
     icon: IconName;
     title: string;
     description: string;
+    /** Destacador del ícono. */
+    color: string;
 }> = [
     {
         icon: "shield",
+        color: "var(--hl-sky)",
         title: "Datos aislados por empresa",
         description:
             "Cada empresa vive en su propio espacio lógico. Un usuario de un estudio contable solo alcanza las empresas que tiene asignadas.",
     },
     {
         icon: "clock",
+        color: "var(--hl-violet)",
         title: "Historial completo",
         description:
             "Toda operación queda registrada con autor y fecha. Si una cifra cambió, se puede reconstruir cuándo y por quién.",
     },
     {
         icon: "document",
+        color: "var(--hl-mint)",
         title: "Cifrado en tránsito y en reposo",
         description:
             "La información viaja por HTTPS y se almacena cifrada. Las contraseñas nunca se guardan en texto plano.",
     },
     {
         icon: "alert",
+        color: "var(--hl-orange)",
         title: "Tú declaras, no el sistema",
         description:
             "Finova prepara y revisa la propuesta de F29, pero la presentación ante el SII siempre la haces tú. La decisión final es humana.",
@@ -47,7 +53,6 @@ const TRUST_POINTS: ReadonlyArray<{
 export function TrustSection() {
     return (
         <SectionShell
-            eyebrow="Confianza"
             title="Datos contables, tratados como tales"
             description="Cómo Finova cuida la información de tus clientes, y dónde termina su responsabilidad."
             tone="raised"
@@ -58,11 +63,13 @@ export function TrustSection() {
                         key={point.title}
                         className="flex gap-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--background)] p-6"
                     >
-                        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--background-raised)]">
-                            <Icon
-                                name={point.icon}
-                                className="size-[18px] text-[var(--accent)]"
-                            />
+                        {/* Ícono en tinta sobre el destacador: al revés (ícono
+                            de color sobre papel) no alcanza el contraste. */}
+                        <span
+                            className="grid size-10 shrink-0 place-items-center rounded-xl text-ink"
+                            style={{ background: point.color }}
+                        >
+                            <Icon name={point.icon} className="size-[18px]" />
                         </span>
 
                         <div>

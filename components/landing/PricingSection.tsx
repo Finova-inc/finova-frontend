@@ -23,6 +23,8 @@ const PRICING_TIERS: ReadonlyArray<{
     /** El plan sugerido se destaca visualmente. */
     isFeatured: boolean;
     ctaLabel: string;
+    /** Destacador del plan: checks y acento. */
+    color: string;
 }> = [
     {
         name: "Independiente",
@@ -38,6 +40,7 @@ const PRICING_TIERS: ReadonlyArray<{
         ],
         isFeatured: false,
         ctaLabel: "Empezar",
+        color: "var(--hl-mint)",
     },
     {
         name: "Estudio",
@@ -54,6 +57,7 @@ const PRICING_TIERS: ReadonlyArray<{
         ],
         isFeatured: true,
         ctaLabel: "Empezar",
+        color: "var(--hl-orange)",
     },
     {
         name: "Corporativo",
@@ -69,6 +73,7 @@ const PRICING_TIERS: ReadonlyArray<{
         ],
         isFeatured: false,
         ctaLabel: "Hablemos",
+        color: "var(--hl-violet)",
     },
 ];
 
@@ -80,15 +85,31 @@ function PriceTier({
 }) {
     return (
         <article
-            className={`relative flex flex-col rounded-2xl border p-7 ${
+            className={`relative flex flex-col rounded-2xl p-7 ${
                 tier.isFeatured
-                    ? "border-[var(--accent)] bg-[var(--background)] shadow-lg shadow-[var(--accent)]/5"
-                    : "border-[var(--border-subtle)] bg-[var(--background)]"
+                    ? "shadow-[0_24px_48px_-24px_rgb(255_79_139/0.45)]"
+                    : "border border-[var(--border-subtle)] bg-[var(--surface)]"
             }`}
+            /* Borde en degradado: el relleno tintado ocupa el padding-box y
+               el degradado asoma solo en el borde transparente. */
+            style={
+                tier.isFeatured
+                    ? {
+                          border: "1.5px solid transparent",
+                          background:
+                              "linear-gradient(color-mix(in srgb, var(--hl-orange) 6%, var(--surface)), color-mix(in srgb, var(--hl-orange) 6%, var(--surface))) padding-box, linear-gradient(140deg, var(--hl-orange), var(--hl-pink)) border-box",
+                      }
+                    : undefined
+            }
         >
+            {/* "Recomendado" y no "el más elegido": todavía no hay clientes
+                que lo hayan elegido. */}
             {tier.isFeatured && (
-                <span className="absolute -top-3 left-7 rounded-full bg-[var(--accent)] px-3 py-1 font-display text-[11px] font-semibold uppercase tracking-wider text-white">
-                    El más elegido
+                <span
+                    className="absolute -top-3 left-7 rounded-full px-3 py-1 font-display text-[11px] font-semibold uppercase tracking-wider text-ink"
+                    style={{ background: "linear-gradient(140deg, var(--hl-orange), var(--hl-pink))" }}
+                >
+                    Recomendado
                 </span>
             )}
 
@@ -114,10 +135,12 @@ function PriceTier({
             <ul className="mt-7 flex flex-1 flex-col gap-3">
                 {tier.features.map((feature) => (
                     <li key={feature} className="flex items-start gap-2.5 text-[15px]">
-                        <Icon
-                            name="check"
-                            className="mt-1 size-4 shrink-0 text-[var(--accent)]"
-                        />
+                        <span
+                            className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full text-ink"
+                            style={{ background: tier.color }}
+                        >
+                            <Icon name="check" className="size-3" />
+                        </span>
                         <span className="text-[var(--foreground-muted)]">
                             {feature}
                         </span>
@@ -129,8 +152,8 @@ function PriceTier({
                 href="/login"
                 className={`mt-8 rounded-xl px-5 py-3 text-center font-display text-[15px] font-medium transition-opacity hover:opacity-90 ${
                     tier.isFeatured
-                        ? "bg-[var(--accent)] text-white"
-                        : "border border-[var(--border-subtle)]"
+                        ? "bg-[var(--foreground)] text-[var(--background)]"
+                        : "border border-[var(--border-strong)]"
                 }`}
             >
                 {tier.ctaLabel}
@@ -143,7 +166,6 @@ export function PricingSection() {
     return (
         <SectionShell
             id="precios"
-            eyebrow="Precios"
             title="Un plan por tamaño, sin letra chica"
             description="Valores en pesos chilenos, sin IVA. Puedes cambiar de plan o cancelar cuando quieras."
         >

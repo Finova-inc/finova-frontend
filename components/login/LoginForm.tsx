@@ -4,11 +4,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { Icon } from "@/components/ui/Icon";
+import { formatearRut, formatearRutAlEscribir } from "@/lib/formato";
 import {
-    EMAIL_MAX_LENGTH,
     PASSWORD_MAX_LENGTH,
-    validateEmail,
+    RUT_MAX_LENGTH,
     validatePassword,
+    validateRut,
 } from "@/lib/validation";
 
 /**
@@ -32,8 +33,8 @@ import {
  *    fallar un intento.
  *
  * 3. Mensaje de error genérico.
- *    Nunca "ese correo no existe" ni "contraseña incorrecta". Distinguir ambos
- *    casos permite enumerar usuarios: probando correos se descubre quién tiene
+ *    Nunca "ese RUT no existe" ni "contraseña incorrecta". Distinguir ambos
+ *    casos permite enumerar usuarios: probando RUT se descubre quién tiene
  *    cuenta. Un solo mensaje para las dos situaciones.
  *
  * 4. spellCheck desactivado en la contraseña.
@@ -55,15 +56,15 @@ export function LoginForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    const emailFieldId = useId();
+    const rutFieldId = useId();
     const passwordFieldId = useId();
     const formErrorId = useId();
 
-    const [email, setEmail] = useState("");
+    const [rut, setRut] = useState("");
     const [password, setPassword] = useState("");
     const [isPasswordVisible, setIsPasswordVisible] = useState(false);
     const [fieldErrors, setFieldErrors] = useState<{
-        email?: string;
+        rut?: string;
         password?: string;
     }>({});
     const [formError, setFormError] = useState<string | null>(null);
@@ -103,11 +104,9 @@ export function LoginForm() {
     }, [isLockedOut]);
 
     /**
-     * Procesa el envío.
-     *
-     * Como no hay servidor, siempre termina en el mismo error genérico. Eso es
-     * lo esperado: el objetivo es mostrar el comportamiento de la interfaz, no
-     * simular una sesión.
+     * Procesa el envío: valida, llama a /api/auth/login y, si responde bien,
+     * redirige al panel. Cualquier fallo de credenciales termina en el mismo
+     * mensaje genérico.
      */
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         // Impide la navegación por defecto, que expondría las credenciales.
@@ -117,17 +116,17 @@ export function LoginForm() {
             return;
         }
 
-        const emailResult = validateEmail(email);
+        const rutResult = validateRut(rut);
         const passwordResult = validatePassword(password);
 
         const nextFieldErrors = {
-            email: emailResult.isValid ? undefined : emailResult.message,
+            rut: rutResult.isValid ? undefined : rutResult.message,
             password: passwordResult.isValid ? undefined : passwordResult.message,
         };
 
         setFieldErrors(nextFieldErrors);
 
-        if (!emailResult.isValid || !passwordResult.isValid) {
+        if (!rutResult.isValid || !passwordResult.isValid) {
             setFormError(null);
             return;
         }
@@ -160,7 +159,7 @@ export function LoginForm() {
                 // Necesario para que la cookie de sesión que devuelve el
                 // handler se guarde en el navegador.
                 credentials: "include",
-                body: JSON.stringify({ correo: email.trim().toLowerCase(), password }),
+                body: JSON.stringify({ rut: formatearRut(rut), password }),
             });
 
             if (respuesta.ok) {
@@ -195,49 +194,60 @@ export function LoginForm() {
             className="flex flex-col gap-5"
         >
             {/* ---------------------------------------------------------------
-                Campo de correo
+                Campo de RUT
                 --------------------------------------------------------------- */}
             <div className="flex flex-col gap-2">
                 <label
-                    htmlFor={emailFieldId}
-                    className="text-sm font-medium text-white/85"
+                    htmlFor={rutFieldId}
+                    className="text-sm font-medium text-[var(--foreground)]"
                 >
-                    Correo electrónico
+                    RUT
                 </label>
 
-                <input
-                    id={emailFieldId}
-                    name="email"
-                    type="email"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    // autoComplete correcto: deja que el gestor de contraseñas
-                    // haga su trabajo. Bloquearlo empuja a la gente a repetir
-                    // contraseñas fáciles de recordar, que es peor.
-                    autoComplete="email"
-                    inputMode="email"
-                    maxLength={EMAIL_MAX_LENGTH}
-                    spellCheck={false}
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    required
-                    disabled={isLockedOut}
-                    // aria-invalid y aria-describedby conectan el campo con su
-                    // error para quien usa lector de pantalla.
-                    aria-invalid={fieldErrors.email !== undefined}
-                    aria-describedby={
-                        fieldErrors.email ? `${emailFieldId}-error` : undefined
-                    }
-                    placeholder="contador@estudio.cl"
-                    className="w-full border border-white/12 bg-white/[0.04] px-4 py-3 text-[15px] text-white outline-none transition-colors placeholder:text-white/30 focus:border-[var(--color-marker)] disabled:opacity-50"
-                />
+                <div className="relative">
+                    <Icon
+                        name="users"
+                        className="pointer-events-none absolute top-1/2 left-4 size-[18px] -translate-y-1/2 text-[var(--foreground-muted)]"
+                    />
+                    <input
+                        id={rutFieldId}
+                        name="username"
+                        type="text"
+                        value={rut}
+                        // Puntos y guion aparecen a medida que se escribe: la
+                        // persona ve el RUT tal como quedará y detecta un error
+                        // de tipeo antes de enviar. Pegar "123456789" también
+                        // queda formateado.
+                        onChange={(event) => setRut(formatearRutAlEscribir(event.target.value))}
+                        // "username" deja que el gestor de contraseñas asocie el RUT
+                        // con la contraseña guardada. Bloquearlo empuja a la gente a
+                        // repetir contraseñas fáciles de recordar, que es peor.
+                        autoComplete="username"
+                        // text y no numeric: el dígito verificador puede ser K.
+                        inputMode="text"
+                        maxLength={RUT_MAX_LENGTH}
+                        spellCheck={false}
+                        autoCapitalize="characters"
+                        autoCorrect="off"
+                        required
+                        disabled={isLockedOut}
+                        // aria-invalid y aria-describedby conectan el campo con su
+                        // error para quien usa lector de pantalla.
+                        aria-invalid={fieldErrors.rut !== undefined}
+                        aria-describedby={
+                            fieldErrors.rut ? `${rutFieldId}-error` : undefined
+                        }
+                        placeholder="12.345.678-9"
+                        className="w-full rounded-lg border border-[var(--border-strong)] bg-[var(--background)] py-3 pr-4 pl-11 text-[15px] tabular-nums text-[var(--foreground)] outline-none transition-colors placeholder:text-[var(--placeholder)] focus:border-[var(--accent)] disabled:opacity-50"
+                    />
+                </div>
 
-                {fieldErrors.email && (
+                {fieldErrors.rut && (
                     <p
-                        id={`${emailFieldId}-error`}
-                        className="text-sm text-[var(--color-marker)]"
+                        id={`${rutFieldId}-error`}
+                        className="text-sm text-[var(--critico)]"
                     >
-                        {fieldErrors.email}
+                        {fieldErrors.rut}
                     </p>
                 )}
             </div>
@@ -248,12 +258,16 @@ export function LoginForm() {
             <div className="flex flex-col gap-2">
                 <label
                     htmlFor={passwordFieldId}
-                    className="text-sm font-medium text-white/85"
+                    className="text-sm font-medium text-[var(--foreground)]"
                 >
                     Contraseña
                 </label>
 
                 <div className="relative">
+                    <Icon
+                        name="lock"
+                        className="pointer-events-none absolute top-1/2 left-4 size-[18px] -translate-y-1/2 text-[var(--foreground-muted)]"
+                    />
                     <input
                         id={passwordFieldId}
                         name="password"
@@ -276,7 +290,7 @@ export function LoginForm() {
                                 : undefined
                         }
                         placeholder="••••••••"
-                        className="w-full border border-white/12 bg-white/[0.04] px-4 py-3 pr-12 text-[15px] text-white outline-none transition-colors placeholder:text-white/30 focus:border-[var(--color-marker)] disabled:opacity-50"
+                        className="w-full rounded-lg border border-[var(--border-strong)] bg-[var(--background)] py-3 pr-12 pl-11 text-[15px] text-[var(--foreground)] outline-none transition-colors placeholder:text-[var(--placeholder)] focus:border-[var(--accent)] disabled:opacity-50"
                     />
 
                     {/* Mostrar la contraseña ayuda a escribirla bien en el móvil
@@ -290,7 +304,7 @@ export function LoginForm() {
                                 ? "Ocultar contraseña"
                                 : "Mostrar contraseña"
                         }
-                        className="absolute right-1.5 top-1/2 grid size-9 -translate-y-1/2 place-items-center text-white/45 transition-colors hover:text-white"
+                        className="absolute right-1.5 top-1/2 grid size-9 -translate-y-1/2 place-items-center text-[var(--foreground-muted)] transition-colors hover:text-[var(--foreground)]"
                     >
                         <Icon
                             name={isPasswordVisible ? "eyeOff" : "eye"}
@@ -302,7 +316,7 @@ export function LoginForm() {
                 {fieldErrors.password && (
                     <p
                         id={`${passwordFieldId}-error`}
-                        className="text-sm text-[var(--color-marker)]"
+                        className="text-sm text-[var(--critico)]"
                     >
                         {fieldErrors.password}
                     </p>
@@ -319,7 +333,7 @@ export function LoginForm() {
                 <p
                     id={formErrorId}
                     role="alert"
-                    className="border border-[var(--color-marker)]/40 bg-[var(--color-marker)]/10 px-4 py-3 text-sm text-white/90"
+                    className="rounded-lg border border-[var(--critico)]/30 bg-[var(--critico-bg)] px-4 py-3 text-sm text-[var(--foreground)]"
                 >
                     {formError}
                 </p>
@@ -328,7 +342,7 @@ export function LoginForm() {
             {isLockedOut && (
                 <p
                     role="alert"
-                    className="border border-white/12 bg-white/5 px-4 py-3 text-sm text-white/65"
+                    className="rounded-lg border border-[var(--border-subtle)] bg-[var(--background-raised)] px-4 py-3 text-sm text-[var(--foreground-muted)]"
                 >
                     Demasiados intentos. Espera {LOCKOUT_SECONDS} segundos antes de
                     volver a probar.
@@ -338,9 +352,9 @@ export function LoginForm() {
             <button
                 type="submit"
                 disabled={isSubmitting || isLockedOut}
-                className="mt-1 flex items-center justify-center gap-2 bg-[var(--color-cream)] px-5 py-3.5 font-display text-[15px] font-medium text-ink transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-[var(--accent)] px-5 py-3.5 font-display text-[15px] font-semibold text-ink transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-                {isSubmitting ? "Verificando…" : "Continuar"}
+                {isSubmitting ? "Verificando…" : "Iniciar sesión"}
                 {!isSubmitting && <Icon name="arrowRight" className="size-4" />}
             </button>
         </form>

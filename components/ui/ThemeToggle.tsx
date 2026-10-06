@@ -70,7 +70,16 @@ function getServerTheme(): Theme {
     return "light";
 }
 
-export function ThemeToggle() {
+/**
+ * `icon` (por omisión): un solo ícono que cambia, el del panel y el login.
+ * `switch`: pastilla con sol y luna siempre visibles y una perilla que se
+ * desliza bajo el activo (header de la landing, según images/image.png).
+ */
+type ThemeToggleProps = {
+    readonly variant?: "icon" | "switch";
+};
+
+export function ThemeToggle({ variant = "icon" }: ThemeToggleProps) {
     const theme = useSyncExternalStore(
         subscribeToThemeClass,
         getThemeFromDocument,
@@ -126,6 +135,37 @@ export function ThemeToggle() {
             // simplemente no sobrevive a la recarga.
         }
     }, []);
+
+    if (variant === "switch") {
+        return (
+            <button
+                type="button"
+                onClick={handleToggle}
+                aria-pressed={theme === "dark"}
+                aria-label="Cambiar entre tema claro y oscuro"
+                title="Cambiar tema"
+                className="relative inline-flex h-9 w-16 shrink-0 items-center rounded-full bg-[var(--header-hover)] p-1 ring-1 ring-inset ring-[var(--header-border)] transition-colors hover:bg-[var(--header-divider)]"
+            >
+                {/*
+                    La posición de la perilla y el color de cada ícono salen de
+                    la clase .dark (variantes dark:), no del estado de React:
+                    así el primer paint ya es el correcto, igual que en la
+                    variante de ícono. La transición la hace CSS al cambiar la
+                    clase.
+                */}
+                <span
+                    aria-hidden
+                    className="absolute left-1 top-1 size-7 rounded-full bg-white shadow-[0_1px_3px_rgb(0_0_0/0.16),0_1px_1px_rgb(0_0_0/0.06)] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] dark:translate-x-7"
+                />
+                <span className="relative grid size-7 place-items-center text-[var(--color-marker)] transition-colors duration-300 dark:text-[var(--header-ink-muted)]">
+                    <Icon name="sun" className="size-4 fill-current" />
+                </span>
+                <span className="relative grid size-7 place-items-center text-[var(--header-ink-muted)] transition-colors duration-300 dark:text-[var(--color-violet)]">
+                    <Icon name="moon" className="size-[15px] fill-current" />
+                </span>
+            </button>
+        );
+    }
 
     return (
         <button

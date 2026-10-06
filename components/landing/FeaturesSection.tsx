@@ -3,238 +3,125 @@ import { SectionShell } from "@/components/ui/SectionShell";
 /**
  * "Ventajas".
  *
- * Cada ventaja es UNA PALABRA en tipografía grande, acompañada de una maqueta
- * animada de la pantalla correspondiente del producto. Sin tarjetas y sin
- * iconos: un icono genérico de reloj o escudo no aporta nada que la palabra no
- * diga mejor, y llena la sección de ruido visual.
+ * Cuatro tarjetas de distinto ancho (grilla de 6 columnas: 4+2 / 2+4), cada
+ * una con su destacador, una cifra y una línea de por qué Finova ayuda. Antes
+ * eran cuatro filas gigantes con maquetas; se compactaron porque convencían
+ * menos de lo que ocupaban.
  *
- * Las maquetas son provisionales: representan la FORMA de cada pantalla, no su
- * contenido real. Por eso no muestran cifras, ya que números concretos en una
- * ilustración se leen como datos verdaderos.
- *
- * Se dibujan con divs y CSS, sin imágenes: no pesan, se adaptan solas al tema
- * claro y oscuro, y se reemplazan por capturas reales cuando el producto las
- * tenga.
+ * Las cifras describen el PROBLEMA, no resultados de Finova, y cada una cita
+ * su fuente. La única propia es la del plan de cuentas base, que sale del
+ * código del backend (cuentas-contables/plantillas/plan-base-pyme.ts: 68
+ * cuentas de movimiento); si la plantilla cambia, actualizarla aquí.
  */
 
-/** Tipos de maqueta disponibles, uno por pantalla del producto. */
-type MockupVariant = "tabla" | "grafico" | "carga" | "alertas";
-
-/** Las ventajas, cada una con su palabra y su maqueta. */
 const ADVANTAGES: ReadonlyArray<{
     word: string;
+    figure: string;
+    figureLabel: string;
     description: string;
-    mockup: MockupVariant;
+    source: string;
+    href?: string;
+    color: string;
+    span: string;
 }> = [
     {
-        word: "Centralizado",
-        description:
-            "Compras, ventas, libros y reportes viven en el mismo sistema. Se acabó el archivo que solo tiene una persona.",
-        mockup: "tabla",
-    },
-    {
         word: "Automatizado",
+        figure: "60 h",
+        figureLabel: "al mes se pierden en tareas fáciles de automatizar",
         description:
-            "La IA lee los documentos, propone la clasificación y genera los asientos. Tú confirmas.",
-        mockup: "carga",
-    },
-    {
-        word: "Intuitivo",
-        description:
-            "Cada pantalla muestra lo que hay que hacer ahora. Sin capacitación de tres días para emitir un informe.",
-        mockup: "grafico",
+            "Finova lee el documento, propone la cuenta y arma el asiento. Tú revisas en minutos lo que antes se digitaba a mano.",
+        source: "Automation Anywhere / OnePoll, 2020",
+        href: "https://www.automationanywhere.com/company/press-room/global-research-reveals-world-s-most-hated-office-tasks",
+        color: "var(--hl-mint)",
+        span: "md:col-span-4",
     },
     {
         word: "Vigilado",
+        figure: "30%",
+        figureLabel: "de multa máxima sobre el impuesto adeudado por declarar fuera de plazo",
         description:
-            "El sistema revisa mientras trabajas y avisa de las inconsistencias antes de que cierres el período.",
-        mockup: "alertas",
+            "Finova revisa mientras trabajas y avisa las inconsistencias antes de cerrar el período.",
+        source: "Código Tributario, art. 97 N°2",
+        href: "https://iura.cl/ctrib/97",
+        color: "var(--hl-pink)",
+        span: "md:col-span-2",
+    },
+    {
+        word: "Centralizado",
+        figure: "6 días",
+        figureLabel: "tarda la organización mediana en cerrar el mes",
+        description:
+            "Libros, períodos y plan de cuentas en un mismo sistema: no hay planillas que conciliar entre sí.",
+        source: "APQC, vía CFO.com",
+        href: "https://www.cfo.com/news/metric-of-the-month-cycle-time-for-monthly-close/659297/",
+        color: "var(--hl-sky)",
+        span: "md:col-span-2",
+    },
+    {
+        word: "Intuitivo",
+        figure: "68 cuentas",
+        figureLabel: "listas en el plan de cuentas base",
+        description:
+            "Empiezas a registrar el primer día, sin armar el plan desde cero ni capacitaciones de tres días.",
+        source: "Plan de cuentas base de Finova",
+        color: "var(--hl-orange)",
+        span: "md:col-span-4",
     },
 ];
-
-/** Maqueta de listado: filas que aparecen en secuencia. */
-function TableMockup() {
-    return (
-        <div className="flex flex-col gap-2">
-            {[0, 1, 2, 3, 4].map((row) => (
-                <div
-                    key={row}
-                    className="flex items-center gap-2.5"
-                    style={{
-                        animation: `dte-row-in 0.5s ease-out ${row * 0.16}s both`,
-                    }}
-                >
-                    <span className="h-6 w-9 shrink-0 rounded bg-[var(--accent)]/15" />
-                    <span
-                        className="h-2 rounded-full bg-[var(--foreground)]/12"
-                        style={{ width: `${52 - row * 6}%` }}
-                    />
-                    <span className="ml-auto h-2 w-10 rounded-full bg-[var(--foreground)]/18" />
-                </div>
-            ))}
-        </div>
-    );
-}
-
-/** Maqueta de ingesta: documentos que se procesan uno tras otro. */
-function UploadMockup() {
-    return (
-        <div className="flex flex-col gap-2.5">
-            {[0, 1, 2].map((row) => (
-                <div
-                    key={row}
-                    className="rounded-lg border border-[var(--border-subtle)] p-2.5"
-                >
-                    <div className="mb-2 flex items-center gap-2">
-                        <span className="size-4 rounded bg-[var(--accent)]/25" />
-                        <span
-                            className="h-2 rounded-full bg-[var(--foreground)]/14"
-                            style={{ width: `${46 - row * 8}%` }}
-                        />
-                    </div>
-
-                    {/* Barra de procesamiento, escalonada por fila. */}
-                    <div className="h-1.5 overflow-hidden rounded-full bg-[var(--foreground)]/8">
-                        <div
-                            className="h-full origin-left rounded-full bg-[var(--accent)]"
-                            style={{
-                                animation: `cell-fill 1.6s ease-in-out ${row * 0.5}s infinite`,
-                            }}
-                        />
-                    </div>
-                </div>
-            ))}
-        </div>
-    );
-}
-
-/** Maqueta de informe: barras que crecen desde la base. */
-function ChartMockup() {
-    const barHeights = [42, 68, 54, 86, 62, 94];
-
-    return (
-        <div className="flex h-[11rem] flex-col">
-            <div className="mb-3 h-2 w-24 rounded-full bg-[var(--foreground)]/12" />
-
-            <div className="flex flex-1 items-end gap-2 pb-1">
-                {barHeights.map((height, index) => (
-                    <div
-                        key={index}
-                        className="flex-1 rounded-t bg-[var(--accent)]"
-                        style={{
-                            height: `${height}%`,
-                            opacity: 0.32 + index * 0.11,
-                            transformOrigin: "bottom",
-                            animation: `grow-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${index * 0.09}s both`,
-                        }}
-                    />
-                ))}
-            </div>
-        </div>
-    );
-}
-
-/** Maqueta de alertas: avisos que entran de a uno. */
-function AlertsMockup() {
-    return (
-        <div className="flex flex-col gap-2.5">
-            {[0, 1, 2].map((row) => (
-                <div
-                    key={row}
-                    className="flex items-start gap-2.5 rounded-lg border border-[var(--border-subtle)] p-2.5"
-                    style={{
-                        animation: `check-pop 0.5s ease-out ${0.3 + row * 0.35}s both`,
-                    }}
-                >
-                    <span
-                        className={`mt-0.5 size-3.5 shrink-0 rounded-full ${
-                            row === 0
-                                ? "bg-[var(--accent)]"
-                                : "bg-[var(--color-highlight)]"
-                        }`}
-                    />
-
-                    <div className="flex flex-1 flex-col gap-1.5">
-                        <span
-                            className="h-2 rounded-full bg-[var(--foreground)]/16"
-                            style={{ width: `${74 - row * 12}%` }}
-                        />
-                        <span
-                            className="h-1.5 rounded-full bg-[var(--foreground)]/8"
-                            style={{ width: `${52 - row * 8}%` }}
-                        />
-                    </div>
-                </div>
-            ))}
-        </div>
-    );
-}
-
-/**
- * Contenedor de la maqueta.
- *
- * Es decorativa: va marcada aria-hidden porque el texto contiguo ya explica de
- * qué se trata cada pantalla.
- */
-function DashboardMockup({ variant }: { readonly variant: MockupVariant }) {
-    return (
-        <div
-            aria-hidden
-            /* La maqueta se dimensiona por su contenido, sin proporcion fija:
-               con aspect-[4/3] las variantes cortas quedaban con la mitad del
-               panel vacio. El minimo evita que las mas breves se vean apretadas. */
-            className="glass-panel relative min-h-[15rem] w-full overflow-hidden rounded-2xl p-4 sm:p-5"
-        >
-            {/* Barra superior: convención visual de ventana de aplicación. */}
-            <div className="mb-4 flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-[var(--accent)]/60" />
-                <span className="size-2 rounded-full bg-[var(--color-highlight)]/60" />
-                <span className="size-2 rounded-full bg-[var(--foreground)]/15" />
-            </div>
-
-            {variant === "tabla" && <TableMockup />}
-            {variant === "carga" && <UploadMockup />}
-            {variant === "grafico" && <ChartMockup />}
-            {variant === "alertas" && <AlertsMockup />}
-        </div>
-    );
-}
 
 export function FeaturesSection() {
     return (
         <SectionShell
             id="ventajas"
-            eyebrow="Ventajas"
-            title="Cuatro razones, sin vueltas"
+            title="Cuatro razones, con cifras"
+            description="Los números describen el problema que Finova resuelve, y cada uno cita su fuente."
             tone="raised"
         >
-            <div className="flex flex-col gap-20 md:gap-24">
-                {ADVANTAGES.map((advantage, index) => (
+            <div className="grid gap-4 md:grid-cols-6">
+                {ADVANTAGES.map((advantage) => (
                     <article
                         key={advantage.word}
-                        className="grid items-center gap-8 md:grid-cols-2 md:gap-14"
+                        className={`relative flex flex-col overflow-hidden rounded-3xl border border-[var(--border-subtle)] p-6 sm:p-8 ${advantage.span}`}
+                        style={{
+                            background: `color-mix(in srgb, ${advantage.color} 10%, var(--surface))`,
+                        }}
                     >
-                        {/* Se alterna el lado de la maqueta para que la lectura
-                            zigzaguee en vez de caer siempre en la misma columna.
-                            El orden solo cambia desde md: en móvil el texto va
-                            siempre primero. */}
-                        <div
-                            className={`min-w-0 ${index % 2 === 1 ? "md:order-2" : ""}`}
-                        >
-                            <h3 className="font-display text-[2.5rem] font-bold leading-none tracking-[-0.03em] sm:text-6xl md:text-[4.5rem]">
-                                {advantage.word}
-                            </h3>
+                        {/* Barra inclinada del logo, en el color de la ventaja. */}
+                        <span
+                            aria-hidden
+                            className="absolute -right-5 -top-12 h-44 w-14 -skew-y-[28deg] rounded-[1.1rem] opacity-70"
+                            style={{ background: advantage.color }}
+                        />
 
-                            <p className="mt-5 max-w-[34rem] text-lg leading-relaxed text-[var(--foreground-muted)] text-pretty">
-                                {advantage.description}
+                        <h3 className="relative font-display text-[1.35rem] font-bold tracking-tight">
+                            {advantage.word}
+                        </h3>
+
+                        <p className="relative mt-8 font-display text-5xl font-bold tracking-[-0.03em] sm:text-6xl">
+                            {advantage.figure}
+                        </p>
+                        <p className="relative mt-2 max-w-[30rem] text-[15px] font-medium leading-snug text-pretty">
+                            {advantage.figureLabel}
+                        </p>
+
+                        <p className="relative mt-4 max-w-[34rem] flex-1 text-[15px] leading-relaxed text-[var(--foreground-muted)] text-pretty">
+                            {advantage.description}
+                        </p>
+
+                        {advantage.href ? (
+                            <a
+                                href={advantage.href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="relative mt-5 self-start text-[12.5px] text-[var(--foreground-muted)] underline decoration-[var(--border-strong)] underline-offset-4 transition-colors hover:text-[var(--foreground)] hover:decoration-current"
+                            >
+                                Fuente: {advantage.source}
+                            </a>
+                        ) : (
+                            <p className="relative mt-5 text-[12.5px] text-[var(--foreground-muted)]">
+                                Fuente: {advantage.source}
                             </p>
-                        </div>
-
-                        <div
-                            className={`min-w-0 ${index % 2 === 1 ? "md:order-1" : ""}`}
-                        >
-                            <DashboardMockup variant={advantage.mockup} />
-                        </div>
+                        )}
                     </article>
                 ))}
             </div>
