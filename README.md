@@ -190,7 +190,7 @@ entre ambas sin pensar en eso.
 | `/` | ✅ Terminada | Landing de 8 secciones, tema claro/oscuro, animaciones CSS. |
 | `/login` | ✅ Real | Autentica contra el backend; el JWT queda en una cookie httpOnly. |
 | `/dashboard` | ⚠️ Mixta | Conteos reales (empresas, documentos, terceros, cuentas, períodos); gráficos y cartera con datos de ejemplo, marcados como tales. |
-| `/dashboard/empresas` | ✅ Real | Listado y alta. |
+| Popup de empresas (cabecera) | ✅ Real | Cambiar la empresa activa, agregar (administrador o contador) y eliminar con doble confirmación: papelera y escribir el RUT. Reemplaza a la antigua página `/dashboard/empresas`. |
 | `/dashboard/core-contable` | ✅ Real | Libro diario: comprobantes con filtros y paginación, vista de libro imprimible con resumen por día, borradores. |
 | `/dashboard/core-contable/nuevo` y `/borradores/[id]` | ✅ Real | Formulario de asiento: líneas dinámicas, cuadre en vivo con aritmética exacta (`lib/decimal.ts`), guardar borrador y contabilizar con confirmación. |
 | `/dashboard/core-contable/[id]` | ✅ Real | Detalle del comprobante y reversión (art. 32 del Código de Comercio). |

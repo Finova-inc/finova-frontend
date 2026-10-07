@@ -103,6 +103,32 @@ export function validateRut(rawRut: string): ValidationResult {
 }
 
 /**
+ * Valida el alta de una empresa desde el popup de empresas.
+ *
+ * Mismas reglas que CreateEmpresaDto del backend (RUT con dígito verificador
+ * válido, razón social de 3 a 150 caracteres). La usan el formulario, para
+ * avisar antes de enviar, y la Server Action, porque el navegador se la puede
+ * saltar. Devuelve los mensajes en el orden de los campos; vacío si está bien.
+ */
+export function validarNuevaEmpresa(rut: string, razonSocial: string): string[] {
+    const errores: string[] = [];
+
+    if (rut.trim().length === 0) {
+        errores.push("Escribe el RUT de la empresa.");
+    } else {
+        const resultado = validateRut(rut);
+        if (!resultado.isValid) errores.push(resultado.message);
+    }
+
+    const largo = razonSocial.trim().length;
+    if (largo < 3 || largo > 150) {
+        errores.push("La razón social debe tener entre 3 y 150 caracteres.");
+    }
+
+    return errores;
+}
+
+/**
  * Valida la contraseña AL INICIAR SESIÓN.
  *
  * Solo se comprueba el largo, nunca la composición. Exigir mayúscula o símbolo

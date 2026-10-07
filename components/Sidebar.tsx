@@ -44,7 +44,7 @@ const GRUPOS: readonly GrupoNav[] = [
         titulo: "Principal",
         enlaces: [
             { href: "/dashboard", etiqueta: "Panel de control", icono: "grid" },
-            { href: "/dashboard/empresas", etiqueta: "Empresas", icono: "building" },
+            // Las empresas se gestionan desde el popup de la cabecera.
             { href: "/dashboard/documentos", etiqueta: "Documentos", icono: "document" },
             { href: "/dashboard/terceros", etiqueta: "Terceros", icono: "users" },
         ],
@@ -72,7 +72,7 @@ const GRUPOS: readonly GrupoNav[] = [
  * Decide si un enlace corresponde a la ruta actual.
  *
  * /dashboard se compara de forma exacta; el resto por prefijo, para que una
- * subruta como /dashboard/empresas/nueva siga marcando "Empresas". Sin la
+ * subruta como /dashboard/core-contable/nuevo siga marcando "Libro diario". Sin la
  * excepcion, /dashboard quedaria activo en TODAS las pantallas del panel,
  * porque es prefijo de todas.
  */

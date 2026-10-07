@@ -1,7 +1,7 @@
 "use server";
 
 /* ============================================================================
-   Cambio de empresa activa.
+   Empresas del usuario: cambiar la activa, agregar y eliminar.
 
    ---------------------------------------------------------------------------
    POR QUE UNA SERVER ACTION Y NO UN ROUTE HANDLER
@@ -18,16 +18,25 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { ApiError, authApi } from "@/lib/api";
+import { ApiError, authApi, empresasApi, mensajesDelBackend, type EmpresaCreada } from "@/lib/api";
+import { formatearRut } from "@/lib/formato";
 import {
     DURACION_SESION_SEGUNDOS,
     NOMBRE_COOKIE_SESION,
     OPCIONES_COOKIE_SESION,
     exigirTokenSesion,
+    obtenerEmpresaDelToken,
 } from "@/lib/session";
+import { validarNuevaEmpresa } from "@/lib/validation";
 
 export interface EstadoCambioEmpresa {
     readonly error?: string;
+}
+
+/** Resultado de agregar o eliminar: errores para el paso, o un aviso para la lista. */
+export interface ResultadoEmpresa {
+    readonly errores?: readonly string[];
+    readonly aviso?: string;
 }
 
 export async function cambiarEmpresa(
@@ -62,13 +71,7 @@ export async function cambiarEmpresa(
         return { error: "No pudimos cambiar de empresa. Inténtalo de nuevo." };
     }
 
-    const almacen = await cookies();
-    almacen.set({
-        name: NOMBRE_COOKIE_SESION,
-        value: nuevoToken,
-        ...OPCIONES_COOKIE_SESION,
-        maxAge: DURACION_SESION_SEGUNDOS,
-    });
+    await guardarSesion(nuevoToken);
 
     /**
      * Se revalida el layout entero, no solo la página.
@@ -80,4 +83,123 @@ export async function cambiarEmpresa(
     revalidatePath("/dashboard", "layout");
 
     return {};
+}
+
+/**
+ * Agrega una empresa; quien la crea queda como su administrador.
+ *
+ * Quién puede hacerlo lo decide el backend (administrador o contador de la
+ * empresa activa). Aquí solo se repiten las reglas de formato para responder
+ * en el idioma del formulario en vez de con un 400.
+ */
+export async function crearEmpresa(rut: string, razon_social: string): Promise<ResultadoEmpresa> {
+    const token = await exigirTokenSesion();
+
+    const errores = validarNuevaEmpresa(rut, razon_social);
+    if (errores.length > 0) return { errores };
+
+    let empresa: EmpresaCreada;
+    try {
+        empresa = await empresasApi.crear(
+            { rut: formatearRut(rut), razon_social: razon_social.trim() },
+            { token },
+        );
+    } catch (error) {
+        return {
+            errores: traducirError(
+                error,
+                "No pudimos agregar la empresa. Inténtalo de nuevo.",
+                "Tu rol en la empresa activa no permite agregar empresas.",
+            ),
+        };
+    }
+
+    // La lista del popup sale de mis-empresas, que lee el layout.
+    revalidatePath("/dashboard", "layout");
+
+    return {
+        aviso: empresa.recuperada
+            ? `Recuperamos ${empresa.razon_social} con todos sus datos.`
+            : `Agregaste ${empresa.razon_social}. Entra a ella desde la lista.`,
+    };
+}
+
+/**
+ * Da de baja una empresa (el backend exige ser su administrador).
+ *
+ * `razon_social` solo arma el aviso; la autorización va por el id.
+ *
+ * Si era la empresa activa, el token queda apuntando a una empresa que ya no
+ * existe para nadie, así que se cambia a otra antes de volver a pintar el
+ * panel: mostrar cifras de una empresa eliminada sería peor que un error.
+ */
+export async function eliminarEmpresa(
+    id_empresa: string,
+    razon_social: string,
+): Promise<ResultadoEmpresa> {
+    const token = await exigirTokenSesion();
+    const idEmpresaActual = await obtenerEmpresaDelToken();
+
+    try {
+        await empresasApi.eliminar(id_empresa, { token });
+    } catch (error) {
+        return {
+            errores: traducirError(
+                error,
+                "No pudimos eliminar la empresa. Inténtalo de nuevo.",
+                "Solo un administrador de esa empresa puede eliminarla.",
+            ),
+        };
+    }
+
+    let aviso = `Eliminaste ${razon_social}.`;
+
+    if (id_empresa === idEmpresaActual) {
+        try {
+            // El backend no deja eliminar la única empresa, así que siempre queda otra.
+            const [siguiente] = await authApi.misEmpresas({ token, cache: "no-store" });
+            const respuesta = await authApi.cambiarEmpresa(siguiente.id_empresa, { token });
+            await guardarSesion(respuesta.access_token);
+            aviso = `Eliminaste ${razon_social}. Ahora estás en ${siguiente.razon_social ?? "otra de tus empresas"}.`;
+        } catch {
+            revalidatePath("/dashboard", "layout");
+            return {
+                errores: [
+                    `Eliminaste ${razon_social}, pero no pudimos cambiarte a otra empresa. Elige una de la lista.`,
+                ],
+            };
+        }
+    }
+
+    revalidatePath("/dashboard", "layout");
+    return { aviso };
+}
+
+/** Guarda el token en la cookie httpOnly. Un solo sitio que la escribe. */
+async function guardarSesion(token: string): Promise<void> {
+    const almacen = await cookies();
+    almacen.set({
+        name: NOMBRE_COOKIE_SESION,
+        value: token,
+        ...OPCIONES_COOKIE_SESION,
+        maxAge: DURACION_SESION_SEGUNDOS,
+    });
+}
+
+/**
+ * Error de la API -> mensajes para el paso del popup. Mismo patrón que
+ * periodos/actions.ts; el 403 cambia según la operación, porque al eliminar
+ * cuenta el rol en ESA empresa y al agregar el de la activa.
+ */
+function traducirError(error: unknown, porDefecto: string, sinPermiso: string): string[] {
+    if (error instanceof ApiError) {
+        if (error.status === 401) redirect("/login");
+        if (error.status === 403) return [sinPermiso];
+        // Render duerme tras 15 minutos sin tráfico y tarda en despertar más
+        // que el tiempo de espera del cliente.
+        if (error.status === 0 || error.status === 408) {
+            return ["El servidor no respondió a tiempo (puede estar despertando). Reintenta en unos segundos."];
+        }
+    }
+    return mensajesDelBackend(error) ?? [porDefecto];
 }

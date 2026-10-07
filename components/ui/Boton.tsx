@@ -12,7 +12,7 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
    con plantillas de texto es el patron que ya sigue SectionShell.
    ========================================================================== */
 
-type Variante = "acento" | "neutro" | "fantasma";
+type Variante = "acento" | "neutro" | "fantasma" | "peligro";
 
 const VARIANTES: Record<Variante, string> = {
     /* Accion principal. El naranjo es el color de accion de la marca; se usa
@@ -25,6 +25,11 @@ const VARIANTES: Record<Variante, string> = {
     /* Sin contorno: para barras de iconos donde el marco seria ruido. */
     fantasma:
         "bg-transparent border-transparent text-[var(--foreground-muted)] hover:bg-[var(--background-raised)] hover:text-[var(--foreground)]",
+    /* Accion que destruye o da de baja algo. El texto va en el color de fondo
+       y no en blanco: en tema oscuro --critico es un salmon claro, y el blanco
+       encima no se lee. */
+    peligro:
+        "bg-[var(--critico)] border-[var(--critico)] text-[var(--background)] font-semibold hover:brightness-110",
 };
 
 type BotonProps = {

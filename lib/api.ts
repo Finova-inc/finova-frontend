@@ -229,14 +229,26 @@ export interface CrearEmpresaInput {
     readonly razon_social: string;
 }
 
+/**
+ * Respuesta de POST /empresas. `recuperada` llega en true cuando el RUT era
+ * de una empresa dada de baja que quien la agrega administraba: vuelve con
+ * todos sus datos en vez de crearse vacia.
+ */
+export type EmpresaCreada = Empresa & { readonly recuperada?: boolean };
+
 export const empresasApi = {
     listar: (opciones?: ApiFetchOptions) => api.get<Empresa[]>("/empresas", opciones),
     obtener: (id: string, opciones?: ApiFetchOptions) =>
         api.get<Empresa>(`/empresas/${id}`, opciones),
+    /** Admin o contador de la empresa activa; quien la crea queda como su administrador. */
     crear: (datos: CrearEmpresaInput, opciones?: ApiFetchOptions) =>
-        api.post<Empresa>("/empresas", datos, opciones),
+        api.post<EmpresaCreada>("/empresas", datos, opciones),
     actualizar: (id: string, datos: Partial<CrearEmpresaInput>, opciones?: ApiFetchOptions) =>
         api.patch<Empresa>(`/empresas/${id}`, datos, opciones),
+    /**
+     * Baja logica: solo el administrador de ESA empresa, y nunca la unica que
+     * le queda (409). Los libros se conservan.
+     */
     eliminar: (id: string, opciones?: ApiFetchOptions) =>
         api.delete<{ message: string }>(`/empresas/${id}`, opciones),
 };
