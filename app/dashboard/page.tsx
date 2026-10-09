@@ -272,7 +272,7 @@ function construirAlertas(datos: DatosPanel): Alerta[] {
                     ? `${conMayuscula(nombrePeriodo(anio, mes))} está cerrado`
                     : `No hay período abierto para ${nombrePeriodo(anio, mes)}`,
                 detalle: "Sin un período abierto no se pueden registrar asientos de este mes.",
-                accion: { texto: actual ? "Ver períodos" : "Abrir ejercicio", href: "/dashboard/periodos" },
+                accion: { texto: actual ? "Ver períodos" : "Abrir período", href: "/dashboard/periodos" },
             });
         }
 

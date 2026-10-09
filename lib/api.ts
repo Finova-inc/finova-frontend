@@ -720,7 +720,11 @@ export const periodosApi = {
         api.get<PeriodoContable[]>("/periodos-contables", opciones),
     crear: (datos: { readonly anio: number; readonly mes: number }, opciones?: ApiFetchOptions) =>
         api.post<PeriodoContable>("/periodos-contables", datos, opciones),
-    /** Los doce meses del ejercicio; solo crea los que faltan. */
+    /**
+     * Los meses del ejercicio que ya comenzaron; solo crea los que faltan y
+     * rechaza un año futuro. La pantalla de períodos ya no lo usa: abre mes a
+     * mes con `crear`.
+     */
     abrirEjercicio: (anio: number, opciones?: ApiFetchOptions) =>
         api.post<PeriodoContable[]>("/periodos-contables/ejercicio", { anio }, opciones),
     cerrar: (id: string, opciones?: ApiFetchOptions) =>
