@@ -23,6 +23,7 @@ export default async function NuevoAsientoPage() {
         <Encabezado
             titulo="Nuevo asiento"
             descripcion="Guárdalo como borrador para completarlo después, o contabilízalo cuando cuadre."
+            volverA="/dashboard/core-contable"
         />
     );
 

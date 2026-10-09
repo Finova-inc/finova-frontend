@@ -3,13 +3,16 @@
 /* ============================================================================
    Server Actions de periodos contables.
 
-   Abrir, cerrar y reabrir meses. Las reglas (quien puede, que meses se pueden
-   cerrar) las aplica el backend; aqui se traducen sus respuestas.
+   Abrir, cerrar y reabrir meses, siempre de a uno: no hay apertura en bloque.
+   Las reglas (quien puede, que meses se pueden abrir o cerrar) las aplica el
+   backend; aqui se traducen sus respuestas.
    ========================================================================== */
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ApiError, mensajesDelBackend, periodosApi } from "@/lib/api";
+import { hoyEnChile, nombreMesLargo, nombrePeriodo } from "@/lib/formato";
+import { esMesFuturo } from "@/lib/periodos";
 import { exigirTokenSesion } from "@/lib/session";
 
 export interface EstadoPeriodo {
@@ -38,41 +41,31 @@ function anioValido(anio: number): boolean {
     return Number.isInteger(anio) && anio >= 2000 && anio <= 2100;
 }
 
-/** Abre un mes suelto: la tarjeta del mes, el aviso del formulario de asiento. */
+/**
+ * Abre un mes: el selector de un ejercicio vacío, la tarjeta del mes y el
+ * aviso del formulario de asiento. En un año anterior la pantalla lo llama
+ * "cargar", pero es la misma operación.
+ */
 export async function abrirMes(anio: number, mes: number): Promise<EstadoPeriodo> {
     const token = await exigirTokenSesion();
 
     if (!anioValido(anio)) return { errores: ["El año debe estar entre 2000 y 2100."] };
     if (!Number.isInteger(mes) || mes < 1 || mes > 12) return { errores: ["Elige un mes válido."] };
 
+    // El backend rechaza un mes que todavía no comienza. Se revisa también
+    // aquí solo para responder en lenguaje llano en vez de "11/2026".
+    if (esMesFuturo({ anio, mes }, hoyEnChile())) {
+        return {
+            errores: [
+                `El período de ${nombrePeriodo(anio, mes)} todavía no comienza: se podrá abrir desde el 1 de ${nombreMesLargo(mes)}.`,
+            ],
+        };
+    }
+
     try {
         await periodosApi.crear({ anio, mes }, { token });
     } catch (error) {
         return { errores: traducirError(error, "No pudimos abrir el período.") };
-    }
-
-    revalidar();
-    return { ok: true };
-}
-
-/** Variante de formulario (useActionState) de abrirMes. */
-export async function abrirPeriodo(
-    _estadoPrevio: EstadoPeriodo,
-    datosFormulario: FormData,
-): Promise<EstadoPeriodo> {
-    return abrirMes(Number(datosFormulario.get("anio")), Number(datosFormulario.get("mes")));
-}
-
-/** Abre los doce meses del ejercicio; los que ya existían quedan como estaban. */
-export async function abrirEjercicio(anio: number): Promise<EstadoPeriodo> {
-    const token = await exigirTokenSesion();
-
-    if (!anioValido(anio)) return { errores: ["El año debe estar entre 2000 y 2100."] };
-
-    try {
-        await periodosApi.abrirEjercicio(anio, { token });
-    } catch (error) {
-        return { errores: traducirError(error, "No pudimos abrir el ejercicio.") };
     }
 
     revalidar();

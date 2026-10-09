@@ -583,7 +583,7 @@ function PrimerosPasos({
             titulo: `Período de ${mesEnCurso}`,
             detalle: periodoAbierto
                 ? "Abierto: admite asientos con fecha de este mes."
-                : "Abre el mes, o el ejercicio completo, para registrar asientos.",
+                : "Abre el mes para registrar asientos.",
             href: "/dashboard/periodos",
             accion: "Ir a períodos",
         },

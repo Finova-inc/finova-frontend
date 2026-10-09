@@ -1,14 +1,20 @@
 /* ============================================================================
    /dashboard/periodos — ejercicio contable y sus doce meses.
 
-   El ejercicio comercial en Chile es el año calendario. Cada mes se abre para
-   registrar asientos y se cierra, en orden, cuando ya terminó y está
-   declarado; un mes cerrado rechaza asientos aunque cuadren. Cerrar lo puede
-   hacer el administrador o el contador; reabrir, solo el administrador y con
-   motivo.
+   El ejercicio comercial en Chile es el año calendario. Los meses se abren de
+   a uno: el que se va a trabajar, nunca uno que todavía no comienza (un
+   asiento no admite fecha futura, así que no podría recibir nada). En un año
+   anterior, abrir un mes se llama "cargar": es historia que se registra
+   después de ocurrida.
+
+   Cada mes abierto recibe asientos y se cierra, en orden, cuando ya terminó y
+   está declarado; un mes cerrado rechaza asientos aunque cuadren. Cerrar lo
+   puede hacer el administrador o el contador; reabrir, solo el administrador
+   y con motivo.
 
    Server Component: el año elegido va en la URL (?anio=2026), así que la
-   vista se puede recargar o compartir.
+   vista se puede recargar o compartir. Las reglas de calendario viven en
+   lib/periodos.ts, con sus pruebas.
    ========================================================================== */
 
 import Link from "next/link";
@@ -18,10 +24,11 @@ import { Icon } from "@/components/ui/Icon";
 import { Panel, PanelCabecera } from "@/components/ui/Panel";
 import { ApiError, periodosApi, type PeriodoContable } from "@/lib/api";
 import { formatearFechaLarga, hoyEnChile, nombreMesLargo, nombrePeriodo } from "@/lib/formato";
+import { aniosDelSelector, mesesDelEjercicio, ultimoDiaDelMes, type MesDelEjercicio } from "@/lib/periodos";
 import { ROL, exigirTokenSesion, obtenerRolDelToken, puedeRegistrar } from "@/lib/session";
 import { Aviso, Encabezado, Guia, ReglasGuia } from "../core-contable/partes";
-import { AbrirEjercicio, AccionesPeriodo } from "./AccionesPeriodo";
-import { NuevoPeriodoForm } from "./NuevoPeriodoForm";
+import { AccionesPeriodo } from "./AccionesPeriodo";
+import { SelectorPeriodo } from "./SelectorPeriodo";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Períodos contables" };
@@ -29,35 +36,18 @@ export const metadata = { title: "Períodos contables" };
 type Parametros = Record<string, string | string[] | undefined>;
 
 const REGLAS: readonly string[] = [
-    "El ejercicio comercial es el año calendario, del 1 de enero al 31 de diciembre. Ábrelo completo o, si la empresa inició actividades a mitad de año, desde el mes de inicio.",
+    "El ejercicio comercial es el año calendario, del 1 de enero al 31 de diciembre. Los meses se abren de a uno: abre el mes en curso para registrar sus operaciones y carga los meses anteriores que necesites trabajar.",
+    "Un mes que todavía no comienza no se puede abrir. Los asientos no admiten fecha futura, porque solo se registran operaciones ya ocurridas (Código de Comercio, art. 27).",
     "Un asiento solo se registra en un mes abierto. El mes se cierra cuando ya terminó y está declarado, y los meses se cierran en orden.",
-    "El F29 de cada mes se presenta hasta el día 20 del mes siguiente si emites documentos tributarios electrónicos (el 12 en los demás casos). Si ese día es inhábil, se corre al siguiente día hábil.",
+    "Cargar un mes anterior a meses ya cerrados cambia los saldos con que esos meses parten. La pantalla lo advierte antes de cargarlo.",
+    "El F29 de cada mes se presenta el mes siguiente: hasta el día 20 si emites documentos tributarios electrónicos y declaras y pagas por internet, hasta el 12 en los demás casos con pago, y hasta el 28 si declaras sin pago por internet. Si el día cae en sábado o feriado, pasa al siguiente día hábil.",
     "Reabrir un mes cerrado es excepcional: solo un administrador, con un motivo que queda en la auditoría. Si el mes ya se declaró, el cambio obliga a rectificar el F29.",
     "Para corregir un asiento no hace falta reabrir el mes: se registra un asiento de reversión en un mes abierto (Código de Comercio, art. 32).",
 ];
 
-type EstadoMes = "abierto" | "cerrado" | "sin-abrir";
-
-interface Mes {
-    readonly anio: number;
-    readonly numero: number;
-    readonly periodo: PeriodoContable | null;
-    readonly estado: EstadoMes;
-    readonly terminado: boolean;
-    readonly enCurso: boolean;
-    readonly bloqueoCierre: string | null;
-}
+type Mes = MesDelEjercicio<PeriodoContable>;
 
 const dosDigitos = (valor: number) => String(valor).padStart(2, "0");
-
-/** Último día del mes 'YYYY-MM-DD', sin pasar por la zona horaria. */
-function ultimoDia(anio: number, mes: number): string {
-    return `${anio}-${dosDigitos(mes)}-${dosDigitos(new Date(Date.UTC(anio, mes, 0)).getUTCDate())}`;
-}
-
-function esAnterior(a: { anio: number; mes: number }, b: { anio: number; mes: number }): boolean {
-    return a.anio < b.anio || (a.anio === b.anio && a.mes < b.mes);
-}
 
 /** "20 de octubre": vencimiento del F29 del mes (facturadores electrónicos). */
 function vencimientoF29(anio: number, mes: number): string {
@@ -65,12 +55,32 @@ function vencimientoF29(anio: number, mes: number): string {
     return `20 de ${nombreMesLargo(siguiente.mes)}${siguiente.anio !== anio ? ` ${siguiente.anio}` : ""}`;
 }
 
+/** "1 de noviembre", con el año solo si no es el actual: cuándo comienza un mes futuro. */
+function primerDia(anio: number, mes: number, anioHoy: number): string {
+    return `1 de ${nombreMesLargo(mes)}${anio !== anioHoy ? ` de ${anio}` : ""}`;
+}
+
+/** Por qué un mes abierto todavía no se puede cerrar, o null si ya se puede. */
+function bloqueoDeCierre(mes: Mes): string | null {
+    if (mes.futuro) return "Todavía no comienza.";
+    if (!mes.terminado) return "Se cierra al terminar el mes.";
+    if (mes.anteriorAbierto) {
+        return `Cierra primero ${nombrePeriodo(mes.anteriorAbierto.anio, mes.anteriorAbierto.mes)}.`;
+    }
+    return null;
+}
+
+/** "enero 2026": el mes cerrado más antiguo posterior a este, o null. */
+function cerradoPosterior(mes: Mes): string | null {
+    return mes.cerradoPosterior ? nombrePeriodo(mes.cerradoPosterior.anio, mes.cerradoPosterior.mes) : null;
+}
+
 function texto(parametros: Parametros, clave: string): string | undefined {
     const valor = parametros[clave];
     return typeof valor === "string" ? valor : undefined;
 }
 
-function EtiquetaMes({ mes }: { readonly mes: Mes }) {
+function EtiquetaMes({ mes, esHistoria }: { readonly mes: Mes; readonly esHistoria: boolean }) {
     if (mes.estado === "cerrado") {
         return (
             <Etiqueta tono="neutro">
@@ -79,16 +89,28 @@ function EtiquetaMes({ mes }: { readonly mes: Mes }) {
             </Etiqueta>
         );
     }
-    if (mes.estado === "sin-abrir") return <Etiqueta tono="neutro">Sin abrir</Etiqueta>;
+    if (mes.estado === "sin-abrir") {
+        return (
+            <Etiqueta tono="neutro">{mes.futuro ? "Aún no comienza" : esHistoria ? "Sin cargar" : "Sin abrir"}</Etiqueta>
+        );
+    }
+    // Abierto antes de que existiera la regla de no abrir el futuro: el
+    // período se respeta, pero se distingue de un mes que ya recibe asientos.
+    if (mes.futuro) return <Etiqueta tono="neutro">Abierto por anticipado</Etiqueta>;
     return mes.terminado ? <Etiqueta tono="aviso">Por cerrar</Etiqueta> : <Etiqueta tono="positivo">Abierto</Etiqueta>;
 }
 
 function TarjetaMes({
     mes,
+    esHistoria,
+    anioHoy,
     puede,
     esAdmin,
 }: {
     readonly mes: Mes;
+    /** Año anterior al actual: sus meses se "cargan" en vez de "abrirse". */
+    readonly esHistoria: boolean;
+    readonly anioHoy: number;
     readonly puede: boolean;
     readonly esAdmin: boolean;
 }) {
@@ -113,7 +135,7 @@ function TarjetaMes({
                     <h3 className="font-display text-[15px] font-semibold capitalize">{nombreMesLargo(numero)}</h3>
                     {mes.enCurso ? <p className="text-[11.5px] font-medium text-[var(--accent)]">Mes en curso</p> : null}
                 </div>
-                <EtiquetaMes mes={mes} />
+                <EtiquetaMes mes={mes} esHistoria={esHistoria} />
             </div>
 
             {periodo ? (
@@ -131,6 +153,9 @@ function TarjetaMes({
                             </>
                         ) : null}
                     </p>
+                    {mes.futuro && mes.estado === "abierto" ? (
+                        <p>Admitirá asientos desde el {primerDia(anio, numero, anioHoy)}.</p>
+                    ) : null}
                     <p>F29 hasta el {vencimientoF29(anio, numero)}</p>
                     {mes.estado === "cerrado" && periodo.cerrado_at ? (
                         <p>Cerrado el {formatearFechaLarga(periodo.cerrado_at)}</p>
@@ -141,7 +166,13 @@ function TarjetaMes({
                     ) : null}
                 </div>
             ) : (
-                <p className="text-[12.5px] text-[var(--foreground-muted)]">No admite asientos hasta abrirlo.</p>
+                <p className="text-[12.5px] text-[var(--foreground-muted)]">
+                    {mes.futuro
+                        ? "Todavía no comienza."
+                        : esHistoria
+                          ? "No admite asientos hasta cargarlo."
+                          : "No admite asientos hasta abrirlo."}
+                </p>
             )}
 
             <div className="mt-auto flex flex-wrap items-end justify-between gap-2 pt-1">
@@ -151,14 +182,18 @@ function TarjetaMes({
                     mes={numero}
                     nombre={nombre}
                     estado={mes.estado}
-                    bloqueoCierre={mes.bloqueoCierre}
+                    bloqueoCierre={bloqueoDeCierre(mes)}
                     borradores={periodo?.cantidad_borradores ?? 0}
+                    futuro={mes.futuro}
+                    disponibleDesde={primerDia(anio, numero, anioHoy)}
+                    esHistoria={esHistoria}
+                    cerradoPosterior={cerradoPosterior(mes)}
                     puedeRegistrar={puede}
                     puedeReabrir={esAdmin}
                 />
                 {periodo && periodo.cantidad_asientos > 0 ? (
                     <Link
-                        href={`/dashboard/core-contable?desde=${anio}-${dosDigitos(numero)}-01&hasta=${ultimoDia(anio, numero)}`}
+                        href={`/dashboard/core-contable?desde=${anio}-${dosDigitos(numero)}-01&hasta=${ultimoDiaDelMes(anio, numero)}`}
                         className="inline-flex items-center gap-1 py-2 text-[12.5px] font-medium text-[var(--accent)] underline-offset-4 hover:underline"
                     >
                         Ver asientos
@@ -188,39 +223,13 @@ export default async function PeriodosPage({ searchParams }: { searchParams: Pro
         errorCarga = true;
     }
 
-    const pedido = Number(texto(parametros, "anio"));
-    const anio = Number.isInteger(pedido) && pedido >= 2000 && pedido <= anioHoy + 1 ? pedido : anioHoy;
-    const anios = [...new Set([anioHoy - 1, anioHoy, anioHoy + 1, anio, ...periodos.map((p) => p.anio)])].sort(
-        (a, b) => a - b,
-    );
+    const { anio, anios, anterior } = aniosDelSelector(Number(texto(parametros, "anio")), periodos, hoy);
+    // Un año anterior no se "abre": se carga, mes a mes, la historia que falte.
+    const esHistoria = anio < anioHoy;
+    const meses = mesesDelEjercicio(anio, periodos, hoy);
+    const sinPeriodos = meses.every((mes) => mes.periodo === null);
 
-    const delAnio = new Map(periodos.filter((p) => p.anio === anio).map((p) => [p.mes, p]));
-    const abiertos = periodos.filter((p) => p.estado === "abierto").sort((a, b) => (esAnterior(a, b) ? -1 : 1));
-
-    const meses: Mes[] = Array.from({ length: 12 }, (_, indice) => {
-        const numero = indice + 1;
-        const periodo = delAnio.get(numero) ?? null;
-        const terminado = ultimoDia(anio, numero) < hoy;
-        const enCurso = anio === anioHoy && numero === mesHoy;
-        const anteriorAbierto = abiertos.find((p) => esAnterior(p, { anio, mes: numero }));
-        return {
-            anio,
-            numero,
-            periodo,
-            estado: periodo ? (periodo.estado === "cerrado" ? "cerrado" : "abierto") : "sin-abrir",
-            terminado,
-            enCurso,
-            bloqueoCierre: !terminado
-                ? enCurso
-                    ? "Se cierra al terminar el mes."
-                    : "Todavía no termina."
-                : anteriorAbierto
-                  ? `Cierra primero ${nombrePeriodo(anteriorAbierto.anio, anteriorAbierto.mes)}.`
-                  : null,
-        };
-    });
-
-    const cuenta = (estado: EstadoMes, terminado?: boolean) =>
+    const cuenta = (estado: Mes["estado"], terminado?: boolean) =>
         meses.filter((m) => m.estado === estado && (terminado === undefined || m.terminado === terminado)).length;
     // Hasta el día 20 vence el F29 del mes anterior; después, el del mes en curso.
     const f29 = diaHoy <= 20 ? (mesHoy === 1 ? { anio: anioHoy - 1, mes: 12 } : { anio: anioHoy, mes: mesHoy - 1 }) : { anio: anioHoy, mes: mesHoy };
@@ -232,7 +241,7 @@ export default async function PeriodosPage({ searchParams }: { searchParams: Pro
                 descripcion="El ejercicio contable es el año calendario. Cada mes se abre para registrar asientos y se cierra, en orden, cuando ya está declarado. Un mes cerrado rechaza asientos aunque cuadren."
             />
 
-            <Guia titulo="Cómo funciona el cierre mensual">
+            <Guia titulo="Cómo funcionan los períodos y el cierre mensual">
                 <ReglasGuia reglas={REGLAS} />
             </Guia>
 
@@ -244,10 +253,29 @@ export default async function PeriodosPage({ searchParams }: { searchParams: Pro
             ) : (
                 <>
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                        <nav aria-label="Ejercicio contable" className="inline-flex rounded-lg border border-[var(--border-strong)] p-0.5">
+                        {/* `replace`: cambiar de año es mirar otra pestaña de la misma
+                            pantalla, no ir a otra. Así "Volver" (y la flecha del
+                            navegador) salen de Períodos de un paso, en vez de
+                            recorrer uno a uno los años visitados. */}
+                        <nav
+                            aria-label="Ejercicio contable"
+                            className="inline-flex flex-wrap items-center rounded-lg border border-[var(--border-strong)] p-0.5"
+                        >
+                            {anterior !== null ? (
+                                <Link
+                                    replace
+                                    href={`/dashboard/periodos?anio=${anterior}`}
+                                    aria-label={`Ver el ejercicio ${anterior}`}
+                                    title={`Ejercicio ${anterior}`}
+                                    className="rounded-md px-1.5 py-1.5 text-[var(--foreground-muted)] transition-colors hover:text-[var(--foreground)]"
+                                >
+                                    <Icon name="chevron" className="size-4 rotate-180" />
+                                </Link>
+                            ) : null}
                             {anios.map((opcion) => (
                                 <Link
                                     key={opcion}
+                                    replace
                                     href={`/dashboard/periodos?anio=${opcion}`}
                                     aria-current={opcion === anio ? "page" : undefined}
                                     className={`tabular rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors ${
@@ -261,7 +289,7 @@ export default async function PeriodosPage({ searchParams }: { searchParams: Pro
                             ))}
                         </nav>
                         <p className="text-[12.5px] text-[var(--foreground-muted)]">
-                            {delAnio.size > 0 ? (
+                            {sinPeriodos ? null : (
                                 <>
                                     <span className="tabular font-semibold text-[var(--foreground)]">{cuenta("abierto")}</span> abiertos
                                     {" · "}
@@ -274,37 +302,57 @@ export default async function PeriodosPage({ searchParams }: { searchParams: Pro
                                     ) : null}
                                     {" · "}
                                 </>
-                            ) : null}
+                            )}
                             F29 de {nombreMesLargo(f29.mes)}: hasta el {vencimientoF29(f29.anio, f29.mes)}
                         </p>
                     </div>
 
-                    {delAnio.size === 0 ? (
+                    {sinPeriodos ? (
                         <Panel>
-                            <PanelCabecera titulo={`El ejercicio ${anio} no está abierto`} />
+                            <PanelCabecera
+                                titulo={
+                                    esHistoria
+                                        ? `El ejercicio ${anio} no tiene períodos cargados`
+                                        : `El ejercicio ${anio} no tiene períodos abiertos`
+                                }
+                            />
                             <p className="mt-2 max-w-3xl text-[13.5px] text-[var(--foreground-muted)]">
-                                Abre los doce meses del año de una vez: quedan listos para registrar asientos y se van
-                                cerrando en orden a medida que declaras cada F29. Si la empresa inició actividades a mitad
-                                de año, abre solo desde el mes de inicio.
+                                {esHistoria
+                                    ? "Carga solo los meses que vas a trabajar. Cada uno queda abierto para registrar sus asientos y después se cierra, en orden; los que no cargues siguen sin admitir asientos."
+                                    : "Abre el mes que vas a trabajar. Los meses se abren de a uno y a medida que comienzan: uno que todavía no empieza no se puede abrir, porque no se registran operaciones con fecha futura."}
                             </p>
                             {puede ? (
-                                <div className="mt-4 flex flex-col gap-5 border-t border-[var(--border-subtle)] pt-4 lg:flex-row lg:items-end lg:gap-10">
-                                    <AbrirEjercicio anio={anio} />
-                                    <div className="flex flex-col gap-2">
-                                        <p className="text-[12.5px] text-[var(--foreground-muted)]">O un mes suelto:</p>
-                                        <NuevoPeriodoForm anio={anio} mes={anio === anioHoy ? mesHoy : 1} />
-                                    </div>
+                                <div className="mt-4 border-t border-[var(--border-subtle)] pt-4">
+                                    {/* key: al cambiar de año el selector parte plegado. */}
+                                    <SelectorPeriodo
+                                        key={anio}
+                                        anio={anio}
+                                        esHistoria={esHistoria}
+                                        meses={meses
+                                            .filter((mes) => !mes.futuro)
+                                            .map((mes) => ({ numero: mes.numero, cerradoPosterior: cerradoPosterior(mes) }))}
+                                    />
                                 </div>
                             ) : (
                                 <p className="mt-3 text-[13px] text-[var(--foreground-muted)]">
-                                    Pide a un administrador o contador de la empresa que abra el ejercicio.
+                                    Pide a un administrador o contador de la empresa que {esHistoria ? "cargue" : "abra"} el
+                                    período.
                                 </p>
                             )}
                         </Panel>
                     ) : (
                         <ol aria-label={`Meses del ejercicio ${anio}`} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
                             {meses.map((mes) => (
-                                <TarjetaMes key={mes.numero} mes={mes} puede={puede} esAdmin={esAdmin} />
+                                // La clave lleva el año: al cambiar de pestaña cada tarjeta
+                                // parte de cero, sin heredar una confirmación a medio hacer.
+                                <TarjetaMes
+                                    key={`${anio}-${mes.numero}`}
+                                    mes={mes}
+                                    esHistoria={esHistoria}
+                                    anioHoy={anioHoy}
+                                    puede={puede}
+                                    esAdmin={esAdmin}
+                                />
                             ))}
                         </ol>
                     )}

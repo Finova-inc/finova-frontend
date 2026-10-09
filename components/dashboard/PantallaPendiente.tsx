@@ -1,3 +1,4 @@
+import { EnlaceVolver } from "@/components/ui/EnlaceVolver";
 import { Etiqueta } from "@/components/ui/Etiqueta";
 import { Icon, type IconName } from "@/components/ui/Icon";
 
@@ -32,11 +33,15 @@ export function PantallaPendiente({
 }: PantallaPendienteProps) {
     return (
         <div className="flex flex-col gap-5">
-            <div className="flex flex-wrap items-center gap-3">
-                <h1 className="font-display text-xl font-semibold tracking-[-0.015em] text-balance">
-                    {titulo}
-                </h1>
-                <Etiqueta tono="demo">En construcción</Etiqueta>
+            <div>
+                {/* El mismo "← Volver" de las pantallas ya construidas, en el mismo lugar. */}
+                <EnlaceVolver />
+                <div className="flex flex-wrap items-center gap-3">
+                    <h1 className="font-display text-xl font-semibold tracking-[-0.015em] text-balance">
+                        {titulo}
+                    </h1>
+                    <Etiqueta tono="demo">En construcción</Etiqueta>
+                </div>
             </div>
 
             <div className="flex max-w-[65ch] flex-col items-start gap-3 rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--surface)] px-5 py-6">
