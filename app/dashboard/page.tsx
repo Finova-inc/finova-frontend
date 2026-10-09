@@ -256,8 +256,8 @@ function construirAlertas(datos: DatosPanel): Alerta[] {
             severidad: "aviso",
             icono: "ledger",
             titulo: "Esta empresa aún no tiene plan de cuentas",
-            detalle: "Carga el plan base NIIF para PYMES para empezar a registrar asientos.",
-            accion: { texto: "Cargar plan", href: "/dashboard/plan-cuentas" },
+            detalle: "Configúralo eligiendo las cuentas que usa la empresa para empezar a registrar asientos.",
+            accion: { texto: "Configurar plan", href: "/dashboard/plan-cuentas" },
         });
     }
 

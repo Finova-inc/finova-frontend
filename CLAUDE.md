@@ -22,7 +22,7 @@ app/
     ├── page.tsx                    "/dashboard" — mezcla datos reales y de ejemplo
     ├── acciones-empresa.ts         Server Actions: cambiar, agregar y eliminar empresas (las usa el popup de la cabecera)
     ├── periodos/                    ✅ real (abrir/cerrar/reabrir)
-    ├── plan-cuentas/                ✅ real (árbol jerárquico, crear/editar/desactivar, carga de plantilla — 27-sep-2026)
+    ├── plan-cuentas/                ✅ real (árbol, crear/editar/eliminar, exportar CSV; configurar/ = configurador del plan — 8-oct-2026)
     ├── core-contable/                ✅ real — el módulo más completo (ver abajo)
     ├── documentos/page.tsx          🚧 placeholder (PantallaPendiente)
     ├── terceros/page.tsx            🚧 placeholder
@@ -96,7 +96,7 @@ Otros hallazgos menores: testimonio ficticio "María Fernández, Auditora extern
 
 ## Funcionalidades completas
 
-Login/logout con JWT real, popup de empresas (cambiar la activa, agregar, cambiar el nombre, eliminar con doble confirmación), apertura/cierre/reapertura de períodos contables, libro diario completo (alta de asiento con balance en vivo, detalle, reversión, borradores con contabilización), plan de cuentas completo: árbol jerárquico (clase → grupo → cuenta de movimiento, indentado por profundidad, cuentas de agrupación marcadas con la etiqueta "Agrupación"), crear/editar/desactivar cuentas (`FormularioCuenta.tsx`/`AccionesCuenta.tsx`, gateado por rol vía `puedeRegistrar`), carga de plantilla (ahora 60 cuentas). El selector de cuenta del libro diario (`FormularioAsiento.tsx`) excluye las cuentas de agrupación (`acepta_movimiento:false`) — solo se pueden imputar cuentas de movimiento.
+Login/logout con JWT real, popup de empresas (cambiar la activa, agregar, cambiar el nombre, eliminar con doble confirmación), apertura/cierre/reapertura de períodos contables, libro diario completo (alta de asiento con balance en vivo, detalle, reversión, borradores con contabilización), plan de cuentas completo: árbol jerárquico (clase → grupo → rubro → cuenta, indentado por profundidad) con solo las cuentas que la empresa eligió; crear/editar cuentas (`FormularioCuenta.tsx`, gateado por rol vía `puedeRegistrar`); eliminar con un popup de confirmación (`DialogoEliminarCuenta.tsx`: borra una cuenta sin historia, ofrece desactivar una con asientos); exportar a CSV (`planACsv`). "Configurar plan de cuentas" (`plan-cuentas/configurar/ConfiguradorPlan.tsx`, admin o contador) elige por rubro las cuentas del plan base (la primera vez vienen marcadas las `recomendada`) y agrega cuentas propias con código del rubro; el avance se guarda en `localStorage` por empresa hasta guardar. El selector de cuenta del libro diario (`FormularioAsiento.tsx`) excluye las cuentas de agrupación (`acepta_movimiento:false`) — solo se pueden imputar cuentas de movimiento.
 
 ## Funcionalidades pendientes
 
@@ -104,7 +104,7 @@ Documentos, terceros, Formulario 29, copiloto de IA, auditoría — las 5 son pa
 
 ## Tests
 
-**No hay ninguno** — sin `*.test.ts(x)`, `*.spec.ts(x)`, `__tests__/`, Cypress ni Playwright en todo el repo. El propio `README.md` lo declara como deuda técnica conocida ("El equipo definió Jest como herramienta de QA" pero nunca implementada); `lib/validation.ts` tiene funciones puras escritas explícitamente pensando en tests que aún no existen.
+Solo `lib/planCuentas.test.mjs`: `npm test` corre `node --test` sin dependencias (Node ≥ 22.18 quita los tipos de `planCuentas.ts` al importarlo). Cubre las piezas puras del plan de cuentas (CSV, resumen y validación del configurador). Sin Jest, Cypress ni Playwright: el `README.md` lo declara deuda técnica ("El equipo definió Jest como herramienta de QA" pero nunca implementada); `lib/validation.ts` tiene funciones puras escritas pensando en tests que aún no existen.
 
 ## Deployment
 

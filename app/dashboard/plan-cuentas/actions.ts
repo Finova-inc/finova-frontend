@@ -7,16 +7,11 @@ import {
     cuentasApi,
     mensajesDelBackend,
     type ActualizarCuentaInput,
+    type ConfigurarPlanInput,
     type CrearCuentaInput,
     type CuentaContable,
 } from "@/lib/api";
 import { exigirTokenSesion } from "@/lib/session";
-
-export interface EstadoPlantilla {
-    readonly errores?: readonly string[];
-    readonly creadas?: number;
-    readonly reubicadas?: number;
-}
 
 export interface EstadoCuenta {
     readonly errores?: readonly string[];
@@ -68,13 +63,14 @@ export async function actualizarCuenta(id: string, datos: ActualizarCuentaInput)
     return { cuenta };
 }
 
-export async function desactivarCuenta(id: string): Promise<{ errores?: readonly string[]; ok?: boolean }> {
+/** Quita la cuenta del plan: el backend la borra si nunca tuvo historia y, si la tiene, la desactiva. */
+export async function eliminarCuenta(id: string): Promise<{ errores?: readonly string[]; ok?: boolean }> {
     const token = await exigirTokenSesion();
 
     try {
-        await cuentasApi.desactivar(id, { token });
+        await cuentasApi.eliminar(id, { token });
     } catch (error) {
-        return { errores: traducirError(error, "No pudimos desactivar la cuenta.") };
+        return { errores: traducirError(error, "No pudimos quitar la cuenta del plan.") };
     }
 
     revalidar();
@@ -97,26 +93,22 @@ export async function reactivarCuenta(id: string): Promise<{ errores?: readonly 
 }
 
 /**
- * Carga el plan base NIIF, o completa su estructura sobre un plan que viene de
- * él (el plano de 47 cuentas). Solo administrador; 409 si el plan es propio.
+ * "Configurar plan de cuentas": crea lo marcado del plan base y las cuentas
+ * propias, y completa la estructura de lo existente. Administrador o
+ * contador; 409 si el plan es propio o una cuenta propia choca con otra.
  */
-export async function cargarPlanBase(): Promise<EstadoPlantilla> {
+export async function configurarPlan(
+    datos: ConfigurarPlanInput,
+): Promise<{ errores?: readonly string[]; creadas?: number }> {
     const token = await exigirTokenSesion();
 
     let creadas: number;
-    let reubicadas: number;
     try {
-        ({ cuentas_creadas: creadas, cuentas_reubicadas: reubicadas } = await cuentasApi.cargarPlantilla({ token }));
+        ({ cuentas_creadas: creadas } = await cuentasApi.configurar(datos, { token }));
     } catch (error) {
-        if (error instanceof ApiError) {
-            if (error.status === 401) redirect("/login");
-            if (error.status === 403) {
-                return { errores: ["Solo un administrador de la empresa puede cargar el plan de cuentas."] };
-            }
-        }
-        return { errores: mensajesDelBackend(error) ?? ["No pudimos cargar el plan de cuentas."] };
+        return { errores: traducirError(error, "No pudimos guardar la configuración del plan de cuentas.") };
     }
 
     revalidar();
-    return { creadas, reubicadas };
+    return { creadas };
 }

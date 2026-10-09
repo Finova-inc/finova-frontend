@@ -195,7 +195,7 @@ entre ambas sin pensar en eso.
 | `/dashboard/core-contable/nuevo` y `/borradores/[id]` | ✅ Real | Formulario de asiento: líneas dinámicas, cuadre en vivo con aritmética exacta (`lib/decimal.ts`), guardar borrador y contabilizar con confirmación. |
 | `/dashboard/core-contable/[id]` | ✅ Real | Detalle del comprobante y reversión (art. 32 del Código de Comercio). |
 | `/dashboard/periodos` | ✅ Real | Abrir mes, cerrar (administrador o contador) y reabrir con motivo (solo administrador). |
-| `/dashboard/plan-cuentas` | ⚠️ Parcial | Solo lectura, más la carga del plan base PYME en una empresa sin cuentas. La edición del plan es un módulo aparte. |
+| `/dashboard/plan-cuentas` | ✅ Real | Árbol del plan con crear, editar, eliminar (popup de confirmación) y exportar CSV. `configurar/`: "Configurar plan de cuentas" elige las cuentas del plan base NIIF y agrega cuentas propias (administrador o contador). |
 | `/dashboard/documentos`, `/terceros`, `/f29`, `/copiloto`, `/auditoria` | 🚧 Placeholder | `PantallaPendiente` con los endpoints que usará cada una. |
 
 Los botones que registran (nuevo asiento, revertir, cerrar período) se ocultan

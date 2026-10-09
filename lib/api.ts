@@ -561,17 +561,36 @@ export interface FilaPlantilla {
     /** false = agrupación; omitido = cuenta imputable. */
     readonly acepta_movimiento?: boolean;
     readonly codigoPadre?: string;
+    /** Viene marcada la primera vez que se configura el plan. */
+    readonly recomendada?: boolean;
 }
 
-/** El plan base y lo que haría falta para aplicarlo al plan actual de la empresa. */
+/** El plan base contra el plan actual de la empresa. */
 export interface PlantillaCuentas {
     readonly cuentas: readonly FilaPlantilla[];
-    /** Cuentas que se crearían. */
+    /** Agrupaciones que faltan para completar la estructura de las cuentas existentes. */
     readonly insertar: number;
     /** Cuentas existentes que pasarían a colgar de su rubro NIIF. */
     readonly reubicar: number;
     /** Por qué no se puede aplicar (plan propio, código en conflicto), o null. */
     readonly conflicto: string | null;
+    /** Código del plan base → id de la cuenta de la empresa que lo cubre. */
+    readonly provistas: Readonly<Record<string, string>>;
+}
+
+/** Cuenta imputable propia, dentro de un rubro del plan base. */
+export interface CuentaPropiaInput {
+    readonly codigo: string;
+    readonly nombre: string;
+    /** Código del rubro del plan base donde va. */
+    readonly codigoPadre: string;
+}
+
+/** Cuerpo de "Configurar plan de cuentas" (POST /cuentas-contables/plantilla). */
+export interface ConfigurarPlanInput {
+    /** Códigos del plan base que se agregan; sus agrupaciones se crean solas. */
+    readonly codigos: readonly string[];
+    readonly propias: readonly CuentaPropiaInput[];
 }
 
 export interface CrearCuentaInput {
@@ -676,18 +695,23 @@ export const cuentasApi = {
         api.get<CuentaContable[]>("/cuentas-contables", opciones),
     plantilla: (opciones?: ApiFetchOptions) =>
         api.get<PlantillaCuentas>("/cuentas-contables/plantilla", opciones),
-    /** Solo administrador. Carga el plan base, o completa su estructura sobre un plan que viene de él. */
-    cargarPlantilla: (opciones?: ApiFetchOptions) =>
+    /**
+     * Administrador o contador. Crea lo marcado del plan base (con sus
+     * agrupaciones) y las cuentas propias, y completa la estructura de las
+     * cuentas que la empresa ya tiene.
+     */
+    configurar: (datos: ConfigurarPlanInput, opciones?: ApiFetchOptions) =>
         api.post<{ cuentas_creadas: number; cuentas_reubicadas: number }>(
             "/cuentas-contables/plantilla",
-            {},
+            datos,
             opciones,
         ),
     crear: (datos: CrearCuentaInput, opciones?: ApiFetchOptions) =>
         api.post<CuentaContable>("/cuentas-contables", datos, opciones),
     actualizar: (id: string, datos: ActualizarCuentaInput, opciones?: ApiFetchOptions) =>
         api.patch<CuentaContable>(`/cuentas-contables/${encodeURIComponent(id)}`, datos, opciones),
-    desactivar: (id: string, opciones?: ApiFetchOptions) =>
+    /** Borra la cuenta si nunca tuvo historia; con asientos o cuentas dentro, la desactiva (con saldo cero). */
+    eliminar: (id: string, opciones?: ApiFetchOptions) =>
         api.delete<{ message: string }>(`/cuentas-contables/${encodeURIComponent(id)}`, opciones),
 };
 

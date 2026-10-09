@@ -3,8 +3,10 @@
  *
  * Un solo archivo, sin "use client"/"use server", para poder importarlo tanto
  * desde un Server Component (la página, el libro diario) como desde un
- * componente cliente (el árbol, el formulario).
+ * componente cliente (el árbol, el formulario). Lo prueba planCuentas.test.mjs.
  */
+
+import type { CuentaContable, CuentaPropiaInput, FilaPlantilla } from "./api";
 
 export interface ClaseDeCuenta {
     readonly id: number;
@@ -115,4 +117,101 @@ export function siguienteCodigo(
 /** Minúsculas y sin tildes, para que "deposito" encuentre "Depósitos a plazo". */
 export function normalizar(texto: string): string {
     return texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+
+/**
+ * Celda de CSV: entre comillas si lo necesita, y nunca algo que Excel ejecute
+ * como fórmula (un nombre "=HIPERVINCULO(...)" se escribe como texto).
+ */
+function celdaCsv(valor: string): string {
+    const texto = /^[=+\-@\t\r]/.test(valor) ? `'${valor}` : valor;
+    return /[;"\r\n]/.test(texto) ? `"${texto.replaceAll('"', '""')}"` : texto;
+}
+
+/**
+ * El plan de cuentas en CSV para Excel en español (separado por punto y coma),
+ * en orden jerárquico: cada agrupación seguida de lo que contiene.
+ */
+export function planACsv(cuentas: readonly CuentaContable[]): string {
+    const filas = [["Código", "Nombre", "Nivel", "Clase", "Código SII", "Estado", "Con asientos"]];
+    const recorrer = (nodos: readonly NodoCuenta<CuentaContable>[], profundidad: number) => {
+        for (const { cuenta, hijas } of nodos) {
+            filas.push([
+                cuenta.codigo,
+                cuenta.nombre,
+                // Una imputable es "Cuenta" aunque cuelgue suelta (plan plano).
+                cuenta.acepta_movimiento ? "Cuenta" : nombreNivel(Math.min(profundidad, 2)),
+                claseDe(cuenta.id_tipo_cuenta).nombre,
+                cuenta.codigo_sii ?? "",
+                cuenta.is_active ? "Activa" : "Inactiva",
+                cuenta.tiene_movimientos ? "Sí" : "No",
+            ]);
+            recorrer(hijas, profundidad + 1);
+        }
+    };
+    recorrer(construirArbol(cuentas), 0);
+    return filas.map((fila) => fila.map(celdaCsv).join(";")).join("\r\n");
+}
+
+/**
+ * Cuántas cuentas y agrupaciones crearía "Configurar plan de cuentas": cada
+ * código marcado, el rubro de cada cuenta propia y cada cuenta que la empresa
+ * ya tiene, con su cadena de agrupaciones; menos lo que ya existe. Es el
+ * cálculo de planificarPlantilla en el backend.
+ *
+ * ponytail: una cuenta que el usuario sacó de su rubro del plan base cuenta
+ * ese rubro como nuevo, y el backend no lo crea; el aviso tras guardar da la
+ * cifra real. Mandar la selección a GET /plantilla si hace falta exactitud.
+ */
+export function resumenConfiguracion(
+    plantilla: readonly FilaPlantilla[],
+    provistas: Readonly<Record<string, string>>,
+    codigos: Iterable<string>,
+    rubrosDePropias: Iterable<string>,
+): { cuentas: number; agrupaciones: number } {
+    const porCodigo = new Map(plantilla.map((fila) => [fila.codigo, fila]));
+    const queridas = new Set<string>();
+    const conAgrupaciones = (codigo: string) => {
+        for (
+            let actual: string | undefined = codigo;
+            actual && !queridas.has(actual);
+            actual = porCodigo.get(actual)?.codigoPadre
+        ) {
+            queridas.add(actual);
+        }
+    };
+    [...codigos, ...rubrosDePropias, ...Object.keys(provistas)].forEach(conAgrupaciones);
+
+    let cuentas = 0;
+    let agrupaciones = 0;
+    for (const codigo of queridas) {
+        if (codigo in provistas) continue;
+        if (porCodigo.get(codigo)?.acepta_movimiento === false) agrupaciones += 1;
+        else cuentas += 1;
+    }
+    return { cuentas, agrupaciones };
+}
+
+/**
+ * Lo que el backend rechazaría de una cuenta propia, dicho antes de guardar.
+ * `ocupados` describe quién tiene ya cada código (`"Caja" del plan base`,
+ * `tu cuenta "Banco Estado"`); `otrasPropias`, los códigos de las demás
+ * cuentas propias de esta configuración.
+ */
+export function problemaDePropia(
+    propia: CuentaPropiaInput,
+    ocupados: ReadonlyMap<string, string>,
+    otrasPropias: readonly string[],
+): string | null {
+    const { codigo, codigoPadre } = propia;
+    if (!/^\d{1,20}$/.test(codigo)) return "El código lleva solo dígitos.";
+    // El panel de control suma por prefijo: con otro código no contaría en su rubro.
+    if (!codigo.startsWith(codigoPadre) || codigo.length === codigoPadre.length) {
+        return `El código tiene que empezar con ${codigoPadre}, el de su rubro, y seguir con más dígitos.`;
+    }
+    const ocupado = ocupados.get(codigo);
+    if (ocupado) return `El código ${codigo} ya es ${ocupado}.`;
+    if (otrasPropias.includes(codigo)) return `El código ${codigo} se repite en otra cuenta propia.`;
+    if (propia.nombre.trim().length < 3) return "El nombre necesita al menos 3 caracteres.";
+    return null;
 }

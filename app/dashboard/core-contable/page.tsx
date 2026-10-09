@@ -574,7 +574,7 @@ function PrimerosPasos({
             titulo: "Plan de cuentas",
             detalle: hayCuentas
                 ? "Listo: ya hay cuentas donde imputar."
-                : "Carga el plan base NIIF o crea tus cuentas.",
+                : "Configura el plan de cuentas: elige las del plan base NIIF y agrega las tuyas.",
             href: "/dashboard/plan-cuentas",
             accion: "Ir al plan de cuentas",
         },
