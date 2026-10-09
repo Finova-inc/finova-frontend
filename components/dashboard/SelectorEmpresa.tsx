@@ -20,11 +20,12 @@ import {
     cambiarEmpresa,
     crearEmpresa,
     eliminarEmpresa,
+    renombrarEmpresa,
     type EstadoCambioEmpresa,
 } from "@/app/dashboard/acciones-empresa";
 import type { EmpresaDelUsuario } from "@/lib/api";
 import { formatearRut, formatearRutAlEscribir } from "@/lib/formato";
-import { validarNuevaEmpresa } from "@/lib/validation";
+import { validarNuevaEmpresa, validarRazonSocial } from "@/lib/validation";
 
 /* ============================================================================
    Empresas del usuario: popup para cambiar de empresa, agregar y eliminar.
@@ -39,7 +40,7 @@ import { validarNuevaEmpresa } from "@/lib/validation";
    ---------------------------------------------------------------------------
    POR QUE PASOS Y NO TODO EN UNA VISTA
    ---------------------------------------------------------------------------
-   Agregar y eliminar abren su propio paso con "Volver": cada acción tiene la
+   Agregar, cambiar el nombre y eliminar abren su propio paso con "Volver": cada acción tiene la
    atención completa, y la de eliminar no queda a un clic de distancia de
    entrar a otra empresa. Eliminar pide dos confirmaciones: la papelera y
    escribir el RUT, que se muestra para no tener que buscarlo.
@@ -88,6 +89,7 @@ const CLASES_CAMPO =
 type Paso =
     | { readonly tipo: "lista" }
     | { readonly tipo: "agregar" }
+    | { readonly tipo: "editar"; readonly empresa: EmpresaDelUsuario }
     | { readonly tipo: "eliminar"; readonly empresa: EmpresaDelUsuario };
 
 type Mensaje = { readonly tono: "positivo" | "critico"; readonly texto: string };
@@ -186,11 +188,20 @@ export function SelectorEmpresa({ empresas, idEmpresaActual }: SelectorEmpresaPr
                             accionCambio={accionCambio}
                             onCerrar={cerrar}
                             onAgregar={() => setPaso({ tipo: "agregar" })}
+                            onEditar={(empresa) => setPaso({ tipo: "editar", empresa })}
                             onEliminar={(empresa) => setPaso({ tipo: "eliminar", empresa })}
                         />
                     ) : paso.tipo === "agregar" ? (
                         <PasoAgregar
                             idTitulo={idTitulo}
+                            onCerrar={cerrar}
+                            onVolver={() => volverALista()}
+                            onListo={(texto) => volverALista({ tono: "positivo", texto })}
+                        />
+                    ) : paso.tipo === "editar" ? (
+                        <PasoEditar
+                            idTitulo={idTitulo}
+                            empresa={paso.empresa}
                             onCerrar={cerrar}
                             onVolver={() => volverALista()}
                             onListo={(texto) => volverALista({ tono: "positivo", texto })}
@@ -223,6 +234,7 @@ function PasoLista({
     accionCambio,
     onCerrar,
     onAgregar,
+    onEditar,
     onEliminar,
 }: {
     readonly idTitulo: string;
@@ -233,6 +245,7 @@ function PasoLista({
     readonly accionCambio: (datos: FormData) => void;
     readonly onCerrar: () => void;
     readonly onAgregar: () => void;
+    readonly onEditar: (empresa: EmpresaDelUsuario) => void;
     readonly onEliminar: (empresa: EmpresaDelUsuario) => void;
 }) {
     return (
@@ -267,23 +280,34 @@ function PasoLista({
                         <li key={empresa.id_empresa} className="relative">
                             <form action={accionCambio}>
                                 <input type="hidden" name="id_empresa" value={empresa.id_empresa} />
-                                <FilaEmpresa empresa={empresa} esActual={esActual} conPapelera={esAdmin} />
+                                <FilaEmpresa empresa={empresa} esActual={esActual} conAcciones={esAdmin} />
                             </form>
 
                             {/* Fuera del <form>: un botón dentro de otro no es
-                                HTML válido, y este no cambia de empresa. Solo
-                                aparece para quien administra esa empresa; el
+                                HTML válido, y estos no cambian de empresa. Solo
+                                aparecen para quien administra esa empresa; el
                                 backend lo exige igual. */}
                             {esAdmin ? (
-                                <button
-                                    type="button"
-                                    onClick={() => onEliminar(empresa)}
-                                    aria-label={`Eliminar ${empresa.razon_social ?? "empresa"}`}
-                                    title="Eliminar empresa"
-                                    className="absolute right-2 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-md text-[var(--foreground-muted)] transition-colors hover:bg-[var(--critico-bg)] hover:text-[var(--critico)]"
-                                >
-                                    <Icon name="trash" className="size-4" />
-                                </button>
+                                <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center">
+                                    <button
+                                        type="button"
+                                        onClick={() => onEditar(empresa)}
+                                        aria-label={`Cambiar el nombre de ${empresa.razon_social ?? "la empresa"}`}
+                                        title="Cambiar nombre"
+                                        className="grid size-8 place-items-center rounded-md text-[var(--foreground-muted)] transition-colors hover:bg-[var(--background-raised)] hover:text-[var(--foreground)]"
+                                    >
+                                        <Icon name="pencil" className="size-4" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => onEliminar(empresa)}
+                                        aria-label={`Eliminar ${empresa.razon_social ?? "empresa"}`}
+                                        title="Eliminar empresa"
+                                        className="grid size-8 place-items-center rounded-md text-[var(--foreground-muted)] transition-colors hover:bg-[var(--critico-bg)] hover:text-[var(--critico)]"
+                                    >
+                                        <Icon name="trash" className="size-4" />
+                                    </button>
+                                </div>
                             ) : null}
                         </li>
                     );
@@ -312,11 +336,12 @@ function PasoLista({
 function FilaEmpresa({
     empresa,
     esActual,
-    conPapelera,
+    conAcciones,
 }: {
     readonly empresa: EmpresaDelUsuario;
     readonly esActual: boolean;
-    readonly conPapelera: boolean;
+    /** Deja lugar a la derecha para los botones de editar y eliminar. */
+    readonly conAcciones: boolean;
 }) {
     const { pending } = useFormStatus();
 
@@ -326,7 +351,7 @@ function FilaEmpresa({
             disabled={esActual || pending}
             aria-current={esActual ? "true" : undefined}
             className={`group flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors disabled:cursor-default ${
-                conPapelera ? "pr-12" : ""
+                conAcciones ? "pr-[4.75rem]" : ""
             } ${
                 esActual
                     ? "border-[var(--border-strong)] bg-[var(--background-raised)]"
@@ -478,7 +503,87 @@ function PasoAgregar({
 }
 
 /* ----------------------------------------------------------------------------
-   Paso 3: eliminar empresa (segunda confirmación).
+   Paso 3: cambiar el nombre (solo la razón social; el RUT no se edita).
+   -------------------------------------------------------------------------- */
+
+function PasoEditar({
+    idTitulo,
+    empresa,
+    onCerrar,
+    onVolver,
+    onListo,
+}: {
+    readonly idTitulo: string;
+    readonly empresa: EmpresaDelUsuario;
+    readonly onCerrar: () => void;
+    readonly onVolver: () => void;
+    readonly onListo: (aviso: string) => void;
+}) {
+    const idCampo = useId();
+    const original = empresa.razon_social ?? "";
+    const [nombre, setNombre] = useState(original);
+    const [errores, setErrores] = useState<readonly string[]>([]);
+    const [enCurso, iniciar] = useTransition();
+
+    // Guardar el mismo nombre seria un viaje al servidor que no cambia nada.
+    const sinCambios = nombre.trim() === original.trim();
+
+    function alGuardar(evento: FormEvent<HTMLFormElement>) {
+        evento.preventDefault();
+
+        const locales = validarRazonSocial(nombre);
+        setErrores(locales);
+        if (locales.length > 0 || sinCambios) return;
+
+        iniciar(async () => {
+            const resultado = await renombrarEmpresa(empresa.id_empresa, nombre);
+            // Igual que al agregar: el aviso y la lista con el nombre nuevo, juntos.
+            startTransition(() => {
+                if (resultado.errores) setErrores(resultado.errores);
+                else onListo(resultado.aviso ?? "Cambiaste el nombre de la empresa.");
+            });
+        });
+    }
+
+    return (
+        <form onSubmit={alGuardar} noValidate className="flex min-h-0 flex-1 flex-col">
+            <Encabezado idTitulo={idTitulo} titulo="Cambiar nombre" onCerrar={onCerrar} onVolver={onVolver}>
+                Corrige la razón social si quedó mal escrita. El RUT{" "}
+                <span className="tabular font-semibold text-[var(--foreground)]">{empresa.rut}</span> no cambia:
+                si el error está en el RUT, elimina la empresa y agrégala de nuevo.
+            </Encabezado>
+
+            <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto px-5 pb-5">
+                <Campo id={idCampo} etiqueta="Razón social">
+                    <input
+                        id={idCampo}
+                        value={nombre}
+                        onChange={(evento) => setNombre(evento.target.value)}
+                        onFocus={(evento) => evento.currentTarget.select()}
+                        autoFocus
+                        maxLength={150}
+                        autoComplete="organization"
+                        className={CLASES_CAMPO}
+                    />
+                </Campo>
+
+                <Errores errores={errores} />
+            </div>
+
+            <Pie>
+                <Boton variante="neutro" onClick={onVolver} disabled={enCurso}>
+                    Cancelar
+                </Boton>
+                <Boton variante="acento" type="submit" disabled={enCurso || sinCambios}>
+                    {enCurso ? "Guardando…" : "Guardar nombre"}
+                </Boton>
+            </Pie>
+        </form>
+    );
+}
+
+/* ----------------------------------------------------------------------------
+   Paso 4: eliminar empresa (segunda confirmación).
    -------------------------------------------------------------------------- */
 
 function PasoEliminar({

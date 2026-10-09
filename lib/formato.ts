@@ -49,11 +49,14 @@ export function formatearCLP(monto: string | number): string {
     }).format(valor);
 }
 
+const UN_DECIMAL = new Intl.NumberFormat("es-CL", { maximumFractionDigits: 1 });
+
 /**
  * Formatea un monto abreviado para ejes de graficos: 45000000 -> "45M".
  *
- * En un eje vertical no cabe "$45.000.000" seis veces sin encimarse, y la
- * precision ahi no aporta: el valor exacto se lee en la tarjeta de resumen.
+ * En un eje vertical no cabe "$45.000.000" seis veces sin encimarse. Se
+ * conserva un decimal: redondeando a entero, las lineas de 1,6M y 2M decian
+ * las dos "2M", y un eje que repite rotulos miente sobre la escala.
  */
 export function formatearMontoCorto(monto: string | number): string {
     const valor = typeof monto === "string" ? Number(monto) : monto;
@@ -65,11 +68,11 @@ export function formatearMontoCorto(monto: string | number): string {
     const absoluto = Math.abs(valor);
 
     if (absoluto >= 1_000_000) {
-        return `${Math.round(valor / 1_000_000)}M`;
+        return `${UN_DECIMAL.format(valor / 1_000_000)}M`;
     }
 
     if (absoluto >= 1_000) {
-        return `${Math.round(valor / 1_000)}k`;
+        return `${UN_DECIMAL.format(valor / 1_000)}k`;
     }
 
     return String(Math.round(valor));

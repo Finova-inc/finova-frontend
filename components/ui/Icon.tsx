@@ -179,6 +179,13 @@ const ICON_PATHS = {
     plus: <path d="M12 5v14M5 12h14" />,
     /** Cerrar un diálogo. */
     close: <path d="M18 6 6 18M6 6l12 12" />,
+    /** Editar un dato. */
+    pencil: (
+        <>
+            <path d="M17 3a2.8 2.8 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+            <path d="m15 5 4 4" />
+        </>
+    ),
     /** Información y notas al pie. */
     info: (
         <>

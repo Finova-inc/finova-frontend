@@ -120,12 +120,15 @@ export function validarNuevaEmpresa(rut: string, razonSocial: string): string[] 
         if (!resultado.isValid) errores.push(resultado.message);
     }
 
-    const largo = razonSocial.trim().length;
-    if (largo < 3 || largo > 150) {
-        errores.push("La razón social debe tener entre 3 y 150 caracteres.");
-    }
+    errores.push(...validarRazonSocial(razonSocial));
 
     return errores;
+}
+
+/** Razón social de 3 a 150 caracteres, como CreateEmpresaDto y UpdateEmpresaDto. */
+export function validarRazonSocial(razonSocial: string): string[] {
+    const largo = razonSocial.trim().length;
+    return largo < 3 || largo > 150 ? ["La razón social debe tener entre 3 y 150 caracteres."] : [];
 }
 
 /**

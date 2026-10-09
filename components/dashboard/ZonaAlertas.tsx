@@ -1,9 +1,8 @@
 import Link from "next/link";
 
 import { Etiqueta } from "@/components/ui/Etiqueta";
-import { Icon } from "@/components/ui/Icon";
+import { Icon, type IconName } from "@/components/ui/Icon";
 import { formatearCLP } from "@/lib/formato";
-import type { Alerta, SeveridadAlerta } from "@/lib/datos-ejemplo";
 
 /* ============================================================================
    Zona 1 — Lo urgente.
@@ -20,6 +19,23 @@ import type { Alerta, SeveridadAlerta } from "@/lib/datos-ejemplo";
    estado. Quien no distingue bien el rojo del ambar sigue viendo que hay una
    marca, y el texto de la etiqueta la nombra.
    ========================================================================== */
+
+export type SeveridadAlerta = "critica" | "aviso" | "info";
+
+/** Un asunto pendiente que sale de los datos reales de la empresa. */
+export type Alerta = {
+    readonly id: string;
+    readonly severidad: SeveridadAlerta;
+    readonly icono: IconName;
+    readonly titulo: string;
+    readonly detalle: string;
+    /** Pastilla corta a la derecha del titulo: fecha limite o categoria. */
+    readonly insignia?: string;
+    /** Monto destacado, en string como lo entrega la API. */
+    readonly monto?: string;
+    /** Enlace de resolucion. */
+    readonly accion?: { readonly texto: string; readonly href: string };
+};
 
 const FRANJA: Record<SeveridadAlerta, string> = {
     critica: "bg-[var(--critico)]",
@@ -44,6 +60,24 @@ type ZonaAlertasProps = {
 };
 
 export function ZonaAlertas({ alertas }: ZonaAlertasProps) {
+    // Sin pendientes se dice explicitamente: un hueco vacio se lee como "no
+    // cargo", no como "esta todo en orden".
+    if (alertas.length === 0) {
+        return (
+            <p className="flex items-center gap-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-4 py-3 text-[13px]">
+                <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-[var(--positivo-bg)] text-[var(--positivo)]">
+                    <Icon name="check" className="size-4" />
+                </span>
+                <span>
+                    <span className="font-semibold">Todo al día.</span>{" "}
+                    <span className="text-[var(--foreground-muted)]">
+                        No hay meses por cerrar, borradores pendientes ni IVA por declarar.
+                    </span>
+                </span>
+            </p>
+        );
+    }
+
     return (
         <div className="flex flex-col gap-px overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--border-subtle)]">
             {alertas.map((alerta) => (

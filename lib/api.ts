@@ -243,8 +243,12 @@ export const empresasApi = {
     /** Admin o contador de la empresa activa; quien la crea queda como su administrador. */
     crear: (datos: CrearEmpresaInput, opciones?: ApiFetchOptions) =>
         api.post<EmpresaCreada>("/empresas", datos, opciones),
-    actualizar: (id: string, datos: Partial<CrearEmpresaInput>, opciones?: ApiFetchOptions) =>
-        api.patch<Empresa>(`/empresas/${id}`, datos, opciones),
+    /**
+     * Corrige la razon social; el RUT no se edita (el backend responde 400).
+     * Solo el administrador de ESA empresa.
+     */
+    actualizar: (id: string, datos: { readonly razon_social: string }, opciones?: ApiFetchOptions) =>
+        api.patch<Empresa>(`/empresas/${encodeURIComponent(id)}`, datos, opciones),
     /**
      * Baja logica: solo el administrador de ESA empresa, y nunca la unica que
      * le queda (409). Los libros se conservan.
@@ -456,6 +460,8 @@ export interface FiltroAsientos {
     readonly id_cuenta?: string;
     readonly texto?: string;
     readonly pagina?: number;
+    /** Tamano de pagina; el backend admite hasta 200. */
+    readonly por_pagina?: number;
 }
 
 /** Linea de borrador: cualquier campo puede faltar. */
@@ -494,6 +500,38 @@ function consulta(parametros: Record<string, string | number | undefined>): stri
     return pares.length === 0
         ? ""
         : `?${new URLSearchParams(pares.map(([clave, valor]) => [clave, String(valor)])).toString()}`;
+}
+
+/**
+ * Un mes del resumen del panel. Montos en string con signo: un mes puede
+ * cerrar en perdida, y un IVA neto negativo es remanente de credito.
+ */
+export interface MesResumen {
+    readonly mes: number;
+    readonly ingresos: string;
+    readonly gastos: string;
+    readonly resultado: string;
+    readonly iva_debito: string;
+    readonly iva_credito: string;
+    /** Debito menos credito: positivo, IVA a pagar; negativo, remanente. */
+    readonly iva_neto: string;
+}
+
+/**
+ * GET /asientos-contables/resumen. Lo calcula el backend desde el libro:
+ * meses de enero a la fecha de corte (`hasta`) y saldos de balance a esa
+ * fecha (efectivo = rubro 1101, por cobrar = 1103, por pagar = 2101).
+ */
+export interface ResumenPanel {
+    readonly anio: number;
+    readonly hasta: string;
+    readonly meses: readonly MesResumen[];
+    readonly resultado_ejercicio: string;
+    readonly saldos: {
+        readonly efectivo: string;
+        readonly por_cobrar: string;
+        readonly por_pagar: string;
+    };
 }
 
 /** Cuenta del plan contable. */
@@ -606,6 +644,9 @@ export const asientosApi = {
             `/asientos-contables/libro-mayor${consulta({ id_cuenta, desde, hasta })}`,
             opciones,
         ),
+    /** Cifras del panel de control; sin anio, el ejercicio en curso. */
+    resumen: (anio?: number, opciones?: ApiFetchOptions) =>
+        api.get<ResumenPanel>(`/asientos-contables/resumen${consulta({ anio })}`, opciones),
 };
 
 export const borradoresApi = {

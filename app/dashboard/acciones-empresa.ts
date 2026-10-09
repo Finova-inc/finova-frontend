@@ -18,7 +18,7 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { ApiError, authApi, empresasApi, mensajesDelBackend, type EmpresaCreada } from "@/lib/api";
+import { ApiError, authApi, empresasApi, mensajesDelBackend, type Empresa, type EmpresaCreada } from "@/lib/api";
 import { formatearRut } from "@/lib/formato";
 import {
     DURACION_SESION_SEGUNDOS,
@@ -27,7 +27,7 @@ import {
     exigirTokenSesion,
     obtenerEmpresaDelToken,
 } from "@/lib/session";
-import { validarNuevaEmpresa } from "@/lib/validation";
+import { validarNuevaEmpresa, validarRazonSocial } from "@/lib/validation";
 
 export interface EstadoCambioEmpresa {
     readonly error?: string;
@@ -173,6 +173,34 @@ export async function eliminarEmpresa(
 
     revalidatePath("/dashboard", "layout");
     return { aviso };
+}
+
+/**
+ * Corrige la razon social de una empresa (el backend exige ser su
+ * administrador). El RUT no se toca: si esta mal, se elimina y se agrega.
+ */
+export async function renombrarEmpresa(id_empresa: string, razon_social: string): Promise<ResultadoEmpresa> {
+    const token = await exigirTokenSesion();
+
+    const errores = validarRazonSocial(razon_social);
+    if (errores.length > 0) return { errores };
+
+    let empresa: Empresa;
+    try {
+        empresa = await empresasApi.actualizar(id_empresa, { razon_social: razon_social.trim() }, { token });
+    } catch (error) {
+        return {
+            errores: traducirError(
+                error,
+                "No pudimos cambiar el nombre. Inténtalo de nuevo.",
+                "Solo un administrador de esa empresa puede cambiarle el nombre.",
+            ),
+        };
+    }
+
+    // El nombre aparece en la cabecera y en la lista: los lee el layout.
+    revalidatePath("/dashboard", "layout");
+    return { aviso: `Listo: la empresa ahora se llama ${empresa.razon_social}.` };
 }
 
 /** Guarda el token en la cookie httpOnly. Un solo sitio que la escribe. */
