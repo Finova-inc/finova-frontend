@@ -20,10 +20,9 @@ app/
 └── dashboard/
     ├── layout.tsx                 Sidebar + header, exige sesión (Server Component)
     ├── page.tsx                    "/dashboard" — mezcla datos reales y de ejemplo
-    ├── acciones-empresa.ts         Server Action: cambiar empresa activa
-    ├── empresas/                    ✅ real (CRUD contra backend)
+    ├── acciones-empresa.ts         Server Actions: cambiar, agregar y eliminar empresas (las usa el popup de la cabecera)
     ├── periodos/                    ✅ real (abrir/cerrar/reabrir)
-    ├── plan-cuentas/                ✅ real (árbol jerárquico, crear/editar/desactivar, carga de plantilla — 27-sep-2026)
+    ├── plan-cuentas/                ✅ real (árbol, crear/editar/eliminar, exportar CSV; configurar/ = configurador del plan — 8-oct-2026)
     ├── core-contable/                ✅ real — el módulo más completo (ver abajo)
     ├── documentos/page.tsx          🚧 placeholder (PantallaPendiente)
     ├── terceros/page.tsx            🚧 placeholder
@@ -34,7 +33,7 @@ app/
 
 **`core-contable/`** (libro diario): `page.tsx` (listado + vista imprimible), `[id]/page.tsx` (detalle read-only), `nuevo/page.tsx` (alta), `borradores/[id]/page.tsx` (edición de borrador), `FormularioAsiento.tsx` (~550 líneas, cliente, con balance en vivo vía `lib/decimal.ts`), `DialogoRevertir.tsx`, `BotonImprimir.tsx`, `actions.ts` (Server Actions), `error.tsx` (usa el nuevo prop `retry` de Next 16.3, no el `reset` anterior).
 
-**Componentes cliente** (`"use client"` — confirmado por grep, más de lo que dice un comentario obsoleto en `ThemeToggle.tsx`/`docs/LANDING.md` que afirma "solo tres"): `ThemeToggle`, `Reveal`, `HeaderScroll` (header fijo de la landing que se compacta al hacer scroll), `LoginForm`, `Sidebar`, `CerrarSesionBoton`, `SelectorEmpresa`, `BotonImprimir`, `DialogoRevertir`, `FormularioAsiento`, `core-contable/error.tsx`, `NuevaEmpresaForm`, `AccionesPeriodo`, `NuevoPeriodoForm`, `BotonPlanBase`. Todo lo demás es Server Component, incluyendo `dashboard/layout.tsx` y todas las páginas de core-contable.
+**Componentes cliente** (`"use client"` — confirmado por grep, más de lo que dice un comentario obsoleto en `ThemeToggle.tsx`/`docs/LANDING.md` que afirma "solo tres"): `ThemeToggle`, `Reveal`, `HeaderScroll` (header fijo de la landing que se compacta al hacer scroll), `LoginForm`, `Sidebar`, `CerrarSesionBoton`, `SelectorEmpresa`, `BotonImprimir`, `DialogoRevertir`, `FormularioAsiento`, `core-contable/error.tsx`, `AccionesPeriodo`, `NuevoPeriodoForm`, `BotonPlanBase`. Todo lo demás es Server Component, incluyendo `dashboard/layout.tsx` y todas las páginas de core-contable.
 
 ## `proxy.ts` (raíz, ~45 líneas)
 
@@ -64,9 +63,9 @@ Flujo real (no mockeado):
 ## Componentes
 
 - **`components/ui/`** (sistema de diseño propio, sin librería externa): `Icon.tsx` (sprite SVG único, ~30 íconos, rechaza deliberadamente `lucide-react`), `Boton.tsx`, `Etiqueta.tsx` (pill de estado, incluye tono `demo`), `Panel.tsx`, `Barra.tsx`, `SectionShell.tsx`, `Reveal.tsx`, `ThemeToggle.tsx` (variante `icon` por omisión, usada en panel y login; variante `switch` —pastilla con sol y luna y perilla deslizante— solo en el header de la landing), `InlineScript.tsx`.
-- **Formularios**: sin react-hook-form. `<form>` nativo + `useActionState`/`useFormStatus` de React 19 atados a Server Actions (`NuevaEmpresaForm`, `NuevoPeriodoForm`), o estado controlado + `useTransition` en los más complejos (`FormularioAsiento`, `DialogoRevertir`, `AccionesPeriodo`, `SelectorEmpresa`).
+- **Formularios**: sin react-hook-form. `<form>` nativo + `useActionState`/`useFormStatus` de React 19 atados a Server Actions (`NuevoPeriodoForm`, el cambio de empresa de `SelectorEmpresa`), o estado controlado + `useTransition` en los más complejos (`FormularioAsiento`, `DialogoRevertir`, `AccionesPeriodo`, `SelectorEmpresa`).
 - **Tablas**: `<table>` HTML plano en cada página, sin librería.
-- **`components/dashboard/`**: `GraficoFlujoCaja.tsx` (SVG a mano), `AvisoMaqueta.tsx`, `ZonaAlertas.tsx`, `PanelConciliacion.tsx`, `TablaCartera.tsx` (estos cuatro consumen datos de ejemplo — ver "Mocks"), `SelectorEmpresa.tsx` (real, conectado al backend), `PantallaPendiente.tsx` (pantalla genérica reusada por los 5 módulos no construidos).
+- **`components/dashboard/`**: `GraficoIngresosGastos.tsx` (SVG a mano; colores de serie validados con el validador de paleta, no los de estado), `ZonaAlertas.tsx` (dueño del tipo `Alerta`; muestra "Todo al día" si no hay alertas), `SelectorEmpresa.tsx` (popup de empresas con `<dialog>` nativo: cambiar la activa, agregar, cambiar el nombre (solo razón social, solo admin de esa empresa) y eliminar con confirmación por RUT; reemplazó a la página `/dashboard/empresas`), `PantallaPendiente.tsx` (pantalla genérica reusada por los 5 módulos no construidos).
 - **`components/landing/`**: solo marketing, sin llamadas al backend; todos Server Components salvo `HeaderScroll`. Rediseñada el 2-oct-2026 y el hero de nuevo el 5-oct-2026: header fijo con el nombre que se pliega hacia el logo; hero centrado según `images/image.png` (titular en serifa Instrument Serif, cargada solo en "/" vía `serifFont.variable` en el envoltorio `.landing`) sin botones ni pastilla (la acción de entrar vive en el header) y `HeroDemo` debajo: dashboard animado de 16 s con "cámara" (zoom/paneo), cursor, clics y anillos de foco numerados, que cierra con una cortina con la marca y el lema "Tu contabilidad, más fácil que nunca." (el reinicio del dashboard ocurre oculto detrás de ella). Ojo: `--font-serif` se redeclara en `.landing` porque la de @theme se resuelve en :root, donde la variable de la serifa no existe, y caería en Inter sin error visible; `ModuleStrip` (carrusel de módulos) bajo el hero; "Qué es Finova" y "Ventajas" con cifras públicas citadas (SII, INE, APQC, Código Tributario, Automation Anywhere). Animaciones solo CSS (`globals.css`, sección 5b), y solo de propiedades que compone la GPU (opacity/translate/scale/transform; nunca clip-path, mask ni width, y nunca transform sobre un `<svg>`: Chrome no lo compone, se anima un span envoltorio). `HeroDemo` mide todo en `em` con font-size = ancho del contenedor/80 (`cqw`), así escala sin JS. Verificado: 0 animaciones no compuestas, 60 fps con CPU 4× más lenta. El estilo base de cada elemento es su estado final y, con "reducir movimiento", se anulan duraciones y retrasos, así todo aparece completo. Las secciones bajo el hero llevan `content-visibility: auto` (medido: layout de carga ~40% menor). Paleta extendida de destacadores (`--hl-*`: naranjo, amarillo, menta, rosa, celeste, lila) y tema oscuro propio de la landing vía `.dark:has(.landing)` — el panel y el login no lo heredan.
 - **Trampa de Lightning CSS** (compilador de Tailwind v4): si `-webkit-backdrop-filter` va DESPUÉS de `backdrop-filter`, descarta la versión sin prefijo y Chrome/Edge quedan sin desenfoque. Siempre declarar el prefijo primero.
 
@@ -78,9 +77,9 @@ Todos los tipos de datos de API viven inline en `lib/api.ts` (sin carpeta `types
 
 Sin estado global (Context/Redux/Zustand/React Query/SWR) — solo primitivas de React 19 (`useState`, `useTransition`, `useActionState`, `useFormStatus`, `useSyncExternalStore` para el tema) + Server Actions/`revalidatePath` + parámetros de URL para filtros (core-contable usa `<form method="get">`). `lib/validation.ts` tiene validadores puros hand-written (email, password) explícitamente documentados como UX, no seguridad — la validación real ocurre en el backend.
 
-## Mocks y datos de ejemplo
+## Panel de control y datos de ejemplo
 
-**Único archivo de mock**: `lib/datos-ejemplo.ts` (147 líneas) — `ALERTAS_EJEMPLO`, `CONCILIACION_EJEMPLO`, `FLUJO_EJEMPLO`, `CARTERA_EJEMPLO`. Política de equipo documentada en el propio archivo: los datos mock viven **solo** ahí, y todo componente que los consuma debe mostrar una `Etiqueta` visible de tono `demo`/"sin backend". Consumido únicamente por `ZonaAlertas`, `PanelConciliacion`, `GraficoFlujoCaja`, `TablaCartera` — todos en `/dashboard`, que mezcla estos widgets con conteos reales (documentos/terceros/cuentas vía `Promise.allSettled`), claramente rotulados en el código y la UI.
+`/dashboard` ya no usa datos de ejemplo (se borraron `lib/datos-ejemplo.ts`, `AvisoMaqueta`, `PanelConciliacion` y `TablaCartera` el 2026-10-07). Todo sale del backend en paralelo con `Promise.allSettled`: `asientosApi.resumen` (saldos de los rubros 1101/1103/2101, resultado e IVA por mes; los cálculos de dinero los hace el backend con BigInt), períodos, borradores, cuentas y los últimos 5 asientos. Las alertas las arma `construirAlertas()` en `app/dashboard/page.tsx`; el vencimiento del F29 está fijo en el día 20 (`DIA_VENCE_F29`, supuesto a confirmar con el PO). Un bloque cuya consulta falla muestra "—", nunca un cero. Conciliación bancaria y cartera por vencimiento no se muestran: no hay módulo bancario ni registro de pagos.
 
 Otros hallazgos menores: testimonio ficticio "María Fernández, Auditora externa" en `app/login/page.tsx` (marcado en el propio código como "PERSONA FICTICIA, reemplazar antes de publicar"); precios "referenciales" marcados como tales en `PricingSection.tsx`; SVGs boilerplate de `create-next-app` en `public/` sin ninguna referencia en el código (candidatos a limpieza, no funcionales).
 
@@ -97,15 +96,15 @@ Otros hallazgos menores: testimonio ficticio "María Fernández, Auditora extern
 
 ## Funcionalidades completas
 
-Login/logout con JWT real, selector/cambio de empresa activa, CRUD de empresas, apertura/cierre/reapertura de períodos contables, libro diario completo (alta de asiento con balance en vivo, detalle, reversión, borradores con contabilización), plan de cuentas completo: árbol jerárquico (clase → grupo → cuenta de movimiento, indentado por profundidad, cuentas de agrupación marcadas con la etiqueta "Agrupación"), crear/editar/desactivar cuentas (`FormularioCuenta.tsx`/`AccionesCuenta.tsx`, gateado por rol vía `puedeRegistrar`), carga de plantilla (ahora 60 cuentas). El selector de cuenta del libro diario (`FormularioAsiento.tsx`) excluye las cuentas de agrupación (`acepta_movimiento:false`) — solo se pueden imputar cuentas de movimiento.
+Login/logout con JWT real, popup de empresas (cambiar la activa, agregar, cambiar el nombre, eliminar con doble confirmación), apertura/cierre/reapertura de períodos contables, libro diario completo (alta de asiento con balance en vivo, detalle, reversión, borradores con contabilización), plan de cuentas completo: árbol jerárquico (clase → grupo → rubro → cuenta, indentado por profundidad) con solo las cuentas que la empresa eligió; crear/editar cuentas (`FormularioCuenta.tsx`, gateado por rol vía `puedeRegistrar`); eliminar con un popup de confirmación (`DialogoEliminarCuenta.tsx`: borra una cuenta sin historia, ofrece desactivar una con asientos); exportar a CSV (`planACsv`). "Configurar plan de cuentas" (`plan-cuentas/configurar/ConfiguradorPlan.tsx`, admin o contador) elige por rubro las cuentas del plan base (la primera vez vienen marcadas las `recomendada`) y agrega cuentas propias con código del rubro; el avance se guarda en `localStorage` por empresa hasta guardar. El selector de cuenta del libro diario (`FormularioAsiento.tsx`) excluye las cuentas de agrupación (`acepta_movimiento:false`) — solo se pueden imputar cuentas de movimiento.
 
 ## Funcionalidades pendientes
 
-Documentos, terceros, Formulario 29, copiloto de IA, auditoría — las 5 son pantallas `PantallaPendiente` que listan qué endpoints del backend ya existen, sin lógica de UI real construida todavía. Widgets de `/dashboard` (alertas, conciliación, flujo de caja, cartera) siguen con datos de ejemplo, no conectados al backend.
+Documentos, terceros, Formulario 29, copiloto de IA, auditoría — las 5 son pantallas `PantallaPendiente` que listan qué endpoints del backend ya existen, sin lógica de UI real construida todavía. En `/dashboard` faltan conciliación bancaria y cartera por vencimiento (sin backend).
 
 ## Tests
 
-**No hay ninguno** — sin `*.test.ts(x)`, `*.spec.ts(x)`, `__tests__/`, Cypress ni Playwright en todo el repo. El propio `README.md` lo declara como deuda técnica conocida ("El equipo definió Jest como herramienta de QA" pero nunca implementada); `lib/validation.ts` tiene funciones puras escritas explícitamente pensando en tests que aún no existen.
+Solo `lib/planCuentas.test.mjs`: `npm test` corre `node --test` sin dependencias (Node ≥ 22.18 quita los tipos de `planCuentas.ts` al importarlo). Cubre las piezas puras del plan de cuentas (CSV, resumen y validación del configurador). Sin Jest, Cypress ni Playwright: el `README.md` lo declara deuda técnica ("El equipo definió Jest como herramienta de QA" pero nunca implementada); `lib/validation.ts` tiene funciones puras escritas pensando en tests que aún no existen.
 
 ## Deployment
 
@@ -116,7 +115,6 @@ Vercel, conectado a GitHub, deploy automático en push a `main` (`docs/DESPLIEGU
 - `lib/api.ts` — toda la comunicación con el backend.
 - `lib/session.ts` — manejo de la cookie de sesión y decodificación (no verificación) del JWT.
 - `lib/decimal.ts` — aritmética exacta de montos (BigInt), espejo de `common/utils/decimal.util.ts` del backend.
-- `lib/datos-ejemplo.ts` — único archivo de datos mock, con su propia política de uso documentada.
 - `proxy.ts` — gate de UX para `/dashboard/*`.
 - `app/dashboard/core-contable/` y `app/dashboard/plan-cuentas/` — los módulos más completos, referencia de patrón para nuevas features conectadas al backend (lista + árbol + formulario + acciones por fila).
 - `lib/planCuentas.ts` — constante `CLASES_DE_CUENTA` compartida entre `plan-cuentas/page.tsx` y `FormularioAsiento.tsx` (antes duplicada como `CLASES`/`GRUPOS_CUENTA`).
@@ -142,7 +140,7 @@ Vercel, conectado a GitHub, deploy automático en push a `main` (`docs/DESPLIEGU
 - **Toda llamada al backend pasa por `lib/api.ts`** — no hacer `fetch` directo desde componentes; agregar un nuevo grupo tipado (`xApi`) ahí siguiendo el patrón existente (`apiFetch<T>`, tipos de respuesta explícitos, mapeo 1:1 con la ruta real del backend).
 - **Montos**: nunca `number`/aritmética JS directa. Usar `lib/decimal.ts`, igual que el backend usa `common/utils/decimal.util.ts` — los tipos de `lib/api.ts` ya tipan montos como `string` a propósito.
 - **No agregar librerías de UI/estado/forms externas** sin confirmar que es una decisión consciente — es una restricción de equipo documentada (CSP restrictiva, preferencia por control total sobre el bundle), no un descuido.
-- **Datos de ejemplo**: si hace falta mostrar algo sin backend todavía, seguir el patrón de `lib/datos-ejemplo.ts` — centralizar el mock ahí y marcar visualmente el componente con una `Etiqueta` de tono `demo`, nunca mezclar datos falsos sin rotular con datos reales.
+- **Datos de ejemplo**: si hace falta mostrar algo sin backend todavía, centralizar el mock en un solo archivo de `lib/` y marcar visualmente el componente con una `Etiqueta` de tono `demo`; nunca mezclar datos falsos sin rotular con datos reales.
 - **Nueva pantalla de un módulo pendiente** (documentos/terceros/F29/copiloto/auditoría): el backend ya tiene los endpoints para documentos/terceros/auditoría (ver `../finova-backend-main/CLAUDE.md`) — se puede construir la UI real siguiendo el patrón de `core-contable/` como referencia. F29 y copiloto no tienen backend todavía; construir la UI ahí implicaría además definir y construir esos endpoints en el backend primero.
 - Antes de citar el `README.md` de este repo como fuente de verdad, revisar la sección "Deuda técnica" de este archivo — dos de sus secciones están confirmadas como obsoletas.
 

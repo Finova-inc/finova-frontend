@@ -127,7 +127,7 @@ finova-frontend/
 │   ├── login/page.tsx          Pantalla de acceso (dos columnas)
 │   ├── dashboard/
 │   │   ├── layout.tsx          Layout privado: sidebar + cabecera
-│   │   └── page.tsx            Panel con tarjetas de métricas (en cero)
+│   │   └── page.tsx            Panel de control con cifras reales del libro
 │   ├── empresas/page.tsx       ┐
 │   ├── documentos/page.tsx     │
 │   ├── core-contable/page.tsx  ├ Placeholders de 7 líneas, uno por épica
@@ -189,13 +189,13 @@ entre ambas sin pensar en eso.
 |---|---|---|
 | `/` | ✅ Terminada | Landing de 8 secciones, tema claro/oscuro, animaciones CSS. |
 | `/login` | ✅ Real | Autentica contra el backend; el JWT queda en una cookie httpOnly. |
-| `/dashboard` | ⚠️ Mixta | Conteos reales (empresas, documentos, terceros, cuentas, períodos); gráficos y cartera con datos de ejemplo, marcados como tales. |
-| `/dashboard/empresas` | ✅ Real | Listado y alta. |
+| `/dashboard` | ✅ Real | Cifras clave del libro (efectivo, por cobrar, por pagar, resultado del ejercicio), alertas reales (IVA estimado del F29 del mes anterior, meses sin cerrar, período del mes, borradores, plan vacío), ingresos y gastos por mes y últimos asientos. Sale de `GET /asientos-contables/resumen` y de períodos, borradores y asientos. |
+| Popup de empresas (cabecera) | ✅ Real | Cambiar la empresa activa, agregar (administrador o contador), cambiar el nombre (solo la razón social; administrador de esa empresa) y eliminar con doble confirmación: papelera y escribir el RUT. Reemplaza a la antigua página `/dashboard/empresas`. |
 | `/dashboard/core-contable` | ✅ Real | Libro diario: comprobantes con filtros y paginación, vista de libro imprimible con resumen por día, borradores. |
 | `/dashboard/core-contable/nuevo` y `/borradores/[id]` | ✅ Real | Formulario de asiento: líneas dinámicas, cuadre en vivo con aritmética exacta (`lib/decimal.ts`), guardar borrador y contabilizar con confirmación. |
 | `/dashboard/core-contable/[id]` | ✅ Real | Detalle del comprobante y reversión (art. 32 del Código de Comercio). |
 | `/dashboard/periodos` | ✅ Real | Abrir mes, cerrar (administrador o contador) y reabrir con motivo (solo administrador). |
-| `/dashboard/plan-cuentas` | ⚠️ Parcial | Solo lectura, más la carga del plan base PYME en una empresa sin cuentas. La edición del plan es un módulo aparte. |
+| `/dashboard/plan-cuentas` | ✅ Real | Árbol del plan con crear, editar, eliminar (popup de confirmación) y exportar CSV. `configurar/`: "Configurar plan de cuentas" elige las cuentas del plan base NIIF y agrega cuentas propias (administrador o contador). |
 | `/dashboard/documentos`, `/terceros`, `/f29`, `/copiloto`, `/auditoria` | 🚧 Placeholder | `PantallaPendiente` con los endpoints que usará cada una. |
 
 Los botones que registran (nuevo asiento, revertir, cerrar período) se ocultan

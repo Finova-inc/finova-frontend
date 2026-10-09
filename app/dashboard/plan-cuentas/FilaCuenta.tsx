@@ -7,8 +7,9 @@
    con un <td colSpan> a todo el ancho de la tabla: el formulario tiene espacio
    y la persona no pierde de vista la fila que está tocando.
 
-   Desactivar vive dentro de "Editar", no como botón suelto en la fila: es la
-   acción menos frecuente y la que más conviene pensar.
+   Eliminar (la papelera) pide una segunda confirmación en un popup, que
+   explica antes qué va a pasar: se borra si la cuenta no tiene historia y,
+   si la tiene, se ofrece desactivarla (DialogoEliminarCuenta).
    ========================================================================== */
 
 import Link from "next/link";
@@ -16,15 +17,18 @@ import { useState, useTransition } from "react";
 import { Boton } from "@/components/ui/Boton";
 import { Etiqueta } from "@/components/ui/Etiqueta";
 import { Icon } from "@/components/ui/Icon";
-import type { CuentaContable } from "@/lib/api";
+import type { CuentaContable, FilaPlantilla } from "@/lib/api";
 import { normalizar } from "@/lib/planCuentas";
 import { reactivarCuenta } from "./actions";
+import { DialogoEliminarCuenta } from "./DialogoEliminarCuenta";
 import { FormularioCuenta } from "./FormularioCuenta";
 
 type FilaCuentaProps = {
     readonly cuenta: CuentaContable;
     /** Todas las cuentas: el formulario las necesita para agrupaciones y códigos. */
     readonly cuentas: readonly CuentaContable[];
+    /** Filas del plan base: el código sugerido salta las que la empresa no eligió. */
+    readonly plantilla: readonly FilaPlantilla[];
     /** Nivel dentro del panel de su clase: 0 = grupo, 1 = rubro, 2 = cuenta. */
     readonly nivel: number;
     /** Cuentas imputables activas dentro de esta agrupación. */
@@ -37,7 +41,7 @@ type FilaCuentaProps = {
     readonly alPlegar?: () => void;
 };
 
-type Modo = "nada" | "editar" | "agregar" | "reactivar";
+type Modo = "nada" | "editar" | "agregar" | "reactivar" | "eliminar";
 
 /**
  * Marca la coincidencia con el amarillo destacador de la paleta, que existe
@@ -76,6 +80,7 @@ function Resaltado({ texto, busqueda }: { readonly texto: string; readonly busqu
 export function FilaCuenta({
     cuenta,
     cuentas,
+    plantilla,
     nivel,
     imputablesDentro,
     puedeEditar,
@@ -197,16 +202,29 @@ export function FilaCuenta({
                                     ) : null}
                                     <Boton
                                         variante="fantasma"
-                                       
+
                                         aria-label={`Editar ${cuenta.codigo} ${cuenta.nombre}`}
                                         onClick={() => setModo("editar")}
                                     >
                                         Editar
                                     </Boton>
+                                    <button
+                                        type="button"
+                                        onClick={() => setModo("eliminar")}
+                                        aria-label={`Eliminar ${cuenta.codigo} ${cuenta.nombre}`}
+                                        title="Eliminar"
+                                        className="grid size-9 shrink-0 place-items-center rounded-lg text-[var(--foreground-muted)] transition-colors hover:bg-[var(--critico-bg)] hover:text-[var(--critico)]"
+                                    >
+                                        <Icon name="trash" className="size-4" />
+                                    </button>
                                 </>
                             )
                         ) : null}
                     </div>
+                    {/* Dentro de la celda: un <dialog> no puede ser hijo de <tbody>. */}
+                    {modo === "eliminar" ? (
+                        <DialogoEliminarCuenta cuenta={cuenta} cuentas={cuentas} alCerrar={cerrar} />
+                    ) : null}
                 </td>
             </tr>
 
@@ -215,6 +233,7 @@ export function FilaCuenta({
                     <td colSpan={4} className="bg-[var(--background-raised)] px-4 py-5 sm:px-6">
                         <FormularioCuenta
                             cuentas={cuentas}
+                            plantilla={plantilla}
                             cuenta={modo === "editar" ? cuenta : null}
                             padreInicial={modo === "agregar" ? cuenta : null}
                             alTerminar={cerrar}

@@ -7,26 +7,31 @@
    - La clase sale de la agrupación padre: una cuenta es del mismo tipo que
      su rubro (el backend lo exige igual).
    - El código se sugiere a partir del padre (1101 → 1101005) y se deja de
-     sugerir en cuanto la persona escribe el suyo.
+     sugerir en cuanto la persona escribe el suyo. La sugerencia salta los
+     códigos del plan base aunque la empresa no los haya elegido: así, si
+     después los agrega desde el configurador, no chocan con una cuenta suya.
    - Si la cuenta ya tiene asientos, código, clase e imputabilidad aparecen
      bloqueados y con el motivo, en vez de dejar que el backend los rechace.
+   Quitar la cuenta del plan no vive aquí: es la papelera de la fila.
    ========================================================================== */
 
 import { useId, useMemo, useState, useTransition } from "react";
 import { Boton } from "@/components/ui/Boton";
 import { Icon } from "@/components/ui/Icon";
-import type { ActualizarCuentaInput, CuentaContable } from "@/lib/api";
+import type { ActualizarCuentaInput, CuentaContable, FilaPlantilla } from "@/lib/api";
 import { CLASES_DE_CUENTA, claseDe, descendientesDe, nombreNivel, siguienteCodigo } from "@/lib/planCuentas";
-import { actualizarCuenta, crearCuenta, desactivarCuenta } from "./actions";
+import { actualizarCuenta, crearCuenta } from "./actions";
 
 type FormularioCuentaProps = {
     /** Todas las cuentas de la empresa: de aquí salen las agrupaciones y el código sugerido. */
     readonly cuentas: readonly CuentaContable[];
+    /** Filas del plan base, para que el código sugerido no use uno de ellas. */
+    readonly plantilla: readonly FilaPlantilla[];
     /** Si viene, el formulario edita esta cuenta. */
     readonly cuenta?: CuentaContable | null;
     /** Crear dentro de esta agrupación (fija): "Agregar cuenta aquí". */
     readonly padreInicial?: CuentaContable | null;
-    /** Se llama al guardar, al desactivar o al cancelar. */
+    /** Se llama al guardar o al cancelar. */
     readonly alTerminar: () => void;
 };
 
@@ -48,7 +53,13 @@ function profundidad(cuenta: CuentaContable, porId: ReadonlyMap<string, CuentaCo
     return nivel;
 }
 
-export function FormularioCuenta({ cuentas, cuenta = null, padreInicial = null, alTerminar }: FormularioCuentaProps) {
+export function FormularioCuenta({
+    cuentas,
+    plantilla,
+    cuenta = null,
+    padreInicial = null,
+    alTerminar,
+}: FormularioCuentaProps) {
     const idBase = useId();
     const edicion = cuenta !== null;
     const conAsientos = edicion && cuenta.tiene_movimientos;
@@ -66,13 +77,18 @@ export function FormularioCuenta({ cuentas, cuenta = null, padreInicial = null, 
     const [nombre, setNombre] = useState(cuenta?.nombre ?? "");
     const [codigoSii, setCodigoSii] = useState(cuenta?.codigo_sii ?? "");
     const [errores, setErrores] = useState<readonly string[]>([]);
-    const [confirmandoBaja, setConfirmandoBaja] = useState(false);
     const [enCurso, iniciar] = useTransition();
 
     const padre = idPadre ? (porId.get(idPadre) ?? null) : null;
     const tipo = padre ? padre.id_tipo_cuenta : tipoSinPadre;
     const clase = claseDe(tipo);
-    const sugerido = padre ? siguienteCodigo(padre, cuentas.filter((c) => c.id_cuenta_padre === padre.id_cuenta)) : "";
+    // Las hijas del plan base primero: fijan el ancho del correlativo (1101 → 1101005).
+    const sugerido = padre
+        ? siguienteCodigo(padre, [
+              ...plantilla.filter((fila) => fila.codigoPadre === padre.codigo),
+              ...cuentas.filter((c) => c.id_cuenta_padre === padre.id_cuenta),
+          ])
+        : "";
     const codigo = codigoEscrito ?? sugerido;
 
     // Con asientos o con hijas, la clase no puede cambiar: el padre se elige
@@ -141,20 +157,6 @@ export function FormularioCuenta({ cuentas, cuenta = null, padreInicial = null, 
             const resultado = await actualizarCuenta(cuenta.id_cuenta, cambios);
             if (resultado.errores) setErrores(resultado.errores);
             else alTerminar();
-        });
-    }
-
-    function desactivar() {
-        if (!cuenta) return;
-        setErrores([]);
-        iniciar(async () => {
-            const resultado = await desactivarCuenta(cuenta.id_cuenta);
-            if (resultado.errores) {
-                setErrores(resultado.errores);
-                setConfirmandoBaja(false);
-            } else {
-                alTerminar();
-            }
         });
     }
 
@@ -357,44 +359,13 @@ export function FormularioCuenta({ cuentas, cuenta = null, padreInicial = null, 
                 </ul>
             ) : null}
 
-            {confirmandoBaja && cuenta ? (
-                <div
-                    role="alertdialog"
-                    aria-labelledby={`${idBase}-baja`}
-                    className="rounded-lg border border-[var(--border-strong)] bg-[var(--surface)] p-3"
-                >
-                    <p id={`${idBase}-baja`} className="font-medium">
-                        ¿Desactivar {cuenta.codigo} · {cuenta.nombre}?
-                    </p>
-                    <p className="mt-1 text-[12.5px] text-[var(--foreground-muted)]">
-                        Deja de ofrecerse para nuevos asientos; su historial no se toca y se puede reactivar. Solo es
-                        posible con saldo cero.
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                        <Boton variante="acento" disabled={enCurso} onClick={desactivar}>
-                            {enCurso ? "Desactivando…" : "Sí, desactivar"}
-                        </Boton>
-                        <Boton variante="neutro" disabled={enCurso} onClick={() => setConfirmandoBaja(false)}>
-                            Cancelar
-                        </Boton>
-                    </div>
-                </div>
-            ) : null}
-
-            <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex gap-2">
-                    <Boton type="submit" variante="acento" disabled={enCurso}>
-                        {enCurso && !confirmandoBaja ? "Guardando…" : cuenta ? "Guardar cambios" : "Crear cuenta"}
-                    </Boton>
-                    <Boton variante="neutro" disabled={enCurso} onClick={alTerminar}>
-                        Cancelar
-                    </Boton>
-                </div>
-                {cuenta?.is_active && !confirmandoBaja ? (
-                    <Boton variante="fantasma" disabled={enCurso} onClick={() => setConfirmandoBaja(true)}>
-                        Desactivar cuenta
-                    </Boton>
-                ) : null}
+            <div className="flex flex-wrap items-center gap-2">
+                <Boton type="submit" variante="acento" disabled={enCurso}>
+                    {enCurso ? "Guardando…" : cuenta ? "Guardar cambios" : "Crear cuenta"}
+                </Boton>
+                <Boton variante="neutro" disabled={enCurso} onClick={alTerminar}>
+                    Cancelar
+                </Boton>
             </div>
         </form>
     );

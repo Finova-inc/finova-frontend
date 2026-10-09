@@ -7,14 +7,18 @@
    La búsqueda no pierde el contexto: de cada coincidencia conserva sus
    agrupaciones (para saber en qué rubro cae) y, si coincide una agrupación,
    todo lo que hay dentro.
+
+   "Exportar CSV" arma el archivo aquí mismo, con las cuentas ya cargadas:
+   para el cliente, la auditoría o el Diccionario de Cuentas del LCE.
    ========================================================================== */
 
 import { useMemo, useState, type ReactNode } from "react";
 import { Boton } from "@/components/ui/Boton";
 import { Icon } from "@/components/ui/Icon";
 import { Panel } from "@/components/ui/Panel";
-import type { CuentaContable } from "@/lib/api";
-import { CLASES_DE_CUENTA, construirArbol, normalizar, type NodoCuenta } from "@/lib/planCuentas";
+import type { CuentaContable, FilaPlantilla } from "@/lib/api";
+import { hoyEnChile } from "@/lib/formato";
+import { CLASES_DE_CUENTA, construirArbol, normalizar, planACsv, type NodoCuenta } from "@/lib/planCuentas";
 import { Aviso, CLASES_TH } from "../core-contable/partes";
 import { FilaCuenta } from "./FilaCuenta";
 import { FormularioCuenta } from "./FormularioCuenta";
@@ -53,11 +57,25 @@ function filtrar(cuentas: readonly CuentaContable[], consulta: string): CuentaCo
     return cuentas.filter((c) => visibles.has(c.id_cuenta));
 }
 
+/** Descarga el plan completo (también las inactivas) como CSV para Excel. */
+function exportarCsv(cuentas: readonly CuentaContable[]) {
+    // La BOM hace que Excel lea el archivo como UTF-8 (tildes y ñ).
+    const archivo = new Blob(["﻿", planACsv(cuentas)], { type: "text/csv;charset=utf-8" });
+    const enlace = document.createElement("a");
+    enlace.href = URL.createObjectURL(archivo);
+    enlace.download = `plan-de-cuentas-${hoyEnChile()}.csv`;
+    enlace.click();
+    setTimeout(() => URL.revokeObjectURL(enlace.href), 0);
+}
+
 export function ArbolCuentas({
     cuentas,
+    plantilla,
     puedeEditar,
 }: {
     readonly cuentas: readonly CuentaContable[];
+    /** Filas del plan base: el código sugerido de una cuenta nueva no usa ninguna. */
+    readonly plantilla: readonly FilaPlantilla[];
     readonly puedeEditar: boolean;
 }) {
     const [busqueda, setBusqueda] = useState("");
@@ -103,6 +121,7 @@ export function ArbolCuentas({
                 key={nodo.cuenta.id_cuenta}
                 cuenta={nodo.cuenta}
                 cuentas={cuentas}
+                plantilla={plantilla}
                 nivel={nivel}
                 imputablesDentro={contarImputables(nodo)}
                 puedeEditar={puedeEditar}
@@ -150,6 +169,10 @@ export function ArbolCuentas({
                         </Boton>
                     </div>
                 ) : null}
+                <Boton variante="fantasma" onClick={() => exportarCsv(cuentas)}>
+                    <Icon name="document" className="size-4" />
+                    Exportar CSV
+                </Boton>
                 {puedeEditar ? (
                     <Boton variante="acento" disabled={creando} onClick={() => setCreando(true)}>
                         <Icon name="plus" className="size-4" />
@@ -164,7 +187,7 @@ export function ArbolCuentas({
 
             {creando ? (
                 <Panel>
-                    <FormularioCuenta cuentas={cuentas} alTerminar={() => setCreando(false)} />
+                    <FormularioCuenta cuentas={cuentas} plantilla={plantilla} alTerminar={() => setCreando(false)} />
                 </Panel>
             ) : null}
 
@@ -192,12 +215,13 @@ export function ArbolCuentas({
                             ancestro posicionado escapa del recorte del scroll y
                             ensancha la página en móvil. */}
                         <div className="relative overflow-x-auto border-t border-[var(--border-subtle)]">
-                            <table className="w-full min-w-[720px] table-fixed border-collapse text-left text-[13px]">
+                            <table className="w-full min-w-[780px] table-fixed border-collapse text-left text-[13px]">
                                 <colgroup>
                                     <col className="w-32" />
                                     <col />
                                     <col className="w-36" />
-                                    <col className="w-60" />
+                                    {/* Mayor, Asientos, Editar y la papelera. */}
+                                    <col className="w-72" />
                                 </colgroup>
                                 <thead className="border-b border-[var(--border-subtle)]">
                                     <tr>

@@ -5,25 +5,28 @@
    cuenta imputable. Solo el último nivel recibe asientos; los demás ordenan
    y suman, y son las partidas de los estados financieros.
 
-   - Empresa sin cuentas: vista previa del plan base y, para el
-     administrador, el botón que lo carga.
+   - Empresa sin cuentas: invitación a "Configurar plan de cuentas"
+     (/dashboard/plan-cuentas/configurar), donde se elige qué cuentas del plan
+     base usa la empresa y se agregan las propias.
    - Plan plano (el de 47 cuentas de la primera versión): aviso para
-     completar la estructura sin tocar asientos ni códigos.
-   - Plan con estructura: el árbol, con búsqueda y edición en línea.
+     completar la estructura desde el configurador.
+   - Plan con estructura: el árbol con solo las cuentas que tiene la empresa,
+     con búsqueda, edición en línea y el acceso para volver a configurar.
    ========================================================================== */
 
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { Panel, PanelCabecera } from "@/components/ui/Panel";
-import { ApiError, cuentasApi, type CuentaContable, type FilaPlantilla, type PlantillaCuentas } from "@/lib/api";
-import { CLASES_DE_CUENTA } from "@/lib/planCuentas";
-import { ROL, exigirTokenSesion, obtenerRolDelToken, puedeRegistrar } from "@/lib/session";
-import { Aviso, Encabezado, Guia, ReglasGuia } from "../core-contable/partes";
-import { AccionPlantilla } from "./AccionPlantilla";
+import { ApiError, cuentasApi, type CuentaContable } from "@/lib/api";
+import { exigirTokenSesion, obtenerRolDelToken, puedeRegistrar } from "@/lib/session";
+import { Aviso, Encabezado, EnlaceAccion, Guia, ReglasGuia } from "../core-contable/partes";
 import { ArbolCuentas } from "./ArbolCuentas";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Plan de cuentas" };
+
+const RUTA_CONFIGURAR = "/dashboard/plan-cuentas/configurar";
 
 /** Una cuenta de ejemplo recorrida de la clase a la cuenta imputable. */
 const RUTA_DE_EJEMPLO = [
@@ -36,7 +39,7 @@ const RUTA_DE_EJEMPLO = [
 const REGLAS: readonly string[] = [
     "Solo las cuentas del último nivel reciben asientos. Clase, grupo y rubro ordenan y suman: son las partidas del estado de situación financiera y del estado de resultados.",
     "El código de cada cuenta empieza con el de su agrupación, y es el mismo que va a los libros.",
-    "Una cuenta con asientos no se borra ni cambia de código o de clase: se desactiva cuando su saldo es cero (Código de Comercio, arts. 31 y 32). Los libros se conservan mientras el SII pueda revisarlos (Código Tributario, arts. 17 y 200).",
+    "Una cuenta sin asientos se puede eliminar. Una con asientos no se borra ni cambia de código o de clase: se desactiva cuando su saldo es cero (Código de Comercio, arts. 31 y 32). Los libros se conservan mientras el SII pueda revisarlos (Código Tributario, arts. 17 y 200).",
     "La estructura sigue NIIF para PYMES: activos y pasivos separados en corrientes y no corrientes, y resultados por función, con los costos financieros y el impuesto a las ganancias aparte.",
     "El código SII es opcional: anótalo si ya relacionaste tus cuentas con las de tus declaraciones.",
 ];
@@ -62,73 +65,26 @@ function GuiaPlanCuentas() {
     );
 }
 
-/** El plan base agrupado por clase, para verlo antes de cargarlo. */
-function VistaPlantilla({ plantilla, esAdmin }: { readonly plantilla: PlantillaCuentas | null; readonly esAdmin: boolean }) {
-    const filas = plantilla?.cuentas ?? [];
-    const hijasDe = (codigo: string) => filas.filter((fila) => fila.codigoPadre === codigo);
-    const porLargo = (largo: number) => filas.filter((fila) => fila.acepta_movimiento === false && fila.codigo.length === largo).length;
-    const imputables = filas.filter((fila) => fila.acepta_movimiento !== false).length;
-
+/** Primera vez: todavía no hay cuentas. */
+function PlanVacio({ puedeConfigurar }: { readonly puedeConfigurar: boolean }) {
     return (
         <Panel>
-            <PanelCabecera
-                titulo="Esta empresa todavía no tiene plan de cuentas"
-                nota={filas.length > 0 ? `${filas.length} cuentas` : undefined}
-            />
+            <PanelCabecera titulo="Esta empresa todavía no tiene plan de cuentas" />
             <p className="mt-2 max-w-3xl text-[13.5px] text-[var(--foreground-muted)]">
-                Parte del plan base para PYMES, ordenado según NIIF para PYMES y con lo que la operación
-                tributaria chilena necesita desde el primer día: IVA crédito y débito fiscal por separado, PPM,
-                retenciones, cotizaciones previsionales y provisión de vacaciones. Después puedes agregar,
-                renombrar o desactivar cuentas.
+                Elige del plan base para PYMES, ordenado según NIIF, las cuentas que usa la empresa: vienen marcadas
+                las que casi toda PYME necesita (caja, banco, clientes, proveedores, IVA, PPM, retenciones y
+                remuneraciones). Agrega también las tuyas, con el código que necesites. Puedes volver a configurarlo
+                cuando quieras para sumar más cuentas.
             </p>
-
-            {filas.length > 0 ? (
-                <>
-                    <p className="tabular mt-4 text-[12.5px] font-medium">
-                        {porLargo(1)} clases · {porLargo(2)} grupos · {porLargo(4)} rubros · {imputables} cuentas imputables
-                    </p>
-                    <div className="mt-3 grid gap-x-8 gap-y-6 border-t border-[var(--border-subtle)] pt-5 md:grid-cols-2 xl:grid-cols-3">
-                        {CLASES_DE_CUENTA.map((clase) => {
-                            const nodoClase = filas.find((fila) => fila.codigo === String(clase.id));
-                            if (!nodoClase) return null;
-                            return (
-                                <section key={clase.id} aria-labelledby={`clase-${clase.id}`}>
-                                    <h3 id={`clase-${clase.id}`} className="font-display text-[14px] font-semibold">
-                                        <span className="tabular mr-1.5 text-[var(--foreground-muted)]">{nodoClase.codigo}</span>
-                                        {nodoClase.nombre}
-                                    </h3>
-                                    <ul className="mt-2 flex flex-col gap-2.5">
-                                        {hijasDe(nodoClase.codigo).map((grupo) => (
-                                            <li key={grupo.codigo}>
-                                                <p className="text-[12.5px] font-medium">
-                                                    <span className="tabular mr-1.5 text-[var(--foreground-muted)]">{grupo.codigo}</span>
-                                                    {grupo.nombre}
-                                                </p>
-                                                <ul className="mt-1 flex flex-col gap-0.5 border-l border-[var(--border-subtle)] pl-3">
-                                                    {hijasDe(grupo.codigo).map((rubro: FilaPlantilla) => (
-                                                        <li key={rubro.codigo} className="text-[12px] text-[var(--foreground-muted)]">
-                                                            <span className="tabular mr-1.5">{rubro.codigo}</span>
-                                                            {rubro.nombre}
-                                                            <span className="tabular"> ({hijasDe(rubro.codigo).length})</span>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </section>
-                            );
-                        })}
-                    </div>
-                </>
-            ) : null}
-
             <div className="mt-5 border-t border-[var(--border-subtle)] pt-4">
-                {esAdmin ? (
-                    <AccionPlantilla modo="cargar" insertar={filas.length} reubicar={0} />
+                {puedeConfigurar ? (
+                    <EnlaceAccion href={RUTA_CONFIGURAR}>
+                        <Icon name="plus" className="size-4" />
+                        Configurar plan de cuentas
+                    </EnlaceAccion>
                 ) : (
                     <p className="text-[13px] text-[var(--foreground-muted)]">
-                        Pide a un administrador de la empresa que cargue el plan base.
+                        Pide a un administrador o contador de la empresa que configure el plan de cuentas.
                     </p>
                 )}
             </div>
@@ -137,21 +93,21 @@ function VistaPlantilla({ plantilla, esAdmin }: { readonly plantilla: PlantillaC
 }
 
 /** Plan que viene del plan base pero sin su estructura completa (el plano de la primera versión). */
-function AvisoCompletar({ plantilla, esAdmin }: { readonly plantilla: PlantillaCuentas; readonly esAdmin: boolean }) {
+function AvisoCompletar({ puedeConfigurar }: { readonly puedeConfigurar: boolean }) {
     return (
         <Panel>
             <PanelCabecera titulo="Falta la estructura NIIF en este plan" />
             <p className="mt-2 max-w-3xl text-[13.5px] text-[var(--foreground-muted)]">
-                Hay cuentas que todavía no pertenecen a un rubro, o agrupaciones del plan base que faltan. Al
-                completar la estructura, cada cuenta queda en su partida NIIF: por ejemplo, el banco en efectivo y
-                equivalentes, y los gastos financieros fuera de los gastos de administración.
+                Hay cuentas que todavía no pertenecen a un rubro. Al guardar la configuración del plan, cada cuenta
+                queda en su partida NIIF (por ejemplo, el banco en efectivo y equivalentes, y los gastos financieros
+                fuera de los gastos de administración). Ningún asiento cambia y tus cuentas conservan su código.
             </p>
             <div className="mt-4">
-                {esAdmin ? (
-                    <AccionPlantilla modo="completar" insertar={plantilla.insertar} reubicar={plantilla.reubicar} />
+                {puedeConfigurar ? (
+                    <EnlaceAccion href={RUTA_CONFIGURAR}>Completar estructura</EnlaceAccion>
                 ) : (
                     <p className="text-[13px] text-[var(--foreground-muted)]">
-                        Pide a un administrador de la empresa que complete la estructura.
+                        Pide a un administrador o contador de la empresa que complete la estructura.
                     </p>
                 )}
             </div>
@@ -159,10 +115,37 @@ function AvisoCompletar({ plantilla, esAdmin }: { readonly plantilla: PlantillaC
     );
 }
 
-export default async function PlanCuentasPage() {
+/** Vuelta del configurador: cuántas cuentas (con sus agrupaciones) se crearon. */
+function AvisoAgregadas({ cantidad }: { readonly cantidad: number }) {
+    return (
+        <Aviso>
+            <span className="flex flex-wrap items-center justify-between gap-2">
+                <span className="flex items-center gap-2 text-[var(--foreground)]">
+                    <Icon name="check" className="size-4 shrink-0 text-[var(--positivo)]" />
+                    {cantidad === 0
+                        ? "Listo: tu plan ya tenía todo lo que elegiste."
+                        : cantidad === 1
+                          ? "Listo: se agregó 1 cuenta al plan."
+                          : `Listo: se agregaron ${cantidad} cuentas al plan, contando sus agrupaciones.`}
+                </span>
+                <Link href="/dashboard/plan-cuentas" className="text-[12.5px] font-medium underline-offset-2 hover:underline">
+                    Ocultar
+                </Link>
+            </span>
+        </Aviso>
+    );
+}
+
+export default async function PlanCuentasPage({
+    searchParams,
+}: {
+    searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
     const token = await exigirTokenSesion();
     const rol = await obtenerRolDelToken();
-    const esAdmin = rol === ROL.ADMINISTRADOR;
+    const puedeConfigurar = puedeRegistrar(rol);
+    const { agregadas } = await searchParams;
+    const cantidadAgregada = typeof agregadas === "string" && /^\d+$/.test(agregadas) ? Number(agregadas) : null;
 
     const opciones = { token, cache: "no-store" } as const;
     const [cuentas, plantilla] = await Promise.allSettled([cuentasApi.listar(opciones), cuentasApi.plantilla(opciones)]);
@@ -178,10 +161,20 @@ export default async function PlanCuentasPage() {
         <div className="flex flex-col gap-4">
             <Encabezado
                 titulo="Plan de cuentas"
-                descripcion="Las agrupaciones (clase, grupo y rubro) ordenan y suman; solo las cuentas imputables reciben asientos. Nada se borra: una cuenta con historia se desactiva."
+                descripcion="Las agrupaciones (clase, grupo y rubro) ordenan y suman; solo las cuentas imputables reciben asientos. Una cuenta con historia no se borra: se desactiva."
+                acciones={
+                    puedeConfigurar && lista.length > 0 ? (
+                        <EnlaceAccion href={RUTA_CONFIGURAR} variante="neutro">
+                            <Icon name="plus" className="size-4" />
+                            Configurar plan de cuentas
+                        </EnlaceAccion>
+                    ) : undefined
+                }
             />
 
             <GuiaPlanCuentas />
+
+            {cantidadAgregada !== null ? <AvisoAgregadas cantidad={cantidadAgregada} /> : null}
 
             {cuentas.status === "rejected" ? (
                 <Aviso tono="critico">
@@ -189,11 +182,11 @@ export default async function PlanCuentasPage() {
                     despertar: recarga la página.
                 </Aviso>
             ) : lista.length === 0 ? (
-                <VistaPlantilla plantilla={vista} esAdmin={esAdmin} />
+                <PlanVacio puedeConfigurar={puedeConfigurar} />
             ) : (
                 <>
-                    {incompleta ? <AvisoCompletar plantilla={vista} esAdmin={esAdmin} /> : null}
-                    <ArbolCuentas cuentas={lista} puedeEditar={puedeRegistrar(rol)} />
+                    {incompleta ? <AvisoCompletar puedeConfigurar={puedeConfigurar} /> : null}
+                    <ArbolCuentas cuentas={lista} plantilla={vista?.cuentas ?? []} puedeEditar={puedeConfigurar} />
                 </>
             )}
         </div>
