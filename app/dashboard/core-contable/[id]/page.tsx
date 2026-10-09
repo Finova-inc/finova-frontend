@@ -24,7 +24,7 @@ import {
 import { exigirTokenSesion, obtenerRolDelToken, puedeRegistrar } from "@/lib/session";
 import { BotonImprimir } from "../BotonImprimir";
 import { DialogoRevertir } from "../DialogoRevertir";
-import { Aviso, CLASES_TH, EnlaceAccion, EnlaceComprobante, Encabezado, EtiquetasDeEstado } from "../partes";
+import { Aviso, CLASES_TH, EnlaceComprobante, Encabezado, EtiquetasDeEstado } from "../partes";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Asiento contable" };
@@ -63,14 +63,8 @@ export default async function DetalleAsientoPage({ params }: { params: Promise<{
             <Encabezado
                 titulo={`${NOMBRE_TIPO_COMPROBANTE[asiento.tipo_comprobante] ?? "Comprobante"} ${comprobante}`}
                 descripcion={asiento.glosa}
-                acciones={
-                    <>
-                        <EnlaceAccion href="/dashboard/core-contable" variante="neutro">
-                            Volver al libro diario
-                        </EnlaceAccion>
-                        <BotonImprimir />
-                    </>
-                }
+                volverA="/dashboard/core-contable"
+                acciones={<BotonImprimir />}
             />
 
             {asiento.revertido_por ? (

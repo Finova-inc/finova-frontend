@@ -10,7 +10,7 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { ApiError, cuentasApi } from "@/lib/api";
 import { exigirTokenSesion, obtenerEmpresaDelToken, obtenerRolDelToken, puedeRegistrar } from "@/lib/session";
-import { Aviso, Encabezado, EnlaceAccion } from "../../core-contable/partes";
+import { Aviso, Encabezado } from "../../core-contable/partes";
 import { ConfiguradorPlan } from "./ConfiguradorPlan";
 
 export const dynamic = "force-dynamic";
@@ -22,11 +22,7 @@ function Pantalla({ children }: { readonly children: ReactNode }) {
             <Encabezado
                 titulo="Configurar plan de cuentas"
                 descripcion="Marca las cuentas del plan base que usa la empresa y agrega las tuyas dentro de cada rubro. Las agrupaciones (clase, grupo y rubro) se crean solas, y lo que ya está en tu plan aparece marcado."
-                acciones={
-                    <EnlaceAccion href="/dashboard/plan-cuentas" variante="neutro">
-                        Volver al plan
-                    </EnlaceAccion>
-                }
+                volverA="/dashboard/plan-cuentas"
             />
             {children}
         </div>

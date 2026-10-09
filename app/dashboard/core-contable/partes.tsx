@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { EnlaceVolver } from "@/components/ui/EnlaceVolver";
 import { Etiqueta } from "@/components/ui/Etiqueta";
 import { Icon } from "@/components/ui/Icon";
 import type { AsientoResumen, ReferenciaComprobante } from "@/lib/api";
@@ -10,18 +11,29 @@ import { formatearComprobante } from "@/lib/formato";
    no tienen estado, y asi no llegan al bundle del navegador.
    ========================================================================== */
 
+/**
+ * Encabezado de una pantalla del panel: "← Volver", título, descripción y
+ * acciones.
+ *
+ * `volverA` es la sección a la que pertenece la pantalla, y solo hace falta
+ * en detalles y formularios (el detalle de un asiento pertenece al libro
+ * diario). Ver components/ui/EnlaceVolver.tsx.
+ */
 export function Encabezado({
     titulo,
     descripcion,
     acciones,
+    volverA,
 }: {
     readonly titulo: string;
     readonly descripcion?: ReactNode;
     readonly acciones?: ReactNode;
+    readonly volverA?: string;
 }) {
     return (
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
+                <EnlaceVolver porDefecto={volverA} />
                 <h1 className="font-display text-xl font-semibold tracking-[-0.015em]">{titulo}</h1>
                 {descripcion ? (
                     <p className="mt-1 max-w-2xl text-[13.5px] text-[var(--foreground-muted)]">{descripcion}</p>
