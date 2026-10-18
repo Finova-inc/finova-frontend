@@ -168,6 +168,15 @@ const nextConfig: NextConfig = {
      */
     poweredByHeader: false,
 
+    /**
+     * La importación de CSV del SII sube el archivo por una Server Action y el
+     * tope por defecto (1 MB) rechazaría un RCV grande. 10 MB es el tope del
+     * backend; el mega extra cubre el sobrecosto del multipart.
+     */
+    experimental: {
+        serverActions: { bodySizeLimit: "11mb" },
+    },
+
     async headers() {
         return [
             {

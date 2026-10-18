@@ -70,6 +70,8 @@ export class ApiError extends Error {
 export interface ApiFetchOptions extends Omit<RequestInit, "body"> {
     /** Cuerpo en objeto plano: se serializa a JSON y se pone el Content-Type. */
     readonly json?: unknown;
+    /** Cuerpo multipart (subida de archivos). El navegador pone el Content-Type con su boundary. */
+    readonly formData?: FormData;
     /** Token de acceso a enviar como Bearer, cuando exista autenticación real. */
     readonly token?: string;
 }
@@ -87,7 +89,7 @@ export interface ApiFetchOptions extends Omit<RequestInit, "body"> {
  */
 export async function apiFetch<T>(
     path: string,
-    { json, token, headers, signal, ...init }: ApiFetchOptions = {},
+    { json, formData, token, headers, signal, ...init }: ApiFetchOptions = {},
 ): Promise<T> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -111,7 +113,7 @@ export async function apiFetch<T>(
         const response = await fetch(`${API_BASE_URL}${path}`, {
             ...init,
             headers: requestHeaders,
-            body: json === undefined ? undefined : JSON.stringify(json),
+            body: formData ?? (json === undefined ? undefined : JSON.stringify(json)),
             signal: controller.signal,
             /**
              * Envía cookies al backend aunque esté en otro dominio.
@@ -633,6 +635,179 @@ export const tercerosApi = {
 
 export const documentosApi = {
     listar: (opciones?: ApiFetchOptions) => api.get<Documento[]>("/documentos", opciones),
+};
+
+/* --------------------------------------------------------------------------
+   Importación de archivos del SII (opción A): CSV del RCV y de honorarios, y DTE (XML).
+   Los montos son pesos enteros; el backend los devuelve como string (bigint).
+   -------------------------------------------------------------------------- */
+
+export type TipoImportacionSii = "compras" | "ventas" | "honorarios_recibidas" | "honorarios_emitidas" | "xml";
+
+/** Una línea rechazada o con advertencia. `fila` es null si no es de una fila (un XML, un aviso del archivo). */
+export interface DetalleLineaSii {
+    readonly fila: number | null;
+    readonly mensaje: string;
+    /** Lo que decía la línea: "Tipo Doc: 33 · Folio: 9001 · …", sin las celdas vacías. */
+    readonly contenido: string;
+}
+
+export interface ResumenImportacionSii {
+    readonly leidos: number;
+    readonly nuevos: number;
+    readonly actualizados: number;
+    readonly omitidos: number;
+    readonly con_error: number;
+    readonly con_advertencia: number;
+    /** Las importaciones hechas antes de guardar la fila y su contenido traen texto ("Fila 9: …"). */
+    readonly errores: readonly (DetalleLineaSii | string)[];
+    readonly advertencias: readonly (DetalleLineaSii | string)[];
+}
+
+export interface ImportacionSii {
+    readonly id_importacion: string;
+    readonly tipo: TipoImportacionSii;
+    readonly periodo: string | null;
+    readonly nombre_archivo: string;
+    readonly estado: "completada" | "con_errores";
+    readonly resumen: ResumenImportacionSii;
+    readonly created_at: string;
+}
+
+/**
+ * Cuadratura de un documento: el RCV contra su XML.
+ * solo_xml: vino el XML y el RCV no lo trae. sin_xml: está en el RCV y falta el XML.
+ * difiere: están los dos y algún monto no coincide. cuadra: coinciden.
+ */
+export type Cuadratura = "cuadra" | "difiere" | "sin_xml" | "solo_xml";
+
+/** Lo que se ve de un archivo antes de importarlo. Nada de esto está guardado todavía. */
+export interface VistaPreviaSii {
+    readonly tipo: TipoImportacionSii;
+    readonly periodo: string | null;
+    readonly nombre_archivo: string;
+    /** Los mismos conteos que daría importarlo: nuevas, actualizadas, sin cambios, rechazadas. */
+    readonly resumen: ResumenImportacionSii;
+    /** Las primeras líneas válidas, ya formateadas, para comprobar que se leyó bien. */
+    readonly muestra: {
+        readonly columnas: readonly string[];
+        readonly filas: readonly (readonly string[])[];
+        /** Cuántas líneas válidas hay en total. */
+        readonly total: number;
+    };
+    readonly totales: readonly { readonly titulo: string; readonly valor: string }[];
+    /** Lo que no es un error del archivo pero conviene saber antes de importar (p. ej. un período que no calza). */
+    readonly avisos: readonly string[];
+}
+
+export interface DocumentoSii {
+    readonly id_documento_sii: string;
+    readonly tipo_dte: number;
+    readonly folio: string;
+    readonly rut_emisor: string;
+    readonly rut_receptor: string;
+    readonly razon_social_contraparte: string | null;
+    readonly fecha_emision: string;
+    readonly periodo_rcv: string | null;
+    readonly monto_neto: string;
+    readonly monto_exento: string;
+    readonly monto_iva: string;
+    readonly monto_total: string;
+    readonly sentido: "compra" | "venta";
+    readonly estado_rcv: string | null;
+    readonly advertencias: readonly string[];
+    readonly en_rcv: boolean;
+    readonly tiene_xml: boolean;
+    readonly cuadratura: Cuadratura;
+}
+
+export interface HonorarioSii {
+    readonly id_honorario_sii: string;
+    readonly folio: string;
+    readonly rut_emisor: string;
+    readonly rut_receptor: string;
+    readonly nombre_contraparte: string | null;
+    readonly fecha_emision: string;
+    readonly periodo: string;
+    readonly monto_bruto: string;
+    readonly retencion: string;
+    readonly monto_liquido: string;
+    readonly sentido: "recibida" | "emitida";
+    readonly estado: "vigente" | "anulada";
+    readonly advertencias: readonly string[];
+}
+
+export interface LibroSii<T, Totales> {
+    readonly datos: readonly T[];
+    readonly total: number;
+    readonly pagina: number;
+    readonly por_pagina: number;
+    /** Suma de TODO el filtro, no solo de la página. */
+    readonly totales: Totales;
+}
+
+export type LibroDocumentos = LibroSii<DocumentoSii, Record<"neto" | "exento" | "iva" | "total", string>>;
+export type LibroHonorarios = LibroSii<HonorarioSii, Record<"bruto" | "retencion" | "liquido", string>>;
+
+/** Documentos de cada libro en un mes, para las pestañas y los chips. */
+export interface ResumenSii {
+    readonly compras: ConteoLibroSii;
+    readonly ventas: ConteoLibroSii;
+    readonly honorarios_recibidas: number;
+    readonly honorarios_emitidas: number;
+}
+
+export type ConteoLibroSii = { readonly total: number } & Record<Cuadratura, number>;
+
+export interface DetalleDocumentoSii {
+    readonly documento: DocumentoSii;
+    /** null si no se ha importado el XML de este documento. */
+    readonly xml: {
+        readonly monto_neto: string;
+        readonly monto_exento: string;
+        readonly monto_iva: string;
+        readonly monto_total: string;
+        readonly firma_verificada: "si" | "no" | "no_verificada";
+        readonly validacion: { readonly advertencias: readonly string[] };
+        readonly created_at: string;
+    } | null;
+    readonly lineas: readonly {
+        readonly linea: number;
+        readonly nombre: string;
+        readonly cantidad: string | null;
+        readonly precio: string | null;
+        readonly monto: number;
+    }[];
+}
+
+/** Filtros de los libros. Cada uno tiene su campo en la URL de la pantalla. */
+export interface FiltroLibroSii {
+    readonly periodo?: string;
+    readonly texto?: string;
+    readonly tipo_dte?: number;
+    readonly estado_rcv?: string;
+    readonly estado?: string;
+    readonly cuadratura?: string;
+    readonly orden?: string;
+    readonly dir?: string;
+    readonly pagina?: number;
+    readonly por_pagina?: number;
+}
+
+export const siiApi = {
+    importar: (formData: FormData, opciones?: ApiFetchOptions) =>
+        apiFetch<ImportacionSii>("/sii/importaciones", { ...opciones, method: "POST", formData }),
+    previsualizar: (formData: FormData, opciones?: ApiFetchOptions) =>
+        apiFetch<VistaPreviaSii>("/sii/importaciones/previsualizar", { ...opciones, method: "POST", formData }),
+    importaciones: (opciones?: ApiFetchOptions) => api.get<ImportacionSii[]>("/sii/importaciones", opciones),
+    resumen: (periodo: string, opciones?: ApiFetchOptions) =>
+        api.get<ResumenSii>(`/sii/resumen${consulta({ periodo })}`, opciones),
+    documentos: (sentido: "compra" | "venta", filtros: FiltroLibroSii = {}, opciones?: ApiFetchOptions) =>
+        api.get<LibroDocumentos>(`/sii/documentos${consulta({ sentido, ...filtros })}`, opciones),
+    documento: (id: string, opciones?: ApiFetchOptions) =>
+        api.get<DetalleDocumentoSii>(`/sii/documentos/${encodeURIComponent(id)}`, opciones),
+    honorarios: (sentido: "recibida" | "emitida", filtros: FiltroLibroSii = {}, opciones?: ApiFetchOptions) =>
+        api.get<LibroHonorarios>(`/sii/honorarios${consulta({ sentido, ...filtros })}`, opciones),
 };
 
 export const asientosApi = {
