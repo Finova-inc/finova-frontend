@@ -18,6 +18,7 @@ import { Panel, PanelCabecera } from "@/components/ui/Panel";
 import {
     ApiError,
     siiApi,
+    tercerosApi,
     type ConteoLibroSii,
     type FiltroLibroSii,
     type ImportacionSii,
@@ -35,7 +36,7 @@ import { ImportadorSii } from "./ImportadorSii";
 import { Plegable } from "./Plegable";
 import { SelectorMes } from "./SelectorMes";
 import { Indicador } from "./partes";
-import { TablaDocumentos, TablaHonorarios } from "./tablas";
+import { TablaDocumentos, TablaHonorarios, type EnlaceTerceros } from "./tablas";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Documentos tributarios" };
@@ -151,16 +152,27 @@ export default async function DocumentosPage({ searchParams }: { searchParams: P
     let resumen: ResumenSii | null = null;
     let rcv: LibroDocumentos | null = null;
     let honorarios: LibroHonorarios | null = null;
+    let terceros: EnlaceTerceros | undefined;
     let errorCarga = false;
 
     // Solo los datos se piden dentro del try: el linter no admite armar JSX ahi.
     try {
-        [importaciones, resumen, rcv, honorarios] = await Promise.all([
+        let registrados;
+        [importaciones, resumen, rcv, honorarios, registrados] = await Promise.all([
             siiApi.importaciones(opciones),
             siiApi.resumen(periodo, opciones),
             libro.esRcv ? siiApi.documentos(libro.id === "compras" ? "compra" : "venta", filtro, opciones) : null,
             libro.esRcv ? null : siiApi.honorarios(libro.id === "honorarios_recibidas" ? "recibida" : "emitida", filtro, opciones),
+            // Para enlazar cada contraparte con su ficha. Si falla, el libro se
+            // ve igual, solo que sin esos enlaces.
+            tercerosApi.listar(opciones).catch(() => null),
         ]);
+        if (registrados) {
+            terceros = {
+                ids: new Map(registrados.map((t) => [t.rut, t.id_tercero])),
+                puedeRegistrar: puedeRegistrar(rol),
+            };
+        }
     } catch (error) {
         if (error instanceof ApiError && error.status === 401) redirect("/login");
         errorCarga = true;
@@ -264,8 +276,8 @@ export default async function DocumentosPage({ searchParams }: { searchParams: P
                         {total > 0 ? (
                             <>
                                 <div className="overflow-x-auto pt-2">
-                                    {rcv ? <TablaDocumentos libro={rcv} base={base} /> : null}
-                                    {honorarios ? <TablaHonorarios libro={honorarios} base={base} /> : null}
+                                    {rcv ? <TablaDocumentos libro={rcv} base={base} terceros={terceros} /> : null}
+                                    {honorarios ? <TablaHonorarios libro={honorarios} base={base} terceros={terceros} /> : null}
                                 </div>
                                 <Paginacion base={base} pagina={rcv?.pagina ?? honorarios?.pagina ?? 1} porPagina={POR_PAGINA} total={total} />
                             </>
