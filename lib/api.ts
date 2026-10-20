@@ -275,8 +275,105 @@ export interface Tercero {
     readonly rut: string;
     readonly razon_social: string;
     readonly tipo_persona: "N" | "J";
+    /** Puede ser cliente y proveedor a la vez. */
+    readonly es_cliente: boolean;
+    readonly es_proveedor: boolean;
+    /** false: desactivado, ya no se ofrece al registrar asientos. */
+    readonly is_active: boolean;
     readonly created_at: string;
     readonly deleted_at: string | null;
+}
+
+/** Lo que se envía al registrar o editar un tercero (CreateTerceroDto). */
+export interface TerceroInput {
+    readonly rut: string;
+    readonly razon_social: string;
+    readonly tipo_persona: "N" | "J";
+    readonly es_cliente: boolean;
+    readonly es_proveedor: boolean;
+}
+
+export interface FiltroTerceros {
+    /** Parte de la razón social o del RUT, con o sin puntos. */
+    readonly buscar?: string;
+    readonly rol?: "cliente" | "proveedor";
+    readonly estado?: "activos" | "inactivos";
+}
+
+/** Contraparte de los documentos del SII que todavía no es un tercero. */
+export interface ContraparteSugerida {
+    readonly rut: string;
+    readonly nombre: string | null;
+    readonly como_proveedor: boolean;
+    readonly como_cliente: boolean;
+    readonly cantidad_documentos: number;
+    /** Suma de sus documentos (las notas de crédito restan). */
+    readonly monto_total: string;
+    readonly ultima_fecha: string;
+    readonly tipo_persona_sugerido: "N" | "J";
+    readonly motivo_tipo_persona: string;
+}
+
+export interface TotalesDocumentosTercero {
+    readonly cantidad: number;
+    readonly neto: string;
+    readonly iva: string;
+    readonly total: string;
+}
+
+/**
+ * Lo que la empresa tiene con un tercero (GET /terceros/:id/actividad). Los
+ * documentos del SII se enlazan por RUT: aparecen aunque se hayan importado
+ * antes de registrarlo. Cada lista trae hasta `limite` filas; los totales
+ * suman todas.
+ */
+export interface ActividadTercero {
+    readonly documentos: readonly {
+        readonly id_documento_sii: string;
+        readonly tipo_dte: number;
+        readonly folio: string;
+        readonly fecha_emision: string;
+        readonly sentido: "compra" | "venta";
+        readonly monto_neto: string;
+        readonly monto_iva: string;
+        readonly monto_total: string;
+        readonly estado_rcv: string | null;
+    }[];
+    readonly totales_documentos: {
+        readonly compras: TotalesDocumentosTercero;
+        readonly ventas: TotalesDocumentosTercero;
+    };
+    readonly honorarios: readonly {
+        readonly id_honorario_sii: string;
+        readonly folio: string;
+        readonly fecha_emision: string;
+        readonly sentido: "recibida" | "emitida";
+        readonly monto_bruto: string;
+        readonly retencion: string;
+        readonly monto_liquido: string;
+        readonly estado: string;
+    }[];
+    readonly totales_honorarios: {
+        readonly cantidad: number;
+        readonly bruto: string;
+        readonly retencion: string;
+        readonly liquido: string;
+    };
+    readonly movimientos: readonly {
+        readonly id_asiento: string;
+        readonly tipo_comprobante: string;
+        readonly numero: number;
+        readonly anio: number;
+        readonly fecha_contable: string;
+        readonly glosa: string;
+        readonly codigo_cuenta: string;
+        readonly nombre_cuenta: string;
+        readonly debe: string;
+        readonly haber: string;
+    }[];
+    readonly totales_movimientos: { readonly cantidad: number; readonly debe: string; readonly haber: string };
+    readonly documentos_manuales: number;
+    readonly limite: number;
 }
 
 /**
@@ -630,7 +727,31 @@ export interface PeriodoContable {
 }
 
 export const tercerosApi = {
+    /** Todos los de la empresa, sin los dados de baja (lo usa el formulario de asientos). */
     listar: (opciones?: ApiFetchOptions) => api.get<Tercero[]>("/terceros", opciones),
+    filtrar: (filtros: FiltroTerceros, opciones?: ApiFetchOptions) =>
+        api.get<Tercero[]>(`/terceros${consulta({ ...filtros })}`, opciones),
+    obtener: (id: string, opciones?: ApiFetchOptions) =>
+        api.get<Tercero>(`/terceros/${encodeURIComponent(id)}`, opciones),
+    actividad: (id: string, opciones?: ApiFetchOptions) =>
+        api.get<ActividadTercero>(`/terceros/${encodeURIComponent(id)}/actividad`, opciones),
+    /** Contrapartes del SII sin registrar: se proponen, no se crean solas (Ley 21.719). */
+    sugerencias: (opciones?: ApiFetchOptions) =>
+        api.get<ContraparteSugerida[]>("/terceros/sugerencias", opciones),
+    /** `recuperado`: el RUT era de un tercero dado de baja y se recuperó. */
+    crear: (datos: TerceroInput, opciones?: ApiFetchOptions) =>
+        api.post<Tercero & { readonly recuperado?: boolean }>("/terceros", datos, opciones),
+    actualizar: (
+        id: string,
+        datos: Partial<TerceroInput> & { readonly is_active?: boolean },
+        opciones?: ApiFetchOptions,
+    ) => api.patch<Tercero>(`/terceros/${encodeURIComponent(id)}`, datos, opciones),
+    /** Baja lógica (supresión de la Ley 21.719): sus documentos se conservan. */
+    darDeBaja: (id: string, opciones?: ApiFetchOptions) =>
+        api.delete<{ message: string }>(`/terceros/${encodeURIComponent(id)}`, opciones),
+    /** Derecho de acceso y portabilidad (Ley 21.719): solo personas naturales; queda auditado. */
+    datosPersonales: (id: string, opciones?: ApiFetchOptions) =>
+        api.get<Record<string, unknown>>(`/terceros/${encodeURIComponent(id)}/datos-personales`, opciones),
 };
 
 export const documentosApi = {
