@@ -931,6 +931,159 @@ export const siiApi = {
         api.get<LibroHonorarios>(`/sii/honorarios${consulta({ sentido, ...filtros })}`, opciones),
 };
 
+/* ----------------------------------------------------------------------------
+   F29 — propuesta de declaración mensual. Forma confirmada contra
+   finova-backend/src/f29 (f29.calculo.ts, f29.service.ts y la entidad).
+   ---------------------------------------------------------------------------- */
+
+export type SeccionF29 = "ventas" | "debitos" | "compras" | "creditos" | "retenciones";
+
+/** Una línea del formulario con lo que Finova propone. Montos en pesos, como string. */
+export interface LineaF29 {
+    readonly clave: string;
+    readonly linea: number;
+    /** Código de la cantidad de documentos; null si la línea solo lleva monto. */
+    readonly codigo_cantidad: number | null;
+    readonly codigo_monto: number;
+    readonly concepto: string;
+    readonly seccion: SeccionF29;
+    /** 1 suma a su total, -1 resta (notas de crédito), 0 es informativa. */
+    readonly suma: -1 | 0 | 1;
+    readonly cantidad: number;
+    readonly monto: string;
+}
+
+export interface TotalesF29 {
+    /** 538 */
+    readonly debitos: string;
+    /** 537 */
+    readonly creditos: string;
+    /** 89 */
+    readonly iva_determinado: string;
+    /** 77 */
+    readonly remanente_siguiente: string;
+    /** 151 */
+    readonly retencion_honorarios: string;
+    /** 595 */
+    readonly subtotal: string;
+    /** 91 */
+    readonly total_a_pagar: string;
+}
+
+export interface AlertaF29 {
+    readonly codigo: string;
+    readonly nivel: "critico" | "aviso" | "info";
+    readonly mensaje: string;
+    /** Con qué libro de Documentos se revisa. */
+    readonly libro?: "compras" | "ventas" | "honorarios_recibidas";
+    readonly tipo_dte?: number;
+    readonly cuadratura?: string;
+}
+
+export interface DocumentoExcluidoF29 {
+    readonly id_documento_sii: string;
+    readonly sentido: "compra" | "venta";
+    readonly tipo_dte: number;
+    readonly folio: string;
+    readonly motivo: string;
+}
+
+export type EstadoPropuestaF29 = "borrador" | "aprobada" | "declarada";
+
+export interface PropuestaF29 {
+    readonly id_propuesta_f29: string;
+    readonly periodo: string;
+    readonly estado: EstadoPropuestaF29;
+    readonly remanente_anterior: string;
+    readonly utm_anterior: string | null;
+    readonly utm_actual: string | null;
+    /** Lo que se aprobó; null mientras es borrador. */
+    readonly foto: { readonly lineas: readonly LineaF29[]; readonly totales: TotalesF29 } | null;
+    readonly total_a_pagar: string | null;
+    readonly remanente_siguiente: string | null;
+    readonly aprobada_en: string | null;
+    readonly folio_sii: string | null;
+    readonly fecha_presentacion: string | null;
+    readonly declarada_en: string | null;
+    readonly version: number;
+}
+
+/** Lo que muestra la cuadrícula del año. */
+export type ResumenPropuestaF29 = Pick<
+    PropuestaF29,
+    "id_propuesta_f29" | "periodo" | "estado" | "total_a_pagar" | "remanente_siguiente" | "folio_sii" | "fecha_presentacion"
+>;
+
+export interface CambioF29 {
+    readonly codigo: number;
+    readonly concepto: string;
+    readonly aprobado: string;
+    readonly actual: string;
+}
+
+export interface F29DelMes {
+    readonly periodo: string;
+    /** "septiembre de 2026". */
+    readonly nombre: string;
+    /** El F29 se aprueba cuando el mes ya terminó. */
+    readonly mes_terminado: boolean;
+    readonly vencimiento: { readonly general: string; readonly con_pago_internet: string; readonly sin_pago: string };
+    readonly propuesta: PropuestaF29 | null;
+    readonly remanente: {
+        /** Código 77 del mes anterior, sin reajustar. */
+        readonly mes_anterior: string;
+        readonly utm_anterior: string | null;
+        readonly utm_actual: string | null;
+        /** Código 504. */
+        readonly reajustado: string;
+        /** El 77 del F29 aprobado del mes anterior, si Finova lo tiene. */
+        readonly sugerido: { readonly periodo: string; readonly monto: string; readonly estado: EstadoPropuestaF29 } | null;
+    };
+    /** Calculado con los documentos de hoy. Si la propuesta está aprobada, `propuesta.foto` es lo aprobado. */
+    readonly calculo: {
+        readonly lineas: readonly LineaF29[];
+        readonly totales: TotalesF29;
+        readonly alertas: readonly AlertaF29[];
+        readonly excluidos: readonly DocumentoExcluidoF29[];
+    };
+    readonly cambios: readonly CambioF29[];
+    readonly conciliacion: {
+        readonly debito: { readonly cuenta: string; readonly libro: string; readonly propuesta: string };
+        readonly credito: { readonly cuenta: string; readonly libro: string; readonly propuesta: string };
+        readonly cuadra: boolean;
+    };
+    readonly documentos: { readonly ventas: number; readonly compras: number; readonly honorarios: number };
+}
+
+export interface RemanenteF29Input {
+    readonly remanente_anterior: string;
+    readonly utm_anterior: string | null;
+    readonly utm_actual: string | null;
+    readonly version?: number;
+}
+
+const rutaF29 = (periodo: string) => `/f29/${encodeURIComponent(periodo)}`;
+
+export const f29Api = {
+    listar: (anio: number, opciones?: ApiFetchOptions) =>
+        api.get<ResumenPropuestaF29[]>(`/f29${consulta({ anio })}`, opciones),
+    obtener: (periodo: string, opciones?: ApiFetchOptions) => api.get<F29DelMes>(rutaF29(periodo), opciones),
+    /** Administrador o contador. Crea el borrador si no existe. */
+    guardarRemanente: (periodo: string, datos: RemanenteF29Input, opciones?: ApiFetchOptions) =>
+        apiFetch<PropuestaF29>(`${rutaF29(periodo)}/remanente`, { ...opciones, method: "PUT", json: datos }),
+    /** Con alertas críticas, `alertas_revisadas` tiene que ser true. */
+    aprobar: (periodo: string, datos: { readonly alertas_revisadas: boolean; readonly version?: number }, opciones?: ApiFetchOptions) =>
+        api.post<PropuestaF29>(`${rutaF29(periodo)}/aprobacion`, datos, opciones),
+    desaprobar: (periodo: string, opciones?: ApiFetchOptions) =>
+        api.delete<PropuestaF29>(`${rutaF29(periodo)}/aprobacion`, opciones),
+    /** Anota que el contador lo presentó en el SII. Desde ahí la propuesta no cambia. */
+    declarar: (
+        periodo: string,
+        datos: { readonly folio_sii: string; readonly fecha_presentacion: string; readonly version?: number },
+        opciones?: ApiFetchOptions,
+    ) => api.post<PropuestaF29>(`${rutaF29(periodo)}/declaracion`, datos, opciones),
+};
+
 export const asientosApi = {
     listar: (filtros: FiltroAsientos = {}, opciones?: ApiFetchOptions) =>
         api.get<Paginado<AsientoListado>>(
