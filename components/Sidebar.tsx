@@ -46,6 +46,7 @@ const GRUPOS: readonly GrupoNav[] = [
             { href: "/dashboard", etiqueta: "Panel de control", icono: "grid" },
             // Las empresas se gestionan desde el popup de la cabecera.
             { href: "/dashboard/documentos", etiqueta: "Documentos", icono: "document" },
+            { href: "/dashboard/contabilizacion", etiqueta: "Por contabilizar", icono: "sync" },
             { href: "/dashboard/terceros", etiqueta: "Terceros", icono: "users" },
         ],
     },
@@ -54,6 +55,7 @@ const GRUPOS: readonly GrupoNav[] = [
         enlaces: [
             { href: "/dashboard/core-contable", etiqueta: "Libro diario", icono: "calculator" },
             { href: "/dashboard/libro-mayor", etiqueta: "Libro mayor", icono: "ledger" },
+            { href: "/dashboard/balance", etiqueta: "Balance", icono: "calculator" },
             { href: "/dashboard/plan-cuentas", etiqueta: "Plan de cuentas", icono: "ledger" },
             { href: "/dashboard/periodos", etiqueta: "Períodos", icono: "lock" },
             { href: "/dashboard/f29", etiqueta: "Formulario F29", icono: "check" },
@@ -65,6 +67,10 @@ const GRUPOS: readonly GrupoNav[] = [
             { href: "/dashboard/copiloto", etiqueta: "Copiloto IA", icono: "sparkle" },
             { href: "/dashboard/auditoria", etiqueta: "Auditoría", icono: "clock" },
         ],
+    },
+    {
+        titulo: "Empresa",
+        enlaces: [{ href: "/dashboard/usuarios", etiqueta: "Usuarios", icono: "shield" }],
     },
 ];
 

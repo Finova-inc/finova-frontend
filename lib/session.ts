@@ -100,12 +100,22 @@ export async function obtenerRolDelToken(): Promise<number | null> {
     return typeof payload?.rol === "number" ? payload.rol : null;
 }
 
+/**
+ * Id del usuario de la sesión (el `sub` del JWT), sin verificar la firma:
+ * mismo criterio que los anteriores, solo para presentar (marcar "tú" en la
+ * lista de usuarios). El backend autoriza con el token firmado.
+ */
+export async function obtenerUsuarioDelToken(): Promise<string | null> {
+    const payload = await leerCargaDelToken();
+    return typeof payload?.sub === "string" ? payload.sub : null;
+}
+
 /** Administrador o contador: los roles que registran en el libro. */
 export function puedeRegistrar(rol: number | null): boolean {
     return rol === ROL.ADMINISTRADOR || rol === ROL.CONTADOR;
 }
 
-async function leerCargaDelToken(): Promise<{ empresaId?: unknown; rol?: unknown } | null> {
+async function leerCargaDelToken(): Promise<{ sub?: unknown; empresaId?: unknown; rol?: unknown } | null> {
     const token = await obtenerTokenSesion();
     if (!token) return null;
 
@@ -117,7 +127,7 @@ async function leerCargaDelToken(): Promise<{ empresaId?: unknown; rol?: unknown
         // '-' y '_' sustituyen a '+' y '/'.
         const normalizada = carga.replace(/-/g, "+").replace(/_/g, "/");
         const json = Buffer.from(normalizada, "base64").toString("utf8");
-        return JSON.parse(json) as { empresaId?: unknown; rol?: unknown };
+        return JSON.parse(json) as { sub?: unknown; empresaId?: unknown; rol?: unknown };
     } catch {
         return null;
     }

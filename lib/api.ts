@@ -200,6 +200,47 @@ export interface Usuario {
 }
 
 /**
+ * Una persona con acceso a la empresa activa, con su rol EN ella. Forma
+ * confirmada contra MiembroEmpresa en finova-backend/src/users/users.service.ts.
+ */
+export interface MiembroEmpresa {
+    readonly id_usuario: string;
+    readonly rut: string | null;
+    readonly correo: string;
+    readonly nombre_completo: string;
+    readonly is_active: boolean;
+    /** 1 administrador, 2 contador, 3 consulta. */
+    readonly id_rol: number;
+    /** Desde cuándo tiene acceso (ISO). */
+    readonly desde: string;
+}
+
+/**
+ * Dar acceso a una persona. Si su RUT ya tiene cuenta en Finova, basta el RUT
+ * y el rol: nombre, correo y contraseña se ignoran (son suyos).
+ */
+export interface AgregarUsuarioInput {
+    readonly rut: string;
+    readonly id_rol: number;
+    readonly nombre_completo?: string;
+    readonly correo?: string;
+    readonly password?: string;
+}
+
+/** Solo el administrador de la empresa. */
+export const usuariosApi = {
+    listar: (opciones?: ApiFetchOptions) => api.get<MiembroEmpresa[]>("/users", opciones),
+    /** `vinculado`: el RUT ya tenía cuenta y solo se le dio acceso a esta empresa. */
+    agregar: (datos: AgregarUsuarioInput, opciones?: ApiFetchOptions) =>
+        api.post<MiembroEmpresa & { readonly vinculado: boolean }>("/users", datos, opciones),
+    cambiarRol: (id: string, id_rol: number, opciones?: ApiFetchOptions) =>
+        api.patch<MiembroEmpresa>(`/users/${encodeURIComponent(id)}`, { id_rol }, opciones),
+    /** Quita el acceso a esta empresa; la cuenta y lo que registró se conservan. */
+    quitarAcceso: (id: string, opciones?: ApiFetchOptions) =>
+        api.delete<{ readonly message: string }>(`/users/${encodeURIComponent(id)}`, opciones),
+};
+
+/**
  * Empresa.
  *
  * Forma confirmada contra finova-backend/src/empresas/entities/empresa.entity.ts
@@ -932,11 +973,96 @@ export const siiApi = {
 };
 
 /* ----------------------------------------------------------------------------
+   Contabilización de los documentos del SII ("por contabilizar"). Forma
+   confirmada contra finova-backend/src/contabilizacion.
+   ---------------------------------------------------------------------------- */
+
+export type FuncionCuenta =
+    | "clientes"
+    | "proveedores"
+    | "ventas"
+    | "compras"
+    | "activo_fijo"
+    | "iva_debito"
+    | "iva_credito"
+    | "iva_retenido"
+    | "honorarios_gasto"
+    | "retencion_honorarios"
+    | "honorarios_por_pagar";
+
+/** La cuenta que usa la contabilización para una función: la elegida o la del plan base. */
+export interface CuentaDeFuncion {
+    readonly funcion: FuncionCuenta;
+    readonly nombre: string;
+    readonly uso: string;
+    /** Tipos de cuenta que admite (1 activo … 5 gasto). */
+    readonly tipos: readonly number[];
+    readonly codigo_sugerido: string | null;
+    readonly cuenta: { readonly id_cuenta: string; readonly codigo: string; readonly nombre: string } | null;
+    readonly origen: "configurada" | "plan_base" | null;
+}
+
+export type EstadoContabilizacion = "contabilizado" | "borrador" | "pendiente" | "no_contabilizable";
+
+export interface ItemPorContabilizar {
+    readonly tipo: "documento" | "honorario";
+    readonly id: string;
+    readonly sentido: "compra" | "venta" | "honorario";
+    readonly tipo_dte: number | null;
+    readonly folio: string;
+    readonly fecha_emision: string;
+    readonly contraparte: string | null;
+    readonly rut: string;
+    readonly monto_total: string;
+    readonly estado: EstadoContabilizacion;
+    readonly motivo: string | null;
+    readonly id_borrador: string | null;
+    readonly asiento: { readonly id_asiento: string; readonly cita: string } | null;
+    /** Cuenta de venta o compra que se propondría; se puede cambiar antes de proponer. */
+    readonly id_cuenta_propuesta: string | null;
+}
+
+export interface PorContabilizar {
+    readonly periodo: string;
+    readonly cuentas: readonly CuentaDeFuncion[];
+    readonly items: readonly ItemPorContabilizar[];
+    readonly resumen: { readonly pendientes: number; readonly borradores: number; readonly contabilizados: number; readonly no_contabilizables: number };
+}
+
+export interface ProponerInput {
+    readonly periodo: string;
+    readonly documentos?: readonly { readonly id: string; readonly id_cuenta?: string }[];
+    readonly honorarios?: readonly string[];
+}
+
+export const contabilizacionApi = {
+    listar: (periodo: string, opciones?: ApiFetchOptions) =>
+        api.get<PorContabilizar>(`/contabilizacion${consulta({ periodo })}`, opciones),
+    cuentas: (opciones?: ApiFetchOptions) => api.get<CuentaDeFuncion[]>("/contabilizacion/cuentas", opciones),
+    /** id_cuenta null vuelve a la cuenta del plan base. */
+    guardarCuentas: (cuentas: readonly { readonly funcion: FuncionCuenta; readonly id_cuenta: string | null }[], opciones?: ApiFetchOptions) =>
+        apiFetch<CuentaDeFuncion[]>("/contabilizacion/cuentas", { ...opciones, method: "PUT", json: { cuentas } }),
+    /** Crea un borrador por documento; lo que no se puede proponer vuelve en `errores`. */
+    proponer: (datos: ProponerInput, opciones?: ApiFetchOptions) =>
+        api.post<{
+            readonly creados: readonly { readonly id: string; readonly id_borrador: string }[];
+            readonly errores: readonly { readonly id: string; readonly folio: string | null; readonly motivo: string }[];
+        }>("/contabilizacion/propuestas", datos, opciones),
+    /** Cada borrador en su propia transacción: uno que falla no frena a los demás. */
+    contabilizar: (borradores: readonly string[], opciones?: ApiFetchOptions) =>
+        api.post<{
+            readonly contabilizados: number;
+            readonly con_error: number;
+            readonly resultados: readonly { readonly id_borrador: string; readonly asiento: string | null; readonly error: string | null }[];
+        }>("/contabilizacion/contabilizar", { borradores }, opciones),
+};
+
+/* ----------------------------------------------------------------------------
    F29 — propuesta de declaración mensual. Forma confirmada contra
    finova-backend/src/f29 (f29.calculo.ts, f29.service.ts y la entidad).
    ---------------------------------------------------------------------------- */
 
-export type SeccionF29 = "ventas" | "debitos" | "compras" | "creditos" | "retenciones";
+export type SeccionF29 = "ventas" | "debitos" | "compras" | "creditos" | "retenciones" | "cambio_sujeto";
 
 /** Una línea del formulario con lo que Finova propone. Montos en pesos, como string. */
 export interface LineaF29 {
@@ -966,6 +1092,10 @@ export interface TotalesF29 {
     readonly retencion_honorarios: string;
     /** 595 */
     readonly subtotal: string;
+    /** 596: IVA retenido a terceros por cambio de sujeto. Opcional: las propuestas aprobadas antes no lo traen. */
+    readonly retencion_cambio_sujeto?: string;
+    /** 547: anverso más reverso (595 + 596). */
+    readonly total_determinado?: string;
     /** 91 */
     readonly total_a_pagar: string;
 }
@@ -1084,6 +1214,34 @@ export const f29Api = {
     ) => api.post<PropuestaF29>(`${rutaF29(periodo)}/declaracion`, datos, opciones),
 };
 
+/** Las 8 columnas del balance. Montos como string con 4 decimales, igual que el libro. */
+export interface ColumnasBalance {
+    readonly debitos: string;
+    readonly creditos: string;
+    readonly deudor: string;
+    readonly acreedor: string;
+    readonly activo: string;
+    readonly pasivo: string;
+    readonly perdidas: string;
+    readonly ganancias: string;
+}
+
+/** Forma confirmada contra finova-backend/src/asientos-contables/balance.util.ts. */
+export interface BalanceComprobacion {
+    readonly desde: string;
+    readonly hasta: string;
+    readonly filas: readonly (ColumnasBalance & {
+        readonly id_cuenta: string;
+        readonly codigo: string;
+        readonly nombre: string;
+        readonly id_tipo_cuenta: number;
+    })[];
+    readonly totales: ColumnasBalance;
+    readonly resultado: { readonly utilidad: string; readonly perdida: string };
+    readonly sumas_iguales: ColumnasBalance;
+    readonly cuadra: { readonly sumas: boolean; readonly saldos: boolean; readonly inventario_resultados: boolean };
+}
+
 export const asientosApi = {
     listar: (filtros: FiltroAsientos = {}, opciones?: ApiFetchOptions) =>
         api.get<Paginado<AsientoListado>>(
@@ -1110,6 +1268,12 @@ export const asientosApi = {
     libroMayor: (id_cuenta: string, desde: string, hasta: string, opciones?: ApiFetchOptions) =>
         api.get<LibroMayor>(
             `/asientos-contables/libro-mayor${consulta({ id_cuenta, desde, hasta })}`,
+            opciones,
+        ),
+    /** Balance de comprobación y saldos (8 columnas) del ejercicio, acumulado hasta `mes`. */
+    balance: (anio: number, mes: number, desdeMes?: number, opciones?: ApiFetchOptions) =>
+        api.get<BalanceComprobacion>(
+            `/asientos-contables/balance${consulta({ anio, mes, desde_mes: desdeMes })}`,
             opciones,
         ),
     /** Cifras del panel de control; sin anio, el ejercicio en curso. */

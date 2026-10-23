@@ -53,6 +53,7 @@ export const SECCIONES: readonly {
     { id: "compras", titulo: "Compras sin derecho a crédito", nota: "Informativas: no generan crédito" },
     { id: "creditos", titulo: "Créditos" },
     { id: "retenciones", titulo: "Retenciones de impuesto a la renta" },
+    { id: "cambio_sujeto", titulo: "Cambio de sujeto (reverso del formulario)", nota: "IVA que la empresa retiene y entera por otros" },
 ];
 
 /** "503 · 502": cantidad y monto; solo el del monto si la línea no lleva cantidad. */
@@ -76,6 +77,9 @@ export interface FiltroDocumentos {
 const ORIGEN_DE_LINEA: Record<string, { readonly libro: string; readonly tipo?: number }> = {
     exportaciones: { libro: "ventas", tipo: 110 },
     ventas_exentas: { libro: "ventas", tipo: 34 },
+    facturas_compra_recibidas: { libro: "ventas", tipo: 46 },
+    neto_retencion_parcial: { libro: "ventas", tipo: 46 },
+    facturas_compra_parcial: { libro: "ventas", tipo: 46 },
     facturas_emitidas: { libro: "ventas", tipo: 33 },
     facturas_inmuebles: { libro: "ventas" },
     ventas_no_giro: { libro: "ventas" },
@@ -91,6 +95,7 @@ const ORIGEN_DE_LINEA: Record<string, { readonly libro: string; readonly tipo?: 
     nc_recibidas: { libro: "compras", tipo: 61 },
     nd_recibidas: { libro: "compras", tipo: 56 },
     retencion_honorarios: { libro: "honorarios_recibidas" },
+    retencion_cambio_sujeto: { libro: "compras", tipo: 46 },
 };
 
 /** Dónde se revisan los documentos de una línea; null si no salen de documentos (el remanente). */

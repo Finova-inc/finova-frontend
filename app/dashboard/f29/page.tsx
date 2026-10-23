@@ -19,12 +19,12 @@ import { desplazarMes, ESTADOS, nombreDelMes, periodoPorDefecto } from "@/lib/f2
 import { formatearCLP, hoyEnChile } from "@/lib/formato";
 import { periodoValido } from "@/lib/sii";
 import { exigirTokenSesion, obtenerRolDelToken, puedeRegistrar } from "@/lib/session";
+import { SelectorDeMes } from "@/components/dashboard/SelectorDeMes";
 import { BotonImprimir } from "../core-contable/BotonImprimir";
 import { Aviso, Encabezado, Guia, ReglasGuia } from "../core-contable/partes";
 import { Indicador } from "../documentos/partes";
 import { AccionesF29 } from "./AccionesF29";
 import { FormularioRemanente } from "./FormularioRemanente";
-import { SelectorMesF29 } from "./SelectorMesF29";
 import {
     Conciliacion,
     diaDelVencimiento,
@@ -44,7 +44,8 @@ const REGLAS: readonly string[] = [
     "Cada documento cae en su código según su tipo (factura, boleta, nota de crédito o de débito) y el tipo de compra o venta del RCV (del giro, supermercado, activo fijo, sin derecho a crédito…). Las notas de crédito restan.",
     "Débitos (538) menos créditos (537): si da positivo es el IVA a pagar (89); si da negativo, el remanente para el mes siguiente (77). El crédito incluye el remanente del mes anterior (504), reajustado por la UTM (art. 27 del DL 825).",
     "La retención de las boletas de honorarios recibidas va al código 151 (15,25 % del bruto en 2026). Las boletas anuladas no suman.",
-    "Lo que Finova aún no calcula —facturas de compra (cambio de sujeto), IVA de uso común, importaciones, impuesto único de trabajadores, PPM— queda fuera con una alerta, para que lo agregues a mano.",
+    "Factura de compra (cambio de sujeto): si la emite tu empresa, su IVA va como crédito (520) y como retención total (39), así que no cambia lo que se paga; si te la emite un cliente, se informa en las líneas 5 o 16 según cuánto retuvo.",
+    "Lo que Finova aún no calcula —retención parcial en facturas de compra emitidas, IVA de uso común, importaciones, impuesto único de trabajadores, PPM— queda fuera con una alerta, para que lo agregues a mano.",
     "Aprobar guarda una copia de los montos. Si después cambia un documento, la pantalla lo avisa. Cuando presentes el F29 en el SII, anota su folio: desde ahí la propuesta queda cerrada.",
     "Plazo: día 20 del mes siguiente si declaras y pagas por internet siendo facturador electrónico; día 28 si la declaración es sin pago; día 12 en los demás casos. Si cae en fin de semana o feriado, pasa al día hábil siguiente.",
     "Los códigos y líneas siguen las instrucciones de llenado del Formulario 29 del SII.",
@@ -86,7 +87,7 @@ export default async function F29Page({ searchParams }: { searchParams: Promise<
         return (
             <div className="flex flex-col gap-4">
                 {encabezado}
-                <SelectorMesF29 periodo={periodo} />
+                <SelectorDeMes ruta="/dashboard/f29" periodo={periodo} />
                 <Aviso tono="critico">
                     No pudimos cargar la propuesta. Si el servidor estaba inactivo puede tardar unos segundos en despertar:
                     recarga la página.
@@ -116,7 +117,7 @@ export default async function F29Page({ searchParams }: { searchParams: Promise<
 
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                 <div className="flex flex-wrap items-center gap-3">
-                    <SelectorMesF29 periodo={periodo} />
+                    <SelectorDeMes ruta="/dashboard/f29" periodo={periodo} />
                     <Etiqueta tono={ESTADOS[estado].tono}>{ESTADOS[estado].etiqueta}</Etiqueta>
                     {/* En papel no se ve el selector: el mes va escrito. */}
                     <span className="hidden text-[14px] font-semibold capitalize print:inline">{datos.nombre}</span>
@@ -176,7 +177,11 @@ export default async function F29Page({ searchParams }: { searchParams: Promise<
                 <Indicador
                     titulo="Total a pagar · 91"
                     valor={formatearCLP(totales.total_a_pagar)}
-                    nota={`Incluye ${formatearCLP(totales.retencion_honorarios)} de retención de honorarios`}
+                    nota={
+                        totales.retencion_cambio_sujeto && totales.retencion_cambio_sujeto !== "0"
+                            ? `Incluye ${formatearCLP(totales.retencion_honorarios)} de honorarios y ${formatearCLP(totales.retencion_cambio_sujeto)} de IVA retenido`
+                            : `Incluye ${formatearCLP(totales.retencion_honorarios)} de retención de honorarios`
+                    }
                 />
             </div>
 
