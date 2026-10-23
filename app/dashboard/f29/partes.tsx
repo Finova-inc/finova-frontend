@@ -123,9 +123,18 @@ export function TablaFormulario({
                                 />
                             </>
                         ) : null}
+                        {/* El 595 cierra el anverso; el reverso (cambio de sujeto) viene después. */}
+                        {seccion.id === "retenciones" ? (
+                            <FilaTotal linea={80} codigo="595" concepto="Subtotal impuesto determinado del anverso (IVA + retenciones)" monto={totales.subtotal} />
+                        ) : null}
+                        {seccion.id === "cambio_sujeto" ? (
+                            <>
+                                <FilaTotal linea={122} codigo="596" concepto="Total retenciones por cambio de sujeto" monto={totales.retencion_cambio_sujeto ?? "0"} />
+                                <FilaTotal linea={134} codigo="547" concepto="Total determinado (anverso + reverso)" monto={totales.total_determinado ?? totales.subtotal} />
+                            </>
+                        ) : null}
                     </SeccionDelFormulario>
                 ))}
-                <FilaTotal linea={80} codigo="595" concepto="Subtotal impuesto determinado (IVA + retenciones)" monto={totales.subtotal} />
                 <FilaTotal linea={140} codigo="91" concepto="Total a pagar dentro del plazo legal" monto={totales.total_a_pagar} destacado />
             </tbody>
         </table>
