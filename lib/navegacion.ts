@@ -51,3 +51,22 @@ export function pasosHastaLaPantallaAnterior(
     }
     return 0;
 }
+
+/**
+ * A dónde ir después del login, según el `?redirigir=` de la URL.
+ *
+ * Solo se acepta un destino de este mismo sitio. Revisar que empiece con "/"
+ * no basta: "//sitio-malo.cl" y "/\sitio-malo.cl" también empiezan así y el
+ * navegador los lee como otro dominio (redirección abierta, útil para
+ * phishing). Por eso se resuelve con el mismo parser de URL del navegador y
+ * se compara el origen; cualquier cosa rara cae al panel.
+ */
+export function destinoTrasLogin(pedido: string | null, origen: string): string {
+    if (!pedido) return RAIZ_DEL_PANEL;
+    try {
+        const url = new URL(pedido, origen);
+        return url.origin === origen ? url.pathname + url.search + url.hash : RAIZ_DEL_PANEL;
+    } catch {
+        return RAIZ_DEL_PANEL;
+    }
+}

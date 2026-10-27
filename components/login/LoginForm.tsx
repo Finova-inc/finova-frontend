@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import { Icon } from "@/components/ui/Icon";
 import { formatearRut, formatearRutAlEscribir } from "@/lib/formato";
+import { destinoTrasLogin } from "@/lib/navegacion";
 import {
     PASSWORD_MAX_LENGTH,
     RUT_MAX_LENGTH,
@@ -165,10 +166,9 @@ export function LoginForm() {
             if (respuesta.ok) {
                 // La contraseña se descarta en cuanto deja de hacer falta.
                 setPassword("");
-                const destino = searchParams.get("redirigir") ?? "/dashboard";
                 // refresh() es imprescindible: obliga a los Server Components a
                 // volver a ejecutarse y leer la cookie recién creada.
-                router.replace(destino.startsWith("/") ? destino : "/dashboard");
+                router.replace(destinoTrasLogin(searchParams.get("redirigir"), window.location.origin));
                 router.refresh();
                 return;
             }
