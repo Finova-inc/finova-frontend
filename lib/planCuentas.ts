@@ -6,7 +6,8 @@
  * componente cliente (el árbol, el formulario). Lo prueba planCuentas.test.mjs.
  */
 
-import type { CuentaContable, CuentaPropiaInput, FilaPlantilla } from "./api";
+import type { CuentaContable, CuentaPropiaInput, FilaPlantilla, RubroEeff } from "./api";
+import { filasACsv } from "./csv.ts";
 
 export interface ClaseDeCuenta {
     readonly id: number;
@@ -26,6 +27,29 @@ export const CLASES_DE_CUENTA: readonly ClaseDeCuenta[] = [
 
 export function claseDe(idTipoCuenta: number): ClaseDeCuenta {
     return CLASES_DE_CUENTA.find((clase) => clase.id === idTipoCuenta) ?? CLASES_DE_CUENTA[0];
+}
+
+/** Rubros de estados financieros que admite cada clase (espejo de RUBROS_POR_TIPO del backend). */
+export const RUBROS_POR_CLASE: Readonly<Record<number, readonly { valor: RubroEeff; nombre: string }[]>> = {
+    1: [
+        { valor: "activo_corriente", nombre: "Activo corriente" },
+        { valor: "activo_no_corriente", nombre: "Activo no corriente" },
+    ],
+    2: [
+        { valor: "pasivo_corriente", nombre: "Pasivo corriente" },
+        { valor: "pasivo_no_corriente", nombre: "Pasivo no corriente" },
+    ],
+    3: [{ valor: "patrimonio", nombre: "Patrimonio" }],
+    4: [{ valor: "ingresos", nombre: "Ingresos" }],
+    5: [{ valor: "gastos", nombre: "Gastos" }],
+};
+
+export function nombreRubro(rubro: RubroEeff | null): string {
+    for (const rubros of Object.values(RUBROS_POR_CLASE)) {
+        const encontrado = rubros.find((r) => r.valor === rubro);
+        if (encontrado) return encontrado.nombre;
+    }
+    return "Sin rubro";
 }
 
 /** Nombre del nivel según su profundidad en el árbol del plan base. */
@@ -120,15 +144,6 @@ export function normalizar(texto: string): string {
 }
 
 /**
- * Celda de CSV: entre comillas si lo necesita, y nunca algo que Excel ejecute
- * como fórmula (un nombre "=HIPERVINCULO(...)" se escribe como texto).
- */
-function celdaCsv(valor: string): string {
-    const texto = /^[=+\-@\t\r]/.test(valor) ? `'${valor}` : valor;
-    return /[;"\r\n]/.test(texto) ? `"${texto.replaceAll('"', '""')}"` : texto;
-}
-
-/**
  * El plan de cuentas en CSV para Excel en español (separado por punto y coma),
  * en orden jerárquico: cada agrupación seguida de lo que contiene.
  */
@@ -150,7 +165,7 @@ export function planACsv(cuentas: readonly CuentaContable[]): string {
         }
     };
     recorrer(construirArbol(cuentas), 0);
-    return filas.map((fila) => fila.map(celdaCsv).join(";")).join("\r\n");
+    return filasACsv(filas);
 }
 
 /**
@@ -214,4 +229,12 @@ export function problemaDePropia(
     if (otrasPropias.includes(codigo)) return `El código ${codigo} se repite en otra cuenta propia.`;
     if (propia.nombre.trim().length < 3) return "El nombre necesita al menos 3 caracteres.";
     return null;
+}
+
+/**
+ * Qué decir junto a «Marcar recomendadas». El botón se deshabilita cuando no hay
+ * nada que marcar; sin este texto parece roto.
+ */
+export function textoRecomendadas(total: number, marcadas: number): string {
+    return total === 0 ? "Ya tienes todas las cuentas recomendadas" : `${marcadas} de ${total} recomendadas marcadas`;
 }

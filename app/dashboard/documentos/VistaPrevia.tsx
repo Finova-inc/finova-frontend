@@ -1,6 +1,7 @@
 import { Boton } from "@/components/ui/Boton";
 import { Etiqueta } from "@/components/ui/Etiqueta";
 import type { VistaPreviaSii } from "@/lib/api";
+import { nombrePeriodo } from "@/lib/formato";
 import { Aviso } from "../core-contable/partes";
 import { LineasPlegables, TablaDeLineas } from "./ResumenDeImportacion";
 
@@ -26,11 +27,14 @@ export function VistaPrevia({
     importando,
     onImportar,
     onCancelar,
+    onUsarPeriodo,
 }: {
     readonly vista: VistaPreviaSii;
     readonly importando: boolean;
     readonly onImportar: () => void;
     readonly onCancelar: () => void;
+    /** Cambia el período del formulario al que sugieren las fechas del archivo. */
+    readonly onUsarPeriodo: (periodo: string) => void;
 }) {
     const r = vista.resumen;
     // Los DTE se cuentan en documentos (masculino); las filas de un CSV, en líneas (femenino).
@@ -65,6 +69,11 @@ export function VistaPrevia({
                     <Aviso tono="aviso">
                         <p className="font-medium">Revisa esto antes de importar</p>
                         <p>{aviso}</p>
+                        {vista.periodo_sugerido ? (
+                            <Boton variante="neutro" className="mt-2" onClick={() => onUsarPeriodo(vista.periodo_sugerido as string)}>
+                                Usar {nombrePeriodo(Number(vista.periodo_sugerido.slice(0, 4)), Number(vista.periodo_sugerido.slice(5)))}
+                            </Boton>
+                        ) : null}
                     </Aviso>
                 </div>
             ))}

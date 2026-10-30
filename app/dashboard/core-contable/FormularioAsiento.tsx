@@ -34,6 +34,8 @@ export interface CuentaOpcion {
     readonly nombre: string;
     /** Rubro al que pertenece ("1101 · Efectivo y equivalentes al efectivo"): agrupa el selector. */
     readonly grupo: string;
+    /** La cuenta lleva analítica: cada línea exige un tercero. */
+    readonly analitica: boolean;
 }
 
 export interface TerceroOpcion {
@@ -199,6 +201,9 @@ export function FormularioAsiento({
     if (conDatos.length < 2) faltantes.push("Completa al menos dos líneas");
     conDatos.forEach((linea, indice) => {
         if (!linea.id_cuenta) faltantes.push(`Línea ${indice + 1}: elige la cuenta`);
+        else if (!linea.id_tercero && cuentas.find((c) => c.id_cuenta === linea.id_cuenta)?.analitica) {
+            faltantes.push(`Línea ${indice + 1}: la cuenta lleva analítica, elige el tercero`);
+        }
         if (tieneMonto(linea.debe) === tieneMonto(linea.haber)) {
             faltantes.push(`Línea ${indice + 1}: indica un monto en debe o en haber`);
         }
@@ -432,7 +437,7 @@ export function FormularioAsiento({
                                 <th scope="col" className="w-8 px-3 py-2.5 text-left text-[10.5px] font-semibold uppercase tracking-[0.07em]">#</th>
                                 <th scope="col" className="px-2 py-2.5 text-left text-[10.5px] font-semibold uppercase tracking-[0.07em]">Cuenta</th>
                                 <th scope="col" className="px-2 py-2.5 text-left text-[10.5px] font-semibold uppercase tracking-[0.07em]">Glosa de la línea</th>
-                                <th scope="col" className="px-2 py-2.5 text-left text-[10.5px] font-semibold uppercase tracking-[0.07em]">RUT (opcional)</th>
+                                <th scope="col" className="px-2 py-2.5 text-left text-[10.5px] font-semibold uppercase tracking-[0.07em]">Tercero (RUT)</th>
                                 <th scope="col" className="w-36 px-2 py-2.5 text-right text-[10.5px] font-semibold uppercase tracking-[0.07em]">Debe</th>
                                 <th scope="col" className="w-36 px-2 py-2.5 text-right text-[10.5px] font-semibold uppercase tracking-[0.07em]">Haber</th>
                                 <th scope="col" className="w-10 px-2 py-2.5"><span className="sr-only">Quitar</span></th>
@@ -479,7 +484,11 @@ export function FormularioAsiento({
                                             onChange={(evento) => cambiarLinea(linea.clave, { id_tercero: evento.target.value })}
                                             className={CLASES_CELDA}
                                         >
-                                            <option value="">—</option>
+                                            <option value="">
+                                                {cuentas.find((c) => c.id_cuenta === linea.id_cuenta)?.analitica
+                                                    ? "Elige un tercero…"
+                                                    : "—"}
+                                            </option>
                                             {terceros.map((tercero) => (
                                                 <option key={tercero.id_tercero} value={tercero.id_tercero}>
                                                     {tercero.rut} · {tercero.razon_social}

@@ -16,6 +16,7 @@
    ========================================================================== */
 
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { GraficoIngresosGastos } from "@/components/dashboard/GraficoIngresosGastos";
@@ -91,6 +92,10 @@ async function cargarPanel(token: string): Promise<DatosPanel> {
         cuentasApi.listar(opciones),
         borradoresApi.listar(opciones),
     ]);
+    // Una sesión vencida da 401 en todas: se vuelve al login en vez de mostrar un panel de "—".
+    if (resultados.some((r) => r.status === "rejected" && r.reason instanceof ApiError && r.reason.status === 401)) {
+        redirect("/login");
+    }
     const [resumen, resumenAnterior, periodos, recientes, cuentas, borradores] = resultados;
 
     const valor = <T,>(resultado: PromiseSettledResult<T>): T | null =>

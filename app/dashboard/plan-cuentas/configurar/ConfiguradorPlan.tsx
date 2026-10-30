@@ -28,7 +28,7 @@ import { Etiqueta } from "@/components/ui/Etiqueta";
 import { Icon } from "@/components/ui/Icon";
 import { Panel } from "@/components/ui/Panel";
 import type { CuentaContable, CuentaPropiaInput, FilaPlantilla, PlantillaCuentas } from "@/lib/api";
-import { claseDe, normalizar, problemaDePropia, resumenConfiguracion, siguienteCodigo } from "@/lib/planCuentas";
+import { claseDe, normalizar, problemaDePropia, resumenConfiguracion, siguienteCodigo, textoRecomendadas } from "@/lib/planCuentas";
 import { Aviso, EnlaceAccion } from "../../core-contable/partes";
 import { configurarPlan } from "../actions";
 
@@ -377,6 +377,9 @@ export function ConfiguradorPlan({ plantilla, cuentas, idEmpresa }: Configurador
                         Limpiar
                     </Boton>
                 </div>
+                <p role="status" className="w-full text-[12px] text-[var(--foreground-muted)]">
+                    {textoRecomendadas(datos.recomendadas.length, datos.recomendadas.filter((codigo) => seleccion.marcadas.has(codigo)).length)}
+                </p>
             </div>
 
             {paneles.length === 0 ? (

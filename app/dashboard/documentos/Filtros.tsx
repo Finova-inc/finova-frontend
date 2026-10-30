@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ESTADOS_RCV, TIPOS_DEL_FILTRO, nombreTipoDte, urlLibro, type ParametrosLibro } from "@/lib/sii";
+import { ESTADOS_RCV, TIPOS_DEL_FILTRO, hayFiltrosEn, nombreTipoDte, rangoInvertido, urlLibro, type ParametrosLibro } from "@/lib/sii";
 
 const CAMPO =
     "rounded-lg border border-[var(--border-strong)] bg-[var(--surface)] px-2.5 py-1.5 text-[13px] text-[var(--foreground)]";
@@ -10,12 +10,12 @@ const CAMPO =
  * orden va en campos ocultos para que filtrar no lo borre.
  */
 export function Filtros({ base, esRcv }: { readonly base: ParametrosLibro; readonly esRcv: boolean }) {
-    const hayFiltros = Boolean(base.texto || base.tipo || base.estado || base.cuadratura);
+    const hayFiltros = hayFiltrosEn(base);
     return (
         // key: los campos no controlados conservan lo que se escribio aunque la URL cambie
         // (un chip, un orden, "Quitar filtros"); al cambiar el filtro, el formulario parte de nuevo.
         <form
-            key={[base.texto, base.tipo, base.estado, base.cuadratura].join("|")}
+            key={[base.texto, base.rut, base.folio, base.nombre, base.desde, base.hasta, base.tipo, base.estado, base.cuadratura].join("|")}
             method="get"
             action="/dashboard/documentos"
             className="flex flex-wrap items-end gap-3"
@@ -27,16 +27,62 @@ export function Filtros({ base, esRcv }: { readonly base: ParametrosLibro; reado
             {/* La cuadratura se filtra con los chips de arriba: aquí solo se conserva al filtrar. */}
             {base.cuadratura ? <input type="hidden" name="cuadratura" value={base.cuadratura} /> : null}
 
-            <label className="flex min-w-[15rem] flex-1 flex-col gap-1 text-[12px] font-medium">
-                Buscar
-                <input
-                    type="search"
-                    name="texto"
-                    defaultValue={base.texto}
-                    placeholder="Nombre, RUT o N° de folio"
-                    className={`${CAMPO} w-full`}
-                />
-            </label>
+            {esRcv ? (
+                // Campos separados: cada uno busca solo lo suyo (un folio no es un RUT).
+                <>
+                    <label className="flex min-w-[10rem] flex-1 flex-col gap-1 text-[12px] font-medium">
+                        RUT
+                        <input
+                            type="search"
+                            name="rut"
+                            defaultValue={base.rut}
+                            placeholder="76.086.428-5 o 76086428"
+                            className={`${CAMPO} tabular w-full`}
+                        />
+                    </label>
+                    <label className="flex w-28 flex-col gap-1 text-[12px] font-medium">
+                        N° de folio
+                        <input
+                            type="search"
+                            name="folio"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            defaultValue={base.folio}
+                            placeholder="4104"
+                            className={`${CAMPO} tabular w-full`}
+                        />
+                    </label>
+                    <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-[12px] font-medium">
+                        Nombre o razón social
+                        <input type="search" name="nombre" defaultValue={base.nombre} placeholder="Distribuidora…" className={`${CAMPO} w-full`} />
+                    </label>
+                    <label className="flex flex-col gap-1 text-[12px] font-medium">
+                        Emitido desde
+                        <input
+                            type="date"
+                            name="desde"
+                            defaultValue={base.desde}
+                            aria-invalid={rangoInvertido(base.desde, base.hasta) || undefined}
+                            className={`${CAMPO} tabular`}
+                        />
+                    </label>
+                    <label className="flex flex-col gap-1 text-[12px] font-medium">
+                        Emitido hasta
+                        <input
+                            type="date"
+                            name="hasta"
+                            defaultValue={base.hasta}
+                            aria-invalid={rangoInvertido(base.desde, base.hasta) || undefined}
+                            className={`${CAMPO} tabular`}
+                        />
+                    </label>
+                </>
+            ) : (
+                <label className="flex min-w-[15rem] flex-1 flex-col gap-1 text-[12px] font-medium">
+                    Buscar
+                    <input type="search" name="texto" defaultValue={base.texto} placeholder="Nombre, RUT o N° de boleta" className={`${CAMPO} w-full`} />
+                </label>
+            )}
 
             {esRcv ? (
                 <>

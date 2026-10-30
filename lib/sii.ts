@@ -69,11 +69,30 @@ export function mesDesplazado(periodo: string, delta: number): string {
     return `${Math.floor(indice / 12)}-${String((indice % 12) + 1).padStart(2, "0")}`;
 }
 
+/** 'AAAA-MM-DD' que existe en el calendario, o undefined. */
+export function fechaValida(valor: string | undefined): string | undefined {
+    if (!valor || !/^\d{4}-\d{2}-\d{2}$/.test(valor)) return undefined;
+    const fecha = new Date(`${valor}T00:00:00Z`);
+    return !Number.isNaN(fecha.getTime()) && fecha.toISOString().slice(0, 10) === valor ? valor : undefined;
+}
+
+/** true si «desde» es posterior a «hasta». Con un solo extremo no hay rango. */
+export function rangoInvertido(desde: string | undefined, hasta: string | undefined): boolean {
+    return Boolean(desde && hasta && desde > hasta);
+}
+
 /** Los parámetros que la pantalla guarda en su URL. */
 export interface ParametrosLibro {
     libro: string;
     periodo: string;
     texto?: string;
+    /** Solo RCV: campos de búsqueda separados. */
+    rut?: string;
+    folio?: string;
+    nombre?: string;
+    /** Solo RCV: fechas de emisión. */
+    desde?: string;
+    hasta?: string;
     tipo?: string;
     estado?: string;
     cuadratura?: string;
@@ -141,4 +160,11 @@ export const CUADRATURAS: readonly {
 /** Resta de dos montos enteros (strings del backend) sin pasar por number. */
 export function diferencia(a: string, b: string): string {
     return String(BigInt(a) - BigInt(b));
+}
+
+/** true si hay algún filtro puesto (sin contar libro, período, orden ni página). */
+export function hayFiltrosEn(base: ParametrosLibro): boolean {
+    return Boolean(
+        base.texto || base.rut || base.folio || base.nombre || base.desde || base.hasta || base.tipo || base.estado || base.cuadratura,
+    );
 }

@@ -3,8 +3,9 @@ import Link from "next/link";
 import { EnlaceVolver } from "@/components/ui/EnlaceVolver";
 import { Etiqueta } from "@/components/ui/Etiqueta";
 import { Icon } from "@/components/ui/Icon";
-import type { AsientoResumen, ReferenciaComprobante } from "@/lib/api";
+import type { AsientoResumen, EnlacesDeReversa, ReferenciaComprobante } from "@/lib/api";
 import { formatearComprobante } from "@/lib/formato";
+import { marcaDeReversa } from "@/lib/reversion";
 
 /* ============================================================================
    Piezas compartidas por las pantallas del libro diario. Server Components:
@@ -160,6 +161,38 @@ export function EtiquetasDeEstado({
             ) : null}
         </span>
     );
+}
+
+/**
+ * Estado de un comprobante en el libro diario: un asiento revertido figura
+ * "Anulado", con enlace a su reversa, y la reversa dice de cuál es. En el
+ * detalle se sigue usando EtiquetasDeEstado.
+ */
+export function EstadoEnLibro({ asiento }: { readonly asiento: AsientoResumen & EnlacesDeReversa }) {
+    const marca = marcaDeReversa(asiento);
+    if (marca?.tipo === "anulado") {
+        return (
+            <span className="inline-flex flex-wrap items-center gap-1.5">
+                <Etiqueta tono="aviso">Anulado</Etiqueta>
+                <span className="text-[12px] text-[var(--foreground-muted)]">
+                    por <EnlaceComprobante referencia={marca.reversa} />
+                </span>
+            </span>
+        );
+    }
+    if (marca?.tipo === "reversa") {
+        return (
+            <span className="inline-flex flex-wrap items-center gap-1.5">
+                <Etiqueta tono="neutro">Reversa</Etiqueta>
+                {marca.original ? (
+                    <span className="text-[12px] text-[var(--foreground-muted)]">
+                        de <EnlaceComprobante referencia={marca.original} />
+                    </span>
+                ) : null}
+            </span>
+        );
+    }
+    return <EtiquetasDeEstado asiento={asiento} revertidoPor={null} />;
 }
 
 /** Clases de las celdas de cabecera de tabla, iguales en todo el modulo. */

@@ -168,6 +168,9 @@ export const api = {
     patch: <T,>(path: string, json?: unknown, options?: ApiFetchOptions) =>
         apiFetch<T>(path, { ...options, method: "PATCH", json }),
 
+    put: <T,>(path: string, json?: unknown, options?: ApiFetchOptions) =>
+        apiFetch<T>(path, { ...options, method: "PUT", json }),
+
     delete: <T,>(path: string, options?: ApiFetchOptions) =>
         apiFetch<T>(path, { ...options, method: "DELETE" }),
 };
@@ -475,9 +478,13 @@ export interface AsientoResumen extends ReferenciaComprobante {
     readonly created_at: string;
 }
 
-export interface AsientoListado extends AsientoResumen {
+/** Con quién se enlaza un comprobante: la reversa que lo anula, o el original que anula. */
+export interface EnlacesDeReversa {
     readonly revertido_por: ReferenciaComprobante | null;
+    readonly revierte_a: ReferenciaComprobante | null;
 }
+
+export interface AsientoListado extends AsientoResumen, EnlacesDeReversa {}
 
 export interface MovimientoContable {
     readonly id_movimiento: string;
@@ -513,7 +520,7 @@ export interface Paginado<T> {
     readonly por_pagina: number;
 }
 
-export interface AsientoDelLibro extends AsientoResumen {
+export interface AsientoDelLibro extends AsientoResumen, EnlacesDeReversa {
     readonly movimientos: readonly MovimientoContable[];
 }
 
@@ -561,6 +568,7 @@ export interface LibroMayor {
         readonly nombre: string;
         /** "D" deudora, "H" acreedora: decide el signo del saldo. */
         readonly naturaleza: "D" | "H";
+        readonly analitica: boolean;
     };
     readonly desde: string;
     readonly hasta: string;
@@ -572,6 +580,19 @@ export interface LibroMayor {
         readonly total_haber: string;
         readonly saldo_final: string;
     };
+    /** Saldo por tercero; null si la cuenta no lleva analítica. */
+    readonly analitico: readonly SaldoAnalitico[] | null;
+}
+
+/** Saldo de una cuenta con analítica para un tercero (null = líneas sin tercero). */
+export interface SaldoAnalitico {
+    readonly id_tercero: string | null;
+    readonly rut: string | null;
+    readonly razon_social: string | null;
+    readonly saldo_anterior: string;
+    readonly debe: string;
+    readonly haber: string;
+    readonly saldo: string;
 }
 
 /** Linea como la acepta el backend: solo digitos en debe/haber, campos vacios omitidos. */
@@ -689,9 +710,22 @@ export interface CuentaContable {
     readonly acepta_movimiento: boolean;
     /** Código del Diccionario de Cuentas LCE del SII, si se conoce. */
     readonly codigo_sii: string | null;
+    /** true = cada línea de asiento de esta cuenta exige un tercero. */
+    readonly analitica: boolean;
+    /** Partida de los estados financieros donde se presenta la cuenta. */
+    readonly rubro_eeff: RubroEeff | null;
     /** Ya tiene asientos: su código, tipo e imputabilidad quedan fijos (art. 31 CCom). */
     readonly tiene_movimientos: boolean;
 }
+
+export type RubroEeff =
+    | 'activo_corriente'
+    | 'activo_no_corriente'
+    | 'pasivo_corriente'
+    | 'pasivo_no_corriente'
+    | 'patrimonio'
+    | 'ingresos'
+    | 'gastos';
 
 /** Fila del plan base NIIF, tal como la devuelve GET /cuentas-contables/plantilla. */
 export interface FilaPlantilla {
@@ -740,6 +774,9 @@ export interface CrearCuentaInput {
     readonly id_cuenta_padre?: string;
     readonly acepta_movimiento?: boolean;
     readonly codigo_sii?: string | null;
+    readonly analitica?: boolean;
+    /** Omitido = el backend propone uno según tipo y código. */
+    readonly rubro_eeff?: RubroEeff;
 }
 
 /** id_cuenta_padre acepta null explícito (quitar el padre), a diferencia de
@@ -860,6 +897,8 @@ export interface VistaPreviaSii {
     readonly totales: readonly { readonly titulo: string; readonly valor: string }[];
     /** Lo que no es un error del archivo pero conviene saber antes de importar (p. ej. un período que no calza). */
     readonly avisos: readonly string[];
+    /** AAAA-MM al que pertenecen casi todas las fechas del archivo, si no es el período elegido; null si no hay nada que corregir. */
+    readonly periodo_sugerido: string | null;
 }
 
 export interface DocumentoSii {
@@ -946,6 +985,12 @@ export interface DetalleDocumentoSii {
 export interface FiltroLibroSii {
     readonly periodo?: string;
     readonly texto?: string;
+    /** Solo RCV: campos separados y fechas de emisión. */
+    readonly rut?: string;
+    readonly folio?: string;
+    readonly nombre?: string;
+    readonly desde?: string;
+    readonly hasta?: string;
     readonly tipo_dte?: number;
     readonly estado_rcv?: string;
     readonly estado?: string;
@@ -1242,7 +1287,115 @@ export interface BalanceComprobacion {
     readonly cuadra: { readonly sumas: boolean; readonly saldos: boolean; readonly inventario_resultados: boolean };
 }
 
+/* ---- Notas a los estados financieros (anuales). Forma: finova-backend/src/notas-eeff ---- */
+
+export type ClaveTexto =
+    | "bases_preparacion"
+    | "politicas_contables"
+    | "juicios_profesionales"
+    | "fuentes_incertidumbre"
+    | "hechos_posteriores";
+
+export interface DatosGenerales {
+    readonly razon_social: string;
+    readonly rut: string;
+    /** null = pendiente de completar. */
+    readonly giro: string | null;
+    readonly domicilio: string | null;
+    readonly fecha_autorizacion: string | null;
+}
+
+export type NotaEeff =
+    | { readonly numero: number; readonly clave: "general"; readonly tipo: "general"; readonly titulo: string; readonly datos: DatosGenerales }
+    | {
+          readonly numero: number;
+          readonly clave: ClaveTexto;
+          readonly tipo: "texto";
+          readonly titulo: string;
+          /** Lo que guardó el contador; null = nunca se guardó y se ofrece la plantilla. */
+          readonly texto_guardado: string | null;
+          readonly plantilla: string;
+      }
+    | {
+          readonly numero: number;
+          readonly clave: string;
+          readonly tipo: "partida";
+          readonly titulo: string;
+          readonly cuentas: readonly { readonly id_cuenta: string; readonly codigo: string; readonly nombre: string; readonly saldo: string }[];
+          readonly total: string;
+      };
+
+export interface NotasDelEjercicio {
+    readonly ejercicio: number;
+    readonly desde: string;
+    readonly hasta: string;
+    readonly notas: readonly NotaEeff[];
+}
+
+export interface DatosEjercicioInput {
+    readonly giro: string | null;
+    readonly domicilio: string | null;
+    readonly fecha_autorizacion: string | null;
+}
+
+export const notasEeffApi = {
+    obtener: (ejercicio: number, opciones?: ApiFetchOptions) =>
+        api.get<NotasDelEjercicio>(`/notas-eeff/${ejercicio}`, opciones),
+    guardarTexto: (ejercicio: number, clave: ClaveTexto, texto: string, opciones?: ApiFetchOptions) =>
+        api.put<{ readonly actualizado_en: string }>(`/notas-eeff/${ejercicio}/textos/${clave}`, { texto }, opciones),
+    guardarEjercicio: (ejercicio: number, datos: DatosEjercicioInput, opciones?: ApiFetchOptions) =>
+        api.put<DatosEjercicioInput>(`/notas-eeff/${ejercicio}/ejercicio`, datos, opciones),
+};
+
+/** Saldo de una cuenta en un estado financiero (positivo en su lado natural). */
+export interface SaldoDeCuenta {
+    readonly id_cuenta: string;
+    readonly codigo: string;
+    readonly nombre: string;
+    readonly saldo: string;
+}
+
+export interface SeccionBalanceGeneral {
+    readonly rubro: RubroEeff;
+    readonly titulo: string;
+    readonly total: string;
+    readonly cuentas: readonly SaldoDeCuenta[];
+}
+
+/** Forma confirmada contra finova-backend/src/asientos-contables/estados-financieros.util.ts. */
+export interface BalanceGeneral {
+    readonly hasta: string;
+    readonly secciones: readonly SeccionBalanceGeneral[];
+    readonly totales: {
+        readonly activo: string;
+        readonly pasivo: string;
+        readonly patrimonio: string;
+        readonly resultados_anteriores: string;
+        readonly resultado_ejercicio: string;
+        readonly pasivo_mas_patrimonio: string;
+    };
+    /** Activo = Pasivo + Patrimonio + resultados. */
+    readonly cuadra: boolean;
+}
+
+export interface EstadoResultados {
+    readonly desde: string;
+    readonly hasta: string;
+    readonly ingresos: { readonly total: string; readonly cuentas: readonly SaldoDeCuenta[] };
+    readonly gastos: { readonly total: string; readonly cuentas: readonly SaldoDeCuenta[] };
+    /** Ganancia positiva, pérdida negativa. */
+    readonly resultado: string;
+}
+
 export const asientosApi = {
+    /** Activos, pasivos y patrimonio a fin de `mes`, más el resultado del ejercicio. */
+    balanceGeneral: (anio: number, mes: number, opciones?: ApiFetchOptions) =>
+        api.get<BalanceGeneral>(`/asientos-contables/balance-general${consulta({ anio, mes })}`, opciones),
+    estadoResultados: (anio: number, mes: number, desdeMes?: number, opciones?: ApiFetchOptions) =>
+        api.get<EstadoResultados>(
+            `/asientos-contables/estado-resultados${consulta({ anio, mes, desde_mes: desdeMes })}`,
+            opciones,
+        ),
     listar: (filtros: FiltroAsientos = {}, opciones?: ApiFetchOptions) =>
         api.get<Paginado<AsientoListado>>(
             `/asientos-contables${consulta({ ...filtros })}`,

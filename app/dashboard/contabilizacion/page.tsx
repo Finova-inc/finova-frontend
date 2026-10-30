@@ -19,9 +19,7 @@ import { hoyEnChile } from "@/lib/formato";
 import { periodoValido } from "@/lib/sii";
 import { exigirTokenSesion, obtenerRolDelToken, puedeRegistrar } from "@/lib/session";
 import { Aviso, Encabezado, Guia, ReglasGuia } from "../core-contable/partes";
-import { Plegable } from "../documentos/Plegable";
 import { Indicador } from "../documentos/partes";
-import { CuentasContabilizacion } from "./CuentasContabilizacion";
 import { TablaPorContabilizar } from "./TablaPorContabilizar";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +31,7 @@ const REGLAS: readonly string[] = [
     "Revisa los borradores (puedes abrirlos y corregirlos) y contabilízalos. Desde ahí son asientos del libro diario, enlazados a su documento, y ya no se modifican: un error se corrige con una reversa, y el documento vuelve a quedar por contabilizar.",
     "Venta: Clientes a Ventas e IVA débito. Compra: gasto (o activo fijo) e IVA crédito a Proveedores; el IVA sin derecho a crédito va al costo. Boleta de honorarios: Honorarios a Retención y Honorarios por pagar. Las notas de crédito invierten los lados.",
     "No se proponen solos: los documentos que no están en el RCV, las compras pendientes o reclamadas, las ventas de activo fijo, los que traen otros impuestos y las boletas anuladas. Cada uno dice por qué.",
-    "Las facturas de compra que emites (cambio de sujeto) necesitan una cuenta de «IVA retenido a terceros», que el plan base no trae: créala en el plan de cuentas y elígela en la configuración.",
+    "Las facturas de compra que emites (cambio de sujeto) necesitan una cuenta de «IVA retenido a terceros», que el plan base no trae: créala en el plan de cuentas y elígela en Parámetros.",
 ];
 
 type Parametros = Record<string, string | string[] | undefined>;
@@ -114,18 +112,15 @@ export default async function ContabilizacionPage({ searchParams }: { searchPara
                         />
                     )}
 
-                    <Plegable
-                        titulo="Cuentas de la contabilización"
-                        nota={`${datos.cuentas.filter((c) => !c.cuenta).length} sin cuenta`}
-                        abiertoInicial={datos.cuentas.some((c) => !c.cuenta && c.funcion !== "iva_retenido")}
-                    >
-                        <CuentasContabilizacion
-                            key={datos.cuentas.map((c) => c.cuenta?.id_cuenta ?? "-").join()}
-                            cuentas={datos.cuentas}
-                            elegibles={imputables.map((c) => ({ id_cuenta: c.id_cuenta, etiqueta: etiqueta(c), id_tipo_cuenta: c.id_tipo_cuenta }))}
-                            puedeRegistrar={registra}
-                        />
-                    </Plegable>
+                    {datos.cuentas.some((c) => !c.cuenta && c.funcion !== "iva_retenido") ? (
+                        <Aviso>
+                            Hay funciones contables sin cuenta.{" "}
+                            <Link href="/dashboard/parametros" className="font-medium text-[var(--accent)] underline-offset-4 hover:underline">
+                                Defínelas en Parámetros
+                            </Link>
+                            .
+                        </Aviso>
+                    ) : null}
                 </>
             )}
         </div>

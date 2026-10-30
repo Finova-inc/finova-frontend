@@ -22,13 +22,15 @@ La arquitectura correcta es:
 ```
    Navegador
        │
-       ├──────────►  Vercel                    finova-frontend (Next.js)
-       │             CDN global + SSR/edge
+       ▼
+   Vercel                    finova-frontend (Next.js)
+   CDN global + SSR/edge     el navegador solo habla con Next
        │
-       └──────────►  Proveedor de contenedores  finova-backend (NestJS)
-                            │                   Railway · Render · Fly.io · VPS
-                            ▼
-                     PostgreSQL gestionado      Neon · Supabase · Railway
+       ▼  Authorization: Bearer <JWT>, desde código de servidor
+   Render (Docker)           finova-backend (NestJS)
+       │
+       ▼
+   Neon (PostgreSQL 17)      finova-database-neon, aws-sa-east-1
 ```
 
 **Vercel es solo para el frontend.** Esta guía cubre eso en detalle y da el

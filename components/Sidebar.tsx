@@ -58,6 +58,7 @@ const GRUPOS: readonly GrupoNav[] = [
             { href: "/dashboard/balance", etiqueta: "Balance", icono: "calculator" },
             { href: "/dashboard/plan-cuentas", etiqueta: "Plan de cuentas", icono: "ledger" },
             { href: "/dashboard/periodos", etiqueta: "Períodos", icono: "lock" },
+            { href: "/dashboard/parametros", etiqueta: "Parámetros", icono: "pencil" },
             { href: "/dashboard/f29", etiqueta: "Formulario F29", icono: "check" },
         ],
     },

@@ -20,12 +20,23 @@ type DialogoRevertirProps = {
     /** La reversa no puede ser anterior al asiento que corrige. */
     readonly fechaMinima: string;
     readonly hoy: string;
+    /** El texto del botón que abre el diálogo; en las filas del libro, la versión corta. */
+    readonly etiqueta?: string;
+    /** Dentro de una tabla: el diálogo flota bajo el botón en vez de abrirse en la celda y apretar las columnas. */
+    readonly flotante?: boolean;
 };
 
 const CLASES_CAMPO =
     "w-full rounded-lg border border-[var(--border-strong)] bg-[var(--background)] px-3 py-2 text-[13px] text-[var(--foreground)]";
 
-export function DialogoRevertir({ idAsiento, comprobante, fechaMinima, hoy }: DialogoRevertirProps) {
+export function DialogoRevertir({
+    idAsiento,
+    comprobante,
+    fechaMinima,
+    hoy,
+    etiqueta = "Revertir asiento",
+    flotante = false,
+}: DialogoRevertirProps) {
     const idBase = useId();
     const [abierto, setAbierto] = useState(false);
     const [fecha, setFecha] = useState(hoy);
@@ -35,14 +46,13 @@ export function DialogoRevertir({ idAsiento, comprobante, fechaMinima, hoy }: Di
 
     const motivoValido = motivo.trim().length >= 3;
 
-    if (!abierto) {
-        return (
-            <Boton variante="neutro" onClick={() => setAbierto(true)}>
-                <Icon name="undo" className="size-4" />
-                Revertir asiento
-            </Boton>
-        );
-    }
+    const botonQueAbre = (
+        <Boton variante="neutro" onClick={() => setAbierto(true)}>
+            <Icon name="undo" className="size-4" />
+            {etiqueta}
+        </Boton>
+    );
+    if (!abierto) return botonQueAbre;
 
     function alConfirmar() {
         setErrores([]);
@@ -53,10 +63,14 @@ export function DialogoRevertir({ idAsiento, comprobante, fechaMinima, hoy }: Di
         });
     }
 
-    return (
+    const panel = (
         <section
             aria-labelledby={`${idBase}-titulo`}
-            className="w-full rounded-xl border border-[var(--aviso)] bg-[var(--aviso-bg)] p-4 text-[13px] sm:max-w-md"
+            className={`rounded-xl border border-[var(--aviso)] p-4 text-[13px] ${
+                flotante
+                    ? "max-h-full w-full max-w-md overflow-y-auto whitespace-normal bg-[var(--surface)] shadow-xl"
+                    : "w-full bg-[var(--aviso-bg)] sm:max-w-md"
+            }`}
         >
             <h2 id={`${idBase}-titulo`} className="font-semibold text-[var(--foreground)]">
                 Revertir {comprobante}
@@ -118,5 +132,25 @@ export function DialogoRevertir({ idAsiento, comprobante, fechaMinima, hoy }: Di
                 </Boton>
             </div>
         </section>
+    );
+
+    // Modal fijo: ni el scroll horizontal de la tabla ni sus columnas lo recortan o lo aprietan.
+    return flotante ? (
+        <>
+            {botonQueAbre}
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={`${idBase}-titulo`}
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+                onClick={(evento) => {
+                    if (evento.target === evento.currentTarget && !enCurso) setAbierto(false);
+                }}
+            >
+                {panel}
+            </div>
+        </>
+    ) : (
+        panel
     );
 }
