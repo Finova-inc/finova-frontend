@@ -21,7 +21,8 @@ import {
     hoyEnChile,
     nombrePeriodo,
 } from "@/lib/formato";
-import { exigirTokenSesion, obtenerRolDelToken, puedeRegistrar } from "@/lib/session";
+import { puedeRevertir } from "@/lib/reversion";
+import { exigirTokenSesion, obtenerRolDelToken } from "@/lib/session";
 import { BotonImprimir } from "../BotonImprimir";
 import { DialogoRevertir } from "../DialogoRevertir";
 import { Aviso, CLASES_TH, EnlaceComprobante, Encabezado, EtiquetasDeEstado } from "../partes";
@@ -55,8 +56,7 @@ export default async function DetalleAsientoPage({ params }: { params: Promise<{
     const comprobante = formatearComprobante(asiento.tipo_comprobante, asiento.numero, asiento.anio);
     const totalDebe = sumarPesos(asiento.movimientos.map((m) => m.debe));
     const totalHaber = sumarPesos(asiento.movimientos.map((m) => m.haber));
-    const puedeRevertir =
-        puedeRegistrar(rol) && asiento.origen !== "reversa" && asiento.revertido_por === null;
+    const revertible = puedeRevertir(rol, asiento);
 
     return (
         <div className="flex flex-col gap-4">
@@ -196,7 +196,7 @@ export default async function DetalleAsientoPage({ params }: { params: Promise<{
                     Un asiento contabilizado no se modifica ni se elimina (art. 31 del Código de Comercio). Si
                     tiene un error, se revierte con un asiento nuevo y se registra el correcto (art. 32).
                 </p>
-                {puedeRevertir ? (
+                {revertible ? (
                     <DialogoRevertir
                         idAsiento={asiento.id_asiento}
                         comprobante={comprobante}

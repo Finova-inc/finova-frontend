@@ -27,7 +27,19 @@ import {
     type ResumenSii,
 } from "@/lib/api";
 import { formatearCLP, hoyEnChile, nombrePeriodo } from "@/lib/formato";
-import { COOKIE_IMPORTADOR, CUADRATURAS, IMPORTABLES, LIBROS, libroDe, periodoValido, urlLibro, type ParametrosLibro } from "@/lib/sii";
+import {
+    COOKIE_IMPORTADOR,
+    CUADRATURAS,
+    IMPORTABLES,
+    LIBROS,
+    fechaValida,
+    hayFiltrosEn,
+    libroDe,
+    periodoValido,
+    rangoInvertido,
+    urlLibro,
+    type ParametrosLibro,
+} from "@/lib/sii";
 import { exigirTokenSesion, obtenerRolDelToken, puedeRegistrar } from "@/lib/session";
 import { Aviso, Encabezado, Guia, ReglasGuia } from "../core-contable/partes";
 import { Filtros } from "./Filtros";
@@ -58,6 +70,11 @@ const REGLAS: readonly string[] = [
 function texto(parametros: Parametros, clave: string): string | undefined {
     const valor = parametros[clave];
     return typeof valor === "string" && valor.trim() !== "" ? valor.trim() : undefined;
+}
+
+/** Un folio es un número: lo demás no se envía (el backend respondería 400). */
+function solodigitos(valor: string | undefined): string | undefined {
+    return valor && /^[0-9]{1,12}$/.test(valor) ? valor : undefined;
 }
 
 /** Deja pasar solo valores que el backend acepta: un enlace a mano con basura no debe dar un 400. */
@@ -128,7 +145,13 @@ export default async function DocumentosPage({ searchParams }: { searchParams: P
     const base: ParametrosLibro = {
         libro: libro.id,
         periodo,
-        texto: texto(parametros, "texto"),
+        texto: libro.esRcv ? undefined : texto(parametros, "texto"),
+        // Solo el RCV tiene los campos separados y las fechas de emisión.
+        rut: libro.esRcv ? texto(parametros, "rut") : undefined,
+        folio: libro.esRcv ? solodigitos(texto(parametros, "folio")) : undefined,
+        nombre: libro.esRcv ? texto(parametros, "nombre") : undefined,
+        desde: libro.esRcv ? fechaValida(texto(parametros, "desde")) : undefined,
+        hasta: libro.esRcv ? fechaValida(texto(parametros, "hasta")) : undefined,
         tipo: Number.isInteger(tipo) && tipo >= 1 && tipo <= 999 ? String(tipo) : undefined,
         estado: texto(parametros, "estado"),
         cuadratura: dentro(texto(parametros, "cuadratura"), CUADRATURAS.map((c) => c.id)),
@@ -136,11 +159,24 @@ export default async function DocumentosPage({ searchParams }: { searchParams: P
         dir: dentro(texto(parametros, "dir"), ["asc", "desc"]),
         pagina: Math.max(1, Math.floor(Number(texto(parametros, "pagina"))) || 1),
     };
+    // Un «desde» posterior al «hasta» no devuelve filas: se avisa y no se consulta.
+    const invertido = rangoInvertido(base.desde, base.hasta);
     const filtro: FiltroLibroSii = {
         periodo,
         texto: base.texto,
         // En honorarios el estado es vigente o anulada; en el RCV es el del registro.
-        ...(libro.esRcv ? { tipo_dte: base.tipo ? Number(base.tipo) : undefined, estado_rcv: base.estado, cuadratura: base.cuadratura } : { estado: base.estado }),
+        ...(libro.esRcv
+            ? {
+                  tipo_dte: base.tipo ? Number(base.tipo) : undefined,
+                  estado_rcv: base.estado,
+                  cuadratura: base.cuadratura,
+                  rut: base.rut,
+                  folio: base.folio,
+                  nombre: base.nombre,
+                  desde: base.desde,
+                  hasta: base.hasta,
+              }
+            : { estado: base.estado }),
         orden: base.orden,
         dir: base.dir,
         pagina: base.pagina,
@@ -161,7 +197,7 @@ export default async function DocumentosPage({ searchParams }: { searchParams: P
         [importaciones, resumen, rcv, honorarios, registrados] = await Promise.all([
             siiApi.importaciones(opciones),
             siiApi.resumen(periodo, opciones),
-            libro.esRcv ? siiApi.documentos(libro.id === "compras" ? "compra" : "venta", filtro, opciones) : null,
+            libro.esRcv && !invertido ? siiApi.documentos(libro.id === "compras" ? "compra" : "venta", filtro, opciones) : null,
             libro.esRcv ? null : siiApi.honorarios(libro.id === "honorarios_recibidas" ? "recibida" : "emitida", filtro, opciones),
             // Para enlazar cada contraparte con su ficha. Si falla, el libro se
             // ve igual, solo que sin esos enlaces.
@@ -180,7 +216,7 @@ export default async function DocumentosPage({ searchParams }: { searchParams: P
 
     const [anio, mes] = periodo.split("-").map(Number);
     const total = rcv?.total ?? honorarios?.total ?? 0;
-    const hayFiltros = Boolean(base.texto || base.tipo || base.estado || base.cuadratura);
+    const hayFiltros = hayFiltrosEn(base);
     const conteoLibro = resumen && libro.esRcv ? resumen[libro.id as "compras" | "ventas"] : null;
     const cuentaDe = (id: string) => {
         if (!resumen) return null;
@@ -265,6 +301,13 @@ export default async function DocumentosPage({ searchParams }: { searchParams: P
 
                     <Filtros base={base} esRcv={libro.esRcv} />
 
+                    {invertido ? (
+                        <Aviso tono="aviso">
+                            La fecha «desde» ({base.desde}) es posterior a la fecha «hasta» ({base.hasta}). Cambia el rango para ver los
+                            documentos.
+                        </Aviso>
+                    ) : null}
+
                     <Panel sinRelleno>
                         <div className="px-5 pt-4">
                             {/* El libro y el mes ya están en las pestañas y el selector: aquí solo la cantidad. */}
@@ -283,7 +326,9 @@ export default async function DocumentosPage({ searchParams }: { searchParams: P
                             </>
                         ) : (
                             <p className="px-5 py-8 text-[13.5px] text-[var(--foreground-muted)]">
-                                {hayFiltros ? (
+                                {invertido ? (
+                                    "Corrige el rango de fechas para ver los documentos."
+                                ) : hayFiltros ? (
                                     <>
                                         Ningún documento coincide con esos filtros.{" "}
                                         <Link className="font-medium text-[var(--accent)] underline-offset-4 hover:underline" href={urlLibro({ libro: libro.id, periodo })}>

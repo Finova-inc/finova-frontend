@@ -18,8 +18,15 @@
 import { useId, useMemo, useState, useTransition } from "react";
 import { Boton } from "@/components/ui/Boton";
 import { Icon } from "@/components/ui/Icon";
-import type { ActualizarCuentaInput, CuentaContable, FilaPlantilla } from "@/lib/api";
-import { CLASES_DE_CUENTA, claseDe, descendientesDe, nombreNivel, siguienteCodigo } from "@/lib/planCuentas";
+import type { ActualizarCuentaInput, CuentaContable, FilaPlantilla, RubroEeff } from "@/lib/api";
+import {
+    CLASES_DE_CUENTA,
+    RUBROS_POR_CLASE,
+    claseDe,
+    descendientesDe,
+    nombreNivel,
+    siguienteCodigo,
+} from "@/lib/planCuentas";
 import { actualizarCuenta, crearCuenta } from "./actions";
 
 type FormularioCuentaProps = {
@@ -76,12 +83,17 @@ export function FormularioCuenta({
     const [codigoEscrito, setCodigoEscrito] = useState<string | null>(cuenta?.codigo ?? null);
     const [nombre, setNombre] = useState(cuenta?.nombre ?? "");
     const [codigoSii, setCodigoSii] = useState(cuenta?.codigo_sii ?? "");
+    const [analitica, setAnalitica] = useState(cuenta?.analitica ?? false);
+    const [rubroElegido, setRubroElegido] = useState<RubroEeff | "">(cuenta?.rubro_eeff ?? "");
     const [errores, setErrores] = useState<readonly string[]>([]);
     const [enCurso, iniciar] = useTransition();
 
     const padre = idPadre ? (porId.get(idPadre) ?? null) : null;
     const tipo = padre ? padre.id_tipo_cuenta : tipoSinPadre;
     const clase = claseDe(tipo);
+    // Un rubro de otra clase no vale: si cambió la clase vuelve a "automático".
+    const rubros = RUBROS_POR_CLASE[tipo] ?? [];
+    const rubro = rubros.some((r) => r.valor === rubroElegido) ? rubroElegido : "";
     // Las hijas del plan base primero: fijan el ancho del correlativo (1101 → 1101005).
     const sugerido = padre
         ? siguienteCodigo(padre, [
@@ -134,6 +146,8 @@ export function FormularioCuenta({
                     id_cuenta_padre: padre?.id_cuenta,
                     acepta_movimiento: imputable,
                     codigo_sii: codigoSii.trim() || null,
+                    analitica,
+                    rubro_eeff: rubro || undefined,
                 });
                 if (resultado.errores) setErrores(resultado.errores);
                 else alTerminar();
@@ -150,6 +164,8 @@ export function FormularioCuenta({
             if ((padre?.id_cuenta ?? null) !== cuenta.id_cuenta_padre) cambios.id_cuenta_padre = padre?.id_cuenta ?? null;
             if (tipo !== cuenta.id_tipo_cuenta) cambios.id_tipo_cuenta = tipo;
             if (imputable !== cuenta.acepta_movimiento) cambios.acepta_movimiento = imputable;
+            if (analitica !== cuenta.analitica) cambios.analitica = analitica;
+            if (rubro && rubro !== cuenta.rubro_eeff) cambios.rubro_eeff = rubro;
             if (Object.keys(cambios).length === 0) {
                 alTerminar();
                 return;
@@ -338,6 +354,43 @@ export function FormularioCuenta({
                         className={`tabular ${CLASES_CAMPO}`}
                     />
                 </label>
+
+                {imputable ? (
+                    <>
+                        <label className={`${CLASES_ETIQUETA} sm:col-span-1 lg:col-span-3`}>
+                            Rubro de estados financieros
+                            <select
+                                value={rubro}
+                                onChange={(evento) => setRubroElegido(evento.target.value as RubroEeff | "")}
+                                className={CLASES_CAMPO}
+                            >
+                                <option value="">Automático (según código)</option>
+                                {rubros.map((r) => (
+                                    <option key={r.valor} value={r.valor}>
+                                        {r.nombre}
+                                    </option>
+                                ))}
+                            </select>
+                            <span className={CLASES_AYUDA}>Dónde se presenta su saldo en el balance general.</span>
+                        </label>
+
+                        <label className="flex cursor-pointer gap-3 rounded-lg border border-[var(--border-strong)] p-3 sm:col-span-1 lg:col-span-3">
+                            <input
+                                type="checkbox"
+                                checked={analitica}
+                                onChange={(evento) => setAnalitica(evento.target.checked)}
+                                className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]"
+                            />
+                            <span className="flex flex-col gap-0.5">
+                                <span className="font-medium text-[var(--foreground)]">Lleva analítica por tercero</span>
+                                <span className="text-[12px] text-[var(--foreground-muted)]">
+                                    Cada línea de asiento exige elegir un tercero (por RUT). No se puede quitar si ya hay
+                                    movimientos con tercero.
+                                </span>
+                            </span>
+                        </label>
+                    </>
+                ) : null}
             </div>
 
             {avisos.length > 0 ? (

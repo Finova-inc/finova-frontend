@@ -39,9 +39,11 @@ import {
     nombrePeriodo,
 } from "@/lib/formato";
 import { tieneMonto } from "@/lib/decimal";
+import { puedeRevertir } from "@/lib/reversion";
 import { exigirTokenSesion, obtenerRolDelToken, puedeRegistrar } from "@/lib/session";
 import { BotonImprimir } from "./BotonImprimir";
-import { Aviso, CLASES_TH, EnlaceAccion, Encabezado, EtiquetasDeEstado } from "./partes";
+import { DialogoRevertir } from "./DialogoRevertir";
+import { Aviso, CLASES_TH, EnlaceAccion, Encabezado, EstadoEnLibro } from "./partes";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Libro diario" };
@@ -307,9 +309,9 @@ export default async function LibroDiarioPage({
                     puede={puede}
                 />
             ) : vista === "comprobantes" && listado.status === "fulfilled" && listado.value ? (
-                <TablaComprobantes pagina={listado.value} parametros={parametros} />
+                <TablaComprobantes pagina={listado.value} parametros={parametros} rol={rol} hoy={hoy} />
             ) : vista === "libro" && libro.status === "fulfilled" && libro.value ? (
-                <VistaLibro libro={libro.value} />
+                <VistaLibro libro={libro.value} rol={rol} hoy={hoy} />
             ) : null}
 
             {listaBorradores.length > 0 ? <ListaBorradores borradores={listaBorradores} /> : null}
@@ -320,9 +322,13 @@ export default async function LibroDiarioPage({
 function TablaComprobantes({
     pagina,
     parametros,
+    rol,
+    hoy,
 }: {
     readonly pagina: Paginado<AsientoListado>;
     readonly parametros: Parametros;
+    readonly rol: number | null;
+    readonly hoy: string;
 }) {
     if (pagina.total === 0) {
         return (
@@ -349,6 +355,11 @@ function TablaComprobantes({
                             <th scope="col" className={CLASES_TH}>Glosa</th>
                             <th scope="col" className={`${CLASES_TH} text-right`}>Valor</th>
                             <th scope="col" className={CLASES_TH}>Estado</th>
+                            {puedeRegistrar(rol) ? (
+                                <th scope="col" className={`${CLASES_TH} no-imprimir`}>
+                                    <span className="sr-only">Acciones</span>
+                                </th>
+                            ) : null}
                         </tr>
                     </thead>
                     <tbody>
@@ -371,8 +382,22 @@ function TablaComprobantes({
                                 </td>
                                 <td className="tabular px-4 py-2.5 text-right">{formatearCLP(asiento.valor_comprobante)}</td>
                                 <td className="px-4 py-2.5">
-                                    <EtiquetasDeEstado asiento={asiento} revertidoPor={asiento.revertido_por} />
+                                    <EstadoEnLibro asiento={asiento} />
                                 </td>
+                                {puedeRegistrar(rol) ? (
+                                    <td className="no-imprimir px-4 py-2.5">
+                                        {puedeRevertir(rol, asiento) ? (
+                                            <DialogoRevertir
+                                                idAsiento={asiento.id_asiento}
+                                                comprobante={formatearComprobante(asiento.tipo_comprobante, asiento.numero, asiento.anio)}
+                                                fechaMinima={asiento.fecha_contable}
+                                                hoy={hoy}
+                                                etiqueta="Revertir"
+                                                flotante
+                                            />
+                                        ) : null}
+                                    </td>
+                                ) : null}
                             </tr>
                         ))}
                     </tbody>
@@ -404,7 +429,7 @@ function TablaComprobantes({
  * como el "Resumen Diario" del formato LCE del SII) y cada comprobante con
  * sus lineas.
  */
-function VistaLibro({ libro }: { readonly libro: LibroDiario }) {
+function VistaLibro({ libro, rol, hoy }: { readonly libro: LibroDiario; readonly rol: number | null; readonly hoy: string }) {
     const periodoImpreso = `${formatearFechaContable(libro.desde)} al ${formatearFechaContable(libro.hasta)}`;
 
     if (libro.dias.length === 0) {
@@ -445,6 +470,8 @@ function VistaLibro({ libro }: { readonly libro: LibroDiario }) {
                                     comprobante={comprobante}
                                     desde={libro.desde}
                                     hasta={libro.hasta}
+                                    rol={rol}
+                                    hoy={hoy}
                                 />
                             ))}
                         </tbody>
@@ -473,12 +500,17 @@ function FilasComprobante({
     comprobante,
     desde,
     hasta,
+    rol,
+    hoy,
 }: {
     readonly comprobante: LibroDiario["dias"][number]["comprobantes"][number];
     /** El rango del libro que se está mirando: el mayor se abre con el mismo. */
     readonly desde: string;
     readonly hasta: string;
+    readonly rol: number | null;
+    readonly hoy: string;
 }) {
+    const citado = formatearComprobante(comprobante.tipo_comprobante, comprobante.numero, comprobante.anio);
     return (
         <>
             <tr>
@@ -487,9 +519,24 @@ function FilasComprobante({
                         href={`${RUTA}/${comprobante.id_asiento}`}
                         className="tabular font-semibold text-[var(--accent)] underline-offset-4 hover:underline"
                     >
-                        {formatearComprobante(comprobante.tipo_comprobante, comprobante.numero, comprobante.anio)}
+                        {citado}
                     </Link>
                     <span className="ml-2 text-[var(--foreground-muted)]">{comprobante.glosa}</span>
+                    <span className="ml-3 align-middle">
+                        <EstadoEnLibro asiento={comprobante} />
+                    </span>
+                    {puedeRevertir(rol, comprobante) ? (
+                        <div className="no-imprimir ml-3 inline-block align-middle">
+                            <DialogoRevertir
+                                idAsiento={comprobante.id_asiento}
+                                comprobante={citado}
+                                fechaMinima={comprobante.fecha_contable}
+                                hoy={hoy}
+                                etiqueta="Revertir"
+                                flotante
+                            />
+                        </div>
+                    ) : null}
                 </td>
             </tr>
             {comprobante.movimientos.map((movimiento) => (

@@ -38,12 +38,13 @@ export async function cargarOpcionesDelFormulario(token: string): Promise<{
             cuentas.status === "fulfilled"
                 ? cuentas.value
                       .filter((cuenta) => cuenta.is_active && cuenta.acepta_movimiento)
-                      .map(({ id_cuenta, codigo, nombre, id_cuenta_padre, id_tipo_cuenta }) => {
+                      .map(({ id_cuenta, codigo, nombre, id_cuenta_padre, id_tipo_cuenta, analitica }) => {
                           const rubro = id_cuenta_padre ? porId.get(id_cuenta_padre) : undefined;
                           return {
                               id_cuenta,
                               codigo,
                               nombre,
+                              analitica,
                               grupo: rubro ? `${rubro.codigo} · ${rubro.nombre}` : claseDe(id_tipo_cuenta).nombre,
                           };
                       })

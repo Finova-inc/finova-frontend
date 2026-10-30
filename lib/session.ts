@@ -86,8 +86,7 @@ export async function obtenerEmpresaDelToken(): Promise<string | null> {
     return typeof payload?.empresaId === "string" ? payload.empresaId : null;
 }
 
-/** Roles de cat_rol en el backend. El rol es el de la empresa activa. */
-export const ROL = { ADMINISTRADOR: 1, CONTADOR: 2, CONSULTA: 3 } as const;
+export { ROL, puedeRegistrar } from "./roles";
 
 /**
  * Lee el rol del JWT, sin verificar la firma. Mismo criterio que
@@ -108,11 +107,6 @@ export async function obtenerRolDelToken(): Promise<number | null> {
 export async function obtenerUsuarioDelToken(): Promise<string | null> {
     const payload = await leerCargaDelToken();
     return typeof payload?.sub === "string" ? payload.sub : null;
-}
-
-/** Administrador o contador: los roles que registran en el libro. */
-export function puedeRegistrar(rol: number | null): boolean {
-    return rol === ROL.ADMINISTRADOR || rol === ROL.CONTADOR;
 }
 
 async function leerCargaDelToken(): Promise<{ sub?: unknown; empresaId?: unknown; rol?: unknown } | null> {

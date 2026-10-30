@@ -35,6 +35,7 @@ function traducirError(error: unknown, porDefecto: string): string[] {
 /** Las pantallas que muestran asientos o el estado de los documentos. */
 function revalidar() {
     revalidatePath("/dashboard/contabilizacion");
+    revalidatePath("/dashboard/parametros");
     revalidatePath("/dashboard/core-contable");
     revalidatePath("/dashboard/f29");
 }

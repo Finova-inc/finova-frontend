@@ -22,6 +22,8 @@ import {
 } from "@/lib/formato";
 import { tieneMonto } from "@/lib/decimal";
 import { exigirTokenSesion } from "@/lib/session";
+import { BotonCsv } from "@/components/ui/BotonCsv";
+import { mayorACsv } from "@/lib/libros";
 import { BotonImprimir } from "../core-contable/BotonImprimir";
 import { Aviso, CLASES_TH, Encabezado } from "../core-contable/partes";
 
@@ -51,6 +53,7 @@ export default async function LibroMayorPage({ searchParams }: { searchParams: P
     const hasta = texto(parametros, "hasta");
     const cuenta = texto(parametros, "cuenta");
     const idCuenta = cuenta && PATRON_UUID.test(cuenta) ? cuenta : undefined;
+    const conAnalitico = texto(parametros, "analitico") === "1";
     // Por defecto, el ejercicio en curso: del 1 de enero a hoy.
     const rango = {
         desde: desde && PATRON_FECHA.test(desde) ? desde : `${hoy.slice(0, 4)}-01-01`,
@@ -119,6 +122,10 @@ export default async function LibroMayorPage({ searchParams }: { searchParams: P
                     Hasta
                     <input type="date" name="hasta" defaultValue={rango.hasta} className={`tabular ${CLASES_CAMPO}`} />
                 </label>
+                <label className="flex items-center gap-2 pb-2 text-[12.5px] text-[var(--foreground-muted)]">
+                    <input type="checkbox" name="analitico" value="1" defaultChecked={conAnalitico} className="size-4 accent-[var(--accent)]" />
+                    Ver detalle analítico
+                </label>
                 <button
                     type="submit"
                     className="rounded-lg border border-[var(--border-strong)] bg-[var(--surface)] px-3.5 py-1.5 text-[13px] font-medium hover:bg-[var(--background-raised)]"
@@ -126,7 +133,11 @@ export default async function LibroMayorPage({ searchParams }: { searchParams: P
                     Ver mayor
                 </button>
                 {mayor.status === "fulfilled" && mayor.value ? (
-                    <div className="ml-auto">
+                    <div className="ml-auto flex gap-2">
+                        <BotonCsv
+                            csv={mayorACsv(mayor.value, conAnalitico)}
+                            archivo={`libro-mayor-${mayor.value.cuenta.codigo}-${mayor.value.hasta}.csv`}
+                        />
                         <BotonImprimir texto="Imprimir mayor" />
                     </div>
                 ) : null}
@@ -135,11 +146,55 @@ export default async function LibroMayorPage({ searchParams }: { searchParams: P
             {error ? (
                 <Aviso tono="critico">{error}</Aviso>
             ) : mayor.status === "fulfilled" && mayor.value ? (
-                <TablaMayor mayor={mayor.value} />
+                <>
+                    <TablaMayor mayor={mayor.value} />
+                    {conAnalitico ? <DetalleAnalitico mayor={mayor.value} /> : null}
+                </>
             ) : (
                 <Aviso>Elige una cuenta para ver su libro mayor.</Aviso>
             )}
         </div>
+    );
+}
+
+function DetalleAnalitico({ mayor }: { readonly mayor: LibroMayor }) {
+    if (!mayor.analitico) {
+        return <Aviso>Esta cuenta no lleva analítica: el mayor no tiene detalle por tercero.</Aviso>;
+    }
+    return (
+        <Panel sinRelleno>
+            <div className="px-4 pt-4">
+                <PanelCabecera titulo="Detalle analítico" nota="Saldo de la cuenta por tercero al cierre del rango." />
+            </div>
+            <div className="overflow-x-auto pt-2">
+                <table className="w-full min-w-[760px] border-collapse text-left text-[13px]">
+                    <thead className="border-b border-[var(--border-subtle)]">
+                        <tr>
+                            <th scope="col" className={CLASES_TH}>Cuenta</th>
+                            <th scope="col" className={CLASES_TH}>Código tercero (RUT)</th>
+                            <th scope="col" className={CLASES_TH}>Nombre tercero</th>
+                            <th scope="col" className={`${CLASES_TH} text-right`}>Saldo anterior</th>
+                            <th scope="col" className={`${CLASES_TH} text-right`}>Debe</th>
+                            <th scope="col" className={`${CLASES_TH} text-right`}>Haber</th>
+                            <th scope="col" className={`${CLASES_TH} text-right`}>Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {mayor.analitico.map((a) => (
+                            <tr key={a.id_tercero ?? "sin-tercero"} className="border-b border-[var(--border-subtle)] last:border-0">
+                                <td className="tabular px-4 py-2">{mayor.cuenta.codigo}</td>
+                                <td className="tabular px-4 py-2">{a.rut ?? "—"}</td>
+                                <td className="px-4 py-2">{a.razon_social ?? "Sin tercero (líneas anteriores a la analítica)"}</td>
+                                <td className="tabular px-4 py-2 text-right">{formatearCLP(a.saldo_anterior)}</td>
+                                <td className="tabular px-4 py-2 text-right">{tieneMonto(a.debe) ? formatearCLP(a.debe) : ""}</td>
+                                <td className="tabular px-4 py-2 text-right">{tieneMonto(a.haber) ? formatearCLP(a.haber) : ""}</td>
+                                <td className="tabular px-4 py-2 text-right font-medium">{formatearCLP(a.saldo)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </Panel>
     );
 }
 
