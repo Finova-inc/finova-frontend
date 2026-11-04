@@ -10,6 +10,7 @@
 
 import { ApiError, authApi } from "@/lib/api";
 import { formatearRut } from "@/lib/formato";
+import { opcionesConIp } from "@/lib/ip-visitante";
 import { mensajeDeError, MENSAJE_RECUPERACION } from "@/lib/recuperacion";
 import { validateRut } from "@/lib/validation";
 
@@ -26,7 +27,7 @@ export async function solicitarRecuperacion(_anterior: EstadoRecuperar, formData
     if (!valido.isValid) return { errorRut: valido.message };
 
     try {
-        await authApi.recuperar(formatearRut(rut));
+        await authApi.recuperar(formatearRut(rut), await opcionesConIp());
         return { enviado: true, mensaje: MENSAJE_RECUPERACION };
     } catch (error) {
         return { error: mensajeDeError(error instanceof ApiError ? error.status : 500, "recuperar") };
