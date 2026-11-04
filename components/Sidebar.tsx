@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { Icon, type IconName } from "@/components/ui/Icon";
 
@@ -90,56 +91,113 @@ function esRutaActiva(pathname: string, href: string): boolean {
     return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+/*
+   Bajo 1024 px la barra es un cajon: sale de la pantalla y se abre con el boton
+   de la esquina. Con ella fija, a 800 px el contenido quedaba en ~540 px y las
+   tablas (720-760 px) escondian columnas enteras (Valor, Estado, Debe, Haber).
+   El breakpoint es `lg` a proposito, no `md`: tiene que coincidir con el
+   `lg:flex-row` de app/dashboard/layout.tsx.
+*/
 export default function Sidebar() {
     const pathname = usePathname();
+    const [abierto, setAbierto] = useState(false);
+
+    useEffect(() => {
+        if (!abierto) return;
+        const alTeclear = (e: KeyboardEvent) => {
+            if (e.key === "Escape") setAbierto(false);
+        };
+        window.addEventListener("keydown", alTeclear);
+        return () => window.removeEventListener("keydown", alTeclear);
+    }, [abierto]);
 
     return (
-        <aside className="flex shrink-0 flex-col gap-1 overflow-y-auto bg-[var(--sidebar-bg)] py-5 text-[var(--sidebar-ink)] md:sticky md:top-0 md:h-screen md:w-[236px]">
-            <div className="flex items-center gap-2.5 px-5 pb-5">
-                <GlifoFinova />
+        <>
+            {/* Va fijo en la esquina de la cabecera (que deja ese hueco con pl-14). */}
+            <button
+                type="button"
+                onClick={() => setAbierto(true)}
+                aria-label="Abrir el menú"
+                aria-expanded={abierto}
+                aria-controls="menu-lateral"
+                className="no-imprimir fixed left-3 top-[10px] z-20 grid size-10 place-items-center rounded-lg border border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--foreground)] lg:hidden"
+            >
+                <Icon name="menu" className="size-5" />
+            </button>
 
-                <div className="min-w-0">
-                    <div className="font-display text-[17px] font-bold leading-tight tracking-[-0.01em]">
-                        Finova
+            {abierto ? (
+                <button
+                    type="button"
+                    aria-label="Cerrar el menú"
+                    tabIndex={-1}
+                    onClick={() => setAbierto(false)}
+                    className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+                />
+            ) : null}
+
+            <aside
+                id="menu-lateral"
+                /* Cerrado y chico: invisible, para que tampoco reciba el foco del teclado. */
+                className={`fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col gap-1 overflow-y-auto bg-[var(--sidebar-bg)] py-5 text-[var(--sidebar-ink)] transition-[translate,visibility] duration-200 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:w-[236px] lg:shrink-0 lg:translate-x-0 lg:visible ${
+                    abierto ? "visible translate-x-0" : "invisible -translate-x-full"
+                }`}
+            >
+                <div className="flex items-center gap-2.5 px-5 pb-5">
+                    <GlifoFinova />
+
+                    <div className="min-w-0 flex-1">
+                        <div className="font-display text-[17px] font-bold leading-tight tracking-[-0.01em]">
+                            Finova
+                        </div>
+                        <div className="text-[11px] leading-tight text-[var(--sidebar-muted)]">
+                            Gestión contable
+                        </div>
                     </div>
-                    <div className="text-[11px] leading-tight text-[var(--sidebar-muted)]">
-                        Gestión contable
-                    </div>
+
+                    <button
+                        type="button"
+                        onClick={() => setAbierto(false)}
+                        aria-label="Cerrar el menú"
+                        className="grid size-8 shrink-0 place-items-center rounded-md hover:bg-[var(--sidebar-hover)] lg:hidden"
+                    >
+                        <Icon name="close" className="size-4" />
+                    </button>
                 </div>
-            </div>
 
-            <nav className="flex flex-col gap-0.5">
-                {GRUPOS.map((grupo) => (
-                    <div key={grupo.titulo} className="flex flex-col gap-0.5">
-                        <p className="px-5 pb-1.5 pt-4 text-[10px] font-semibold uppercase tracking-[0.09em] text-[var(--sidebar-muted)]">
-                            {grupo.titulo}
-                        </p>
+                <nav className="flex flex-col gap-0.5">
+                    {GRUPOS.map((grupo) => (
+                        <div key={grupo.titulo} className="flex flex-col gap-0.5">
+                            <p className="px-5 pb-1.5 pt-4 text-[10px] font-semibold uppercase tracking-[0.09em] text-[var(--sidebar-muted)]">
+                                {grupo.titulo}
+                            </p>
 
-                        {grupo.enlaces.map((enlace) => {
-                            const activo = esRutaActiva(pathname, enlace.href);
+                            {grupo.enlaces.map((enlace) => {
+                                const activo = esRutaActiva(pathname, enlace.href);
 
-                            return (
-                                <Link
-                                    key={enlace.href}
-                                    href={enlace.href}
-                                    /* aria-current es lo que anuncia "estas aqui" a un
-                                       lector de pantalla. El color por si solo no lo dice. */
-                                    aria-current={activo ? "page" : undefined}
-                                    className={`mx-2.5 flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13.5px] transition-colors ${
-                                        activo
-                                            ? "bg-[rgb(255_106_26_/_0.16)] font-semibold text-[#ffd9c2]"
-                                            : "hover:bg-[var(--sidebar-hover)]"
-                                    }`}
-                                >
-                                    <Icon name={enlace.icono} className="size-4 shrink-0 opacity-85" />
-                                    {enlace.etiqueta}
-                                </Link>
-                            );
-                        })}
-                    </div>
-                ))}
-            </nav>
-        </aside>
+                                return (
+                                    <Link
+                                        key={enlace.href}
+                                        href={enlace.href}
+                                        onClick={() => setAbierto(false)}
+                                        /* aria-current es lo que anuncia "estas aqui" a un
+                                           lector de pantalla. El color por si solo no lo dice. */
+                                        aria-current={activo ? "page" : undefined}
+                                        className={`mx-2.5 flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13.5px] transition-colors ${
+                                            activo
+                                                ? "bg-[rgb(255_106_26_/_0.16)] font-semibold text-[#ffd9c2]"
+                                                : "hover:bg-[var(--sidebar-hover)]"
+                                        }`}
+                                    >
+                                        <Icon name={enlace.icono} className="size-4 shrink-0 opacity-85" />
+                                        {enlace.etiqueta}
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    ))}
+                </nav>
+            </aside>
+        </>
     );
 }
 

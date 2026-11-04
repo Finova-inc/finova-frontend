@@ -294,7 +294,7 @@ export function FormularioAsiento({
     return (
         <form onSubmit={(evento) => evento.preventDefault()} className="flex flex-col gap-4">
             <Panel>
-                <div className="grid gap-4 md:grid-cols-[auto_180px_1fr] md:items-start">
+                <div className="grid gap-4 md:grid-cols-[auto_180px] md:items-start xl:grid-cols-[auto_180px_1fr]">
                     <fieldset>
                         <legend className="mb-1.5 text-[12.5px] font-medium text-[var(--foreground-muted)]">
                             Tipo de comprobante
@@ -348,8 +348,8 @@ export function FormularioAsiento({
                         />
                     </div>
 
-                    <div className="flex flex-col gap-1.5">
-                        <div className="flex items-baseline justify-between">
+                    <div className="flex flex-col gap-1.5 md:col-span-2 xl:col-span-1">
+                        <div className="flex items-baseline justify-between gap-3">
                             <label
                                 htmlFor={`${idBase}-glosa`}
                                 className="text-[12.5px] font-medium text-[var(--foreground-muted)]"
