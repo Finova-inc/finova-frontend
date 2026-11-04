@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { Icon } from "@/components/ui/Icon";
 import { formatearRut, formatearRutAlEscribir } from "@/lib/formato";
 import { destinoTrasLogin } from "@/lib/navegacion";
+import { MENSAJE_CLAVE_ACTUALIZADA } from "@/lib/recuperacion";
 import {
     PASSWORD_MAX_LENGTH,
     RUT_MAX_LENGTH,
@@ -193,6 +195,16 @@ export function LoginForm() {
             noValidate
             className="flex flex-col gap-5"
         >
+            {/* Tras restablecer la contraseña, /restablecer vuelve aquí con ?clave=actualizada. */}
+            {searchParams.get("clave") === "actualizada" && (
+                <p
+                    role="status"
+                    className="rounded-lg border border-[var(--positivo)]/30 bg-[var(--background-raised)] px-4 py-3 text-sm text-[var(--foreground)]"
+                >
+                    {MENSAJE_CLAVE_ACTUALIZADA}
+                </p>
+            )}
+
             {/* ---------------------------------------------------------------
                 Campo de RUT
                 --------------------------------------------------------------- */}
@@ -322,6 +334,13 @@ export function LoginForm() {
                     </p>
                 )}
             </div>
+
+            <Link
+                href="/recuperar"
+                className="-mt-2 w-fit text-sm font-medium text-[var(--accent)] underline-offset-4 hover:underline"
+            >
+                ¿Olvidaste tu contraseña?
+            </Link>
 
             {/* ---------------------------------------------------------------
                 Error general del formulario
