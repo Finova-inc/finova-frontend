@@ -13,6 +13,9 @@
    mes anterior. Lo que el backend todavia no sabe (conciliacion bancaria,
    cobranza por vencimiento) no se muestra: una cifra inventada en una
    herramienta contable se lee como el saldo real de la empresa.
+
+   La sección «Por contabilizar» (#por-contabilizar) es el antiguo módulo
+   /dashboard/contabilizacion, hoy integrado aquí: el mes va en ?periodo=.
    ========================================================================== */
 
 import Link from "next/link";
@@ -46,7 +49,9 @@ import {
     nombreMesLargo,
     nombrePeriodo,
 } from "@/lib/formato";
-import { exigirTokenSesion } from "@/lib/session";
+import { periodoValido } from "@/lib/sii";
+import { exigirTokenSesion, obtenerRolDelToken, puedeRegistrar } from "@/lib/session";
+import { SeccionPorContabilizar } from "./SeccionPorContabilizar";
 
 export const dynamic = "force-dynamic";
 
@@ -70,14 +75,20 @@ type DatosPanel = {
     readonly recientes: readonly AsientoListado[] | null;
     readonly cuentas: readonly CuentaContable[] | null;
     readonly borradores: readonly AsientoBorrador[] | null;
-    /** Documentos del SII del mes que abre /dashboard/contabilizacion; null si la consulta falló. */
+    /** Documentos del SII del mes elegido en la sección «Por contabilizar»; null si la consulta falló. */
     readonly porContabilizar: PorContabilizar | null;
+    /** Mes de esa sección (?periodo=; por defecto el anterior al actual). */
+    readonly periodoContab: string;
+    /** Mes de la alerta de «Lo urgente» (siempre el anterior al actual) y cuántos documentos tiene por contabilizar; null si no se pudo saber. */
+    readonly periodoAlerta: string;
+    readonly pendientesAlerta: number | null;
     readonly sinConexion: boolean;
 };
 
-async function cargarPanel(token: string): Promise<DatosPanel> {
+async function cargarPanel(token: string, periodoContab: string): Promise<DatosPanel> {
     const opciones = { token, cache: "no-store" } as const;
     const hoy = hoyEnChile();
+    const periodoAlerta = periodoPorDefecto(hoy);
     const anio = Number(hoy.slice(0, 4));
     const mes = Number(hoy.slice(5, 7));
 
@@ -96,13 +107,15 @@ async function cargarPanel(token: string): Promise<DatosPanel> {
         asientosApi.listar({ por_pagina: 5 }, opciones),
         cuentasApi.listar(opciones),
         borradoresApi.listar(opciones),
-        contabilizacionApi.listar(periodoPorDefecto(hoy), opciones),
+        contabilizacionApi.listar(periodoContab, opciones),
+        // La alerta mira siempre el mes por defecto; si la sección está en otro mes, hace falta su propia consulta.
+        periodoContab === periodoAlerta ? Promise.resolve(null) : contabilizacionApi.listar(periodoAlerta, opciones),
     ]);
     // Una sesión vencida da 401 en todas: se vuelve al login en vez de mostrar un panel de "—".
     if (resultados.some((r) => r.status === "rejected" && r.reason instanceof ApiError && r.reason.status === 401)) {
         redirect("/login");
     }
-    const [resumen, resumenAnterior, periodos, recientes, cuentas, borradores, porContabilizar] = resultados;
+    const [resumen, resumenAnterior, periodos, recientes, cuentas, borradores, porContabilizar, deLaAlerta] = resultados;
 
     const valor = <T,>(resultado: PromiseSettledResult<T>): T | null =>
         resultado.status === "fulfilled" ? resultado.value : null;
@@ -118,15 +131,25 @@ async function cargarPanel(token: string): Promise<DatosPanel> {
         cuentas: valor(cuentas),
         borradores: valor(borradores),
         porContabilizar: valor(porContabilizar),
+        periodoContab,
+        periodoAlerta,
+        pendientesAlerta: (periodoContab === periodoAlerta ? valor(porContabilizar) : valor(deLaAlerta))?.resumen.pendientes ?? null,
         sinConexion: resultados.every(
             (r) => r.status === "rejected" && r.reason instanceof ApiError && r.reason.status === 0,
         ),
     };
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+    searchParams,
+}: {
+    searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
     const token = await exigirTokenSesion();
-    const datos = await cargarPanel(token);
+    const rol = await obtenerRolDelToken();
+    const pedido = (await searchParams).periodo;
+    const periodoContab = periodoValido(typeof pedido === "string" ? pedido : undefined) ?? periodoPorDefecto(hoyEnChile());
+    const datos = await cargarPanel(token, periodoContab);
     const { resumen, anio, mes } = datos;
     const periodoActual = datos.periodos?.find((p) => p.anio === anio && p.mes === mes);
 
@@ -189,6 +212,17 @@ export default async function DashboardPage() {
             <section>
                 <EncabezadoZona titulo="Lo urgente" nota="Pendientes del libro y del IVA" />
                 <ZonaAlertas alertas={construirAlertas(datos)} />
+            </section>
+
+            {/* ---- Por contabilizar: antes una pantalla aparte. scroll-mt deja el título debajo de la cabecera fija. ---- */}
+            <section id="por-contabilizar" className="scroll-mt-20">
+                <EncabezadoZona titulo="Por contabilizar" nota="Los documentos del SII del mes, de factura a asiento" />
+                <SeccionPorContabilizar
+                    periodo={datos.periodoContab}
+                    datos={datos.porContabilizar}
+                    plan={datos.cuentas}
+                    registra={puedeRegistrar(rol)}
+                />
             </section>
 
             {/* ---- El ejercicio: resultado mes a mes y ultimos asientos ---- */}
@@ -308,7 +342,7 @@ function construirAlertas(datos: DatosPanel): Alerta[] {
     }
 
     // Un cero o una consulta caída no dicen nada: la alerta solo existe si hay pendientes.
-    const pendientesSii = datos.porContabilizar?.resumen.pendientes ?? 0;
+    const pendientesSii = datos.pendientesAlerta ?? 0;
     if (pendientesSii > 0) {
         alertas.push({
             id: "por-contabilizar",
@@ -319,7 +353,7 @@ function construirAlertas(datos: DatosPanel): Alerta[] {
                     ? "1 documento del SII por contabilizar"
                     : `${pendientesSii} documentos del SII por contabilizar`,
             detalle: "Finova propone un borrador por documento; tú lo revisas y lo contabilizas.",
-            accion: { texto: "Ver documentos", href: `/dashboard/contabilizacion?periodo=${periodoPorDefecto(datos.hoy)}` },
+            accion: { texto: "Ver documentos", href: `/dashboard?periodo=${datos.periodoAlerta}#por-contabilizar` },
         });
     }
 

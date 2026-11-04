@@ -46,7 +46,6 @@ const GRUPOS: readonly GrupoNav[] = [
             { href: "/dashboard", etiqueta: "Panel de control", icono: "grid" },
             // Las empresas se gestionan desde el popup de la cabecera.
             { href: "/dashboard/documentos", etiqueta: "Documentos", icono: "document" },
-            { href: "/dashboard/contabilizacion", etiqueta: "Por contabilizar", icono: "sync" },
             { href: "/dashboard/terceros", etiqueta: "Terceros", icono: "users" },
         ],
     },

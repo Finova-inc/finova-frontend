@@ -9,13 +9,15 @@ import { CuadriculaMeses, FLECHA, useCerrarAlSalir } from "@/app/dashboard/docum
 /**
  * Selector de mes de una pantalla que lleva el mes en la URL (?periodo=AAAA-MM):
  * flechas al mes anterior o siguiente, y el nombre abre la cuadrícula de meses
- * (la misma de Documentos). `ruta` es la pantalla, sin parámetros.
+ * (la misma de Documentos). `ruta` es la pantalla, sin parámetros; `ancla`
+ * (opcional) es el id de la sección a la que llevan los enlaces, para el
+ * selector que vive dentro de una página más larga (el Panel de control).
  */
-export function SelectorDeMes({ ruta, periodo }: { readonly ruta: string; readonly periodo: string }) {
+export function SelectorDeMes({ ruta, periodo, ancla }: { readonly ruta: string; readonly periodo: string; readonly ancla?: string }) {
     const [abierto, setAbierto] = useState(false);
     const contenedor = useRef<HTMLDivElement>(null);
     useCerrarAlSalir(abierto, contenedor, () => setAbierto(false));
-    const url = (p: string) => `${ruta}?periodo=${p}`;
+    const url = (p: string) => `${ruta}?periodo=${p}${ancla ? `#${ancla}` : ""}`;
 
     return (
         <div ref={contenedor} className="no-imprimir relative">

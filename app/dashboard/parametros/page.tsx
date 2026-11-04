@@ -3,7 +3,7 @@
 
    Qué cuenta usa Finova para cada función contable (clientes, proveedores,
    ventas, compras, IVA...) al proponer los asientos de los documentos del SII.
-   La lista de documentos por contabilizar vive en su propia pantalla.
+   La lista de documentos por contabilizar está en el Panel de control.
    ========================================================================== */
 
 import Link from "next/link";
@@ -60,7 +60,7 @@ export default async function ParametrosPage() {
                     />
                     <p className="text-[12.5px] text-[var(--foreground-muted)]">
                         Los documentos pendientes se contabilizan en{" "}
-                        <Link href="/dashboard/contabilizacion" className="font-medium text-[var(--accent)] underline-offset-4 hover:underline">
+                        <Link href="/dashboard#por-contabilizar" className="font-medium text-[var(--accent)] underline-offset-4 hover:underline">
                             Por contabilizar
                         </Link>
                         .
