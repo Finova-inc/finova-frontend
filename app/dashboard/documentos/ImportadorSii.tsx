@@ -4,6 +4,7 @@ import Link from "next/link";
 import { startTransition, useActionState, useEffect, useRef, useState, type FormEvent } from "react";
 import { Boton } from "@/components/ui/Boton";
 import type { TipoImportacionSii } from "@/lib/api";
+import { extensionPermitida, mensajeExtensionNoPermitida } from "@/lib/extension-archivo";
 import { nombrePeriodo } from "@/lib/formato";
 import { COOKIE_IMPORTADOR, IMPORTABLES, TAMANO_MAXIMO_ARCHIVO, importableDe, urlLibro } from "@/lib/sii";
 import { TEXTO_DESCARGA_SII, atributosDelEnlace, obtenerArchivoDesdeSii, opcionesDeArchivo, vistaDeOrigen, type OrigenImportacion } from "@/lib/sii-urls";
@@ -46,8 +47,8 @@ export function ImportadorSii({
     const [periodo, setPeriodo] = useState(periodoInicial);
     const [paso, setPaso] = useState<Paso>("elegir");
     const [nombreArchivo, setNombreArchivo] = useState<string | null>(null);
-    /** Aviso de un archivo que pasa el tope: se detecta al elegirlo, antes de subir nada. */
-    const [avisoTamano, setAvisoTamano] = useState<string | null>(null);
+    /** Aviso de un archivo que no se puede subir (extensión o tamaño): se detecta al elegirlo, antes de subir nada. */
+    const [avisoArchivo, setAvisoArchivo] = useState<string | null>(null);
     const [revision, revisar, revisando] = useActionState<EstadoRevision, FormData>(previsualizarArchivo, {});
     const [importacion, importar, importando] = useActionState<EstadoImportacion, FormData>(importarArchivo, {});
     const [origen, setOrigen] = useState<OrigenImportacion>("local");
@@ -108,7 +109,7 @@ export function ImportadorSii({
                             const nuevo = e.target.value as TipoImportacionSii;
                             setTipo(nuevo);
                             setNombreArchivo(null);
-                            setAvisoTamano(null);
+                            setAvisoArchivo(null);
                             setPaso("elegir");
                             recordarEleccion(nuevo, periodo);
                         }}
@@ -177,17 +178,24 @@ export function ImportadorSii({
                         onChange={(e) => {
                             const archivo = e.target.files?.[0];
                             setPaso("elegir");
+                            if (archivo && !extensionPermitida(archivo.name, importable.extensiones)) {
+                                // Se descarta la selección: así no se puede enviar y no se sube nada.
+                                e.target.value = "";
+                                setNombreArchivo(null);
+                                setAvisoArchivo(mensajeExtensionNoPermitida(archivo.name, importable.extensiones));
+                                return;
+                            }
                             if (archivo && archivo.size > TAMANO_MAXIMO_ARCHIVO) {
                                 // Se descarta la selección: así no se puede enviar y no se sube nada.
                                 e.target.value = "";
                                 setNombreArchivo(null);
                                 const mb = (tamano: number) => (tamano / (1024 * 1024)).toLocaleString("es-CL", { maximumFractionDigits: 1 });
-                                setAvisoTamano(
+                                setAvisoArchivo(
                                     `«${archivo.name}» pesa ${mb(archivo.size)} MB y el máximo es ${mb(TAMANO_MAXIMO_ARCHIVO)} MB. Revisa que sea el reporte descargado del SII y no uno con más contenido.`,
                                 );
                                 return;
                             }
-                            setAvisoTamano(null);
+                            setAvisoArchivo(null);
                             setNombreArchivo(archivo?.name ?? null);
                         }}
                         className="sr-only"
@@ -259,9 +267,9 @@ export function ImportadorSii({
                 <p className="mt-1 text-[12px] text-[var(--foreground-muted)]">{TEXTO_DESCARGA_SII}</p>
             ) : null}
 
-            {avisoTamano ? (
+            {avisoArchivo ? (
                 <div className="mt-4">
-                    <Aviso tono="critico">{avisoTamano}</Aviso>
+                    <Aviso tono="critico">{avisoArchivo}</Aviso>
                 </div>
             ) : null}
 

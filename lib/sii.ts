@@ -30,16 +30,22 @@ export interface Importable {
     readonly etiqueta: string;
     readonly esRcv: boolean;
     readonly acepta: string;
+    /** Extensiones que se aceptan, con punto. Las comprueba el navegador al elegir el archivo (y el backend, de verdad). */
+    readonly extensiones: readonly string[];
     /** Dónde se descarga en el portal del SII. */
     readonly reporte: string;
 }
 
+const MIME_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+/** Los libros y reportes de tabla se aceptan como CSV, TXT o Excel (.xlsx). Los .xls y .xlsm no se leen. */
+const TABLA = { acepta: `.csv,.txt,.xlsx,text/csv,${MIME_XLSX}`, extensiones: [".csv", ".txt", ".xlsx"] } as const;
+
 export const IMPORTABLES: readonly Importable[] = [
-    { id: "compras", etiqueta: "Libro de compras (CSV)", esRcv: true, acepta: ".csv,.txt,text/csv", reporte: "Registro de Compras y Ventas → Compras → Exportar CSV" },
-    { id: "ventas", etiqueta: "Libro de ventas (CSV)", esRcv: true, acepta: ".csv,.txt,text/csv", reporte: "Registro de Compras y Ventas → Ventas → Exportar CSV" },
-    { id: "honorarios_recibidas", etiqueta: "Honorarios recibidos (CSV)", esRcv: false, acepta: ".csv,.txt,text/csv", reporte: "Boletas de honorarios → Boletas recibidas → Descargar CSV" },
-    { id: "honorarios_emitidas", etiqueta: "Honorarios emitidos (CSV)", esRcv: false, acepta: ".csv,.txt,text/csv", reporte: "Boletas de honorarios → Boletas emitidas → Descargar CSV" },
-    { id: "xml", etiqueta: "DTE (XML suelto, sobre EnvioDTE o ZIP)", esRcv: false, acepta: ".xml,.zip,application/xml,text/xml,application/zip", reporte: "Mis DTE → descargar los DTE (archivos XML): sueltos, en un sobre EnvioDTE o en un ZIP" },
+    { id: "compras", etiqueta: "Libro de compras (CSV o Excel)", esRcv: true, ...TABLA, reporte: "Registro de Compras y Ventas → Compras → Exportar CSV" },
+    { id: "ventas", etiqueta: "Libro de ventas (CSV o Excel)", esRcv: true, ...TABLA, reporte: "Registro de Compras y Ventas → Ventas → Exportar CSV" },
+    { id: "honorarios_recibidas", etiqueta: "Honorarios recibidos (CSV o Excel)", esRcv: false, ...TABLA, reporte: "Boletas de honorarios → Boletas recibidas → Descargar CSV" },
+    { id: "honorarios_emitidas", etiqueta: "Honorarios emitidos (CSV o Excel)", esRcv: false, ...TABLA, reporte: "Boletas de honorarios → Boletas emitidas → Descargar CSV" },
+    { id: "xml", etiqueta: "DTE (XML suelto, sobre EnvioDTE o ZIP)", esRcv: false, acepta: ".xml,.zip,application/xml,text/xml,application/zip", extensiones: [".xml", ".zip"], reporte: "Mis DTE → descargar los DTE (archivos XML): sueltos, en un sobre EnvioDTE o en un ZIP" },
 ];
 
 /** Tope del archivo a subir (10 MB), igual que el del backend. Se valida en el navegador y en el servidor. */

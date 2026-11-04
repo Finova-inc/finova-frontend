@@ -59,12 +59,12 @@ const POR_PAGINA = 50;
 
 const REGLAS: readonly string[] = [
     "Finova nunca ve la clave del SII: entras tú al portal, descargas los archivos y los subes aquí.",
-    "Para cada mes sube el CSV del Registro de Compras y Ventas (compras y ventas) y, si quieres cuadrarlo, los DTE de los documentos (archivos XML): sueltos, en un sobre EnvioDTE o en un ZIP. Las boletas de honorarios traen su propia fecha.",
+    "Para cada mes sube el CSV del Registro de Compras y Ventas (compras y ventas), o ese mismo reporte guardado como Excel (.xlsx), y, si quieres cuadrarlo, los DTE de los documentos (archivos XML): sueltos, en un sobre EnvioDTE o en un ZIP. Las boletas de honorarios traen su propia fecha.",
     "La cuadratura compara el RCV con el DTE de cada documento. «Cuadra»: están los dos y los montos coinciden. «Difiere»: algún monto no coincide (el RCV conserva sus montos). «Sin DTE»: está en el RCV y falta su DTE. «Solo DTE»: subiste el DTE, pero el RCV no lo trae.",
     "Subir el mismo archivo dos veces no duplica nada; si subes uno corregido, solo se actualiza lo que cambió. Cada documento se identifica por emisor, tipo y folio.",
     "Una línea con un dato inválido (RUT con dígito verificador incorrecto, fecha inexistente, monto ilegible, documento repetido) se rechaza y se informa con su número; las demás sí se guardan.",
     "Las notas de crédito restan en los totales. Las boletas de honorarios anuladas se muestran, pero no suman.",
-    "El SII no publica un formato oficial del CSV: las columnas se reconocen por su nombre, no por su posición. La firma digital del DTE no se verifica.",
+    "El SII no publica un formato oficial del CSV: las columnas se reconocen por su nombre, no por su posición. Un Excel (.xlsx) se lee igual que el CSV, pero solo su primera hoja; los .xls y .xlsm no se leen: guárdalos como .xlsx o como CSV. La firma digital del DTE no se verifica.",
 ];
 
 function texto(parametros: Parametros, clave: string): string | undefined {

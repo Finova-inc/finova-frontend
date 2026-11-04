@@ -15,6 +15,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ApiError, mensajesDelBackend, siiApi, type ImportacionSii, type VistaPreviaSii } from "@/lib/api";
+import { extensionPermitida, mensajeExtensionNoPermitida } from "@/lib/extension-archivo";
 import { mensajeDeSubida } from "@/lib/errores-subida";
 import { IMPORTABLES, TAMANO_MAXIMO_ARCHIVO, periodoValido } from "@/lib/sii";
 import { exigirTokenSesion } from "@/lib/session";
@@ -37,6 +38,10 @@ function prepararEnvio(formData: FormData): { envio: FormData } | { errores: str
     const archivo = formData.get("archivo");
     if (!(archivo instanceof File) || archivo.size === 0) {
         return { errores: ["Elige el archivo que descargaste del SII."] };
+    }
+    // El navegador ya lo avisa al elegir el archivo; aquí se repite porque ese control se puede saltar.
+    if (!extensionPermitida(archivo.name, libro.extensiones)) {
+        return { errores: [mensajeExtensionNoPermitida(archivo.name, libro.extensiones)] };
     }
     if (archivo.size > TAMANO_MAXIMO_ARCHIVO) {
         return { errores: ["El archivo pesa más de 10 MB. Un reporte mensual normal pesa mucho menos: revisa que sea el correcto."] };
