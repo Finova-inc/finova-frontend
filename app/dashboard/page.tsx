@@ -32,6 +32,7 @@ import {
     borradoresApi,
     contabilizacionApi,
     cuentasApi,
+    f29Api,
     periodosApi,
     type AsientoBorrador,
     type AsientoListado,
@@ -39,6 +40,7 @@ import {
     type PeriodoContable,
     type PorContabilizar,
     type ResumenPanel,
+    type ResumenPropuestaF29,
 } from "@/lib/api";
 import { periodoPorDefecto } from "@/lib/f29";
 import {
@@ -49,20 +51,12 @@ import {
     nombreMesLargo,
     nombrePeriodo,
 } from "@/lib/formato";
+import { insigniaPlazoF29, plazoF29, severidadPlazoF29 } from "@/lib/periodos";
 import { periodoValido } from "@/lib/sii";
 import { exigirTokenSesion, obtenerRolDelToken, puedeRegistrar } from "@/lib/session";
 import { SeccionPorContabilizar } from "./SeccionPorContabilizar";
 
 export const dynamic = "force-dynamic";
-
-/**
- * Dia del mes siguiente en que vence el F29.
- *
- * ponytail: plazo fijo del dia 20 (facturador electronico que declara por
- * internet; quien no, tiene hasta el 12) y sin correr por dias inhabiles.
- * Supuesto a confirmar con el PO; si cambia, se cambia aqui.
- */
-const DIA_VENCE_F29 = 20;
 
 type DatosPanel = {
     readonly hoy: string;
@@ -82,6 +76,8 @@ type DatosPanel = {
     /** Mes de la alerta de «Lo urgente» (siempre el anterior al actual) y cuántos documentos tiene por contabilizar; null si no se pudo saber. */
     readonly periodoAlerta: string;
     readonly pendientesAlerta: number | null;
+    /** Propuestas de F29 del año del mes anterior, para saber si ya se declaró; null si la consulta falló. */
+    readonly propuestasF29: readonly ResumenPropuestaF29[] | null;
     readonly sinConexion: boolean;
 };
 
@@ -110,12 +106,14 @@ async function cargarPanel(token: string, periodoContab: string): Promise<DatosP
         contabilizacionApi.listar(periodoContab, opciones),
         // La alerta mira siempre el mes por defecto; si la sección está en otro mes, hace falta su propia consulta.
         periodoContab === periodoAlerta ? Promise.resolve(null) : contabilizacionApi.listar(periodoAlerta, opciones),
+        // El F29 del mes anterior es el del plazo que corre; el de diciembre es del año anterior.
+        f29Api.listar(Number(periodoAlerta.slice(0, 4)), opciones),
     ]);
     // Una sesión vencida da 401 en todas: se vuelve al login en vez de mostrar un panel de "—".
     if (resultados.some((r) => r.status === "rejected" && r.reason instanceof ApiError && r.reason.status === 401)) {
         redirect("/login");
     }
-    const [resumen, resumenAnterior, periodos, recientes, cuentas, borradores, porContabilizar, deLaAlerta] = resultados;
+    const [resumen, resumenAnterior, periodos, recientes, cuentas, borradores, porContabilizar, deLaAlerta, propuestasF29] = resultados;
 
     const valor = <T,>(resultado: PromiseSettledResult<T>): T | null =>
         resultado.status === "fulfilled" ? resultado.value : null;
@@ -133,6 +131,7 @@ async function cargarPanel(token: string, periodoContab: string): Promise<DatosP
         porContabilizar: valor(porContabilizar),
         periodoContab,
         periodoAlerta,
+        propuestasF29: valor(propuestasF29),
         pendientesAlerta: (periodoContab === periodoAlerta ? valor(porContabilizar) : valor(deLaAlerta))?.resumen.pendientes ?? null,
         sinConexion: resultados.every(
             (r) => r.status === "rejected" && r.reason instanceof ApiError && r.reason.status === 0,
@@ -260,38 +259,70 @@ function construirAlertas(datos: DatosPanel): Alerta[] {
     const { hoy, anio, mes } = datos;
     const alertas: Alerta[] = [];
 
-    // F29 del mes anterior, mientras corre el plazo. Despues del dia 20 no se
-    // sabe si ya se declaro (no hay registro de la declaracion), asi que calla.
-    const dia = Number(hoy.slice(8, 10));
-    const mesF29 = mes === 1 ? 12 : mes - 1;
+    // F29 del mes anterior: su plazo (día 20, lib/periodos.ts) corre este mes. Se avisa
+    // con la urgencia de los días que faltan, y también cuando ya venció y no se
+    // declaró. "Declarado" solo se sabe si se anotó en la pantalla del F29.
+    const [anioF29, mesF29] = datos.periodoAlerta.split("-").map(Number);
+    const plazo = plazoF29(anioF29, mesF29, hoy);
+    const propuesta = datos.propuestasF29?.find((p) => p.periodo === datos.periodoAlerta);
     const resumenF29 = mes === 1 ? datos.resumenAnterior : datos.resumen;
     const ivaF29 = resumenF29?.meses.find((m) => m.mes === mesF29);
-    if (ivaF29 && dia <= DIA_VENCE_F29 && !(esCero(ivaF29.iva_debito) && esCero(ivaF29.iva_credito))) {
-        const quedan = DIA_VENCE_F29 - dia;
-        const insignia = quedan === 0 ? "vence hoy" : `vence en ${quedan} día${quedan === 1 ? "" : "s"}`;
-        const nombreMes = nombreMesLargo(mesF29).toLowerCase();
-        const desglose = `Débito ${formatearCLP(ivaF29.iva_debito)} − crédito ${formatearCLP(ivaF29.iva_credito)} según el libro.`;
+    const hayMovimiento = ivaF29 !== undefined && !(esCero(ivaF29.iva_debito) && esCero(ivaF29.iva_credito));
+    // Sin la lista de propuestas no se sabe si ya se declaró: un plazo vencido calla en vez de alarmar de más.
+    const sePuedeAvisar = plazo.dias >= 0 || datos.propuestasF29 !== null;
 
-        if (esNegativo(ivaF29.iva_neto)) {
-            alertas.push({
-                id: "f29",
-                severidad: "info",
-                icono: "check",
-                titulo: `F29 de ${nombreMes}: remanente de crédito`,
-                detalle: `${desglose} No hay IVA que pagar; el remanente pasa al mes siguiente.`,
-                insignia,
-                monto: ivaF29.iva_neto.replace(/^-/, ""),
-            });
-        } else if (!esCero(ivaF29.iva_neto)) {
-            alertas.push({
-                id: "f29",
-                severidad: quedan <= 3 ? "critica" : "aviso",
-                icono: "alert",
-                titulo: `F29 de ${nombreMes}: IVA estimado a pagar`,
-                detalle: `${desglose} Faltan PPM y retenciones.`,
-                insignia,
-                monto: ivaF29.iva_neto,
-            });
+    if (sePuedeAvisar && propuesta?.estado !== "declarada" && (hayMovimiento || propuesta)) {
+        const vencido = plazo.dias < 0;
+        const [, mesPlazo, diaPlazo] = plazo.vence.split("-").map(Number);
+        const insignia = insigniaPlazoF29(plazo.dias);
+        const nombreMes = nombreMesLargo(mesF29).toLowerCase();
+        const limite = `Plazo: ${diaPlazo} de ${nombreMesLargo(mesPlazo).toLowerCase()}.`;
+        const sigueAbierto = vencido ? " Si ya lo declaraste, anótalo en el F29 para quitar este aviso." : "";
+        const accion = { texto: "Ver F29", href: `/dashboard/f29?periodo=${datos.periodoAlerta}` };
+        const urgencia = severidadPlazoF29(plazo.dias);
+
+        // Propuesta en curso o IVA neto cero: no hay monto que mostrar, pero el F29 igual se presenta.
+        const sinMonto: Alerta = {
+            id: "f29",
+            severidad: urgencia,
+            icono: "alert",
+            titulo: `F29 de ${nombreMes}: ${vencido ? "plazo vencido" : "falta declararlo"}`,
+            detalle: `Revisa la propuesta y presenta la declaración en el SII. ${limite}${sigueAbierto}`,
+            insignia,
+            accion,
+        };
+
+        if (hayMovimiento && ivaF29) {
+            const desglose = `Débito ${formatearCLP(ivaF29.iva_debito)} − crédito ${formatearCLP(ivaF29.iva_credito)} según el libro.`;
+            if (esNegativo(ivaF29.iva_neto)) {
+                alertas.push({
+                    id: "f29",
+                    // Sin IVA que pagar, solo urge cuando ya venció.
+                    severidad: vencido ? "aviso" : "info",
+                    icono: vencido ? "alert" : "check",
+                    titulo: `F29 de ${nombreMes}: remanente de crédito`,
+                    detalle: `${desglose} No hay IVA que pagar; el remanente pasa al mes siguiente. ${limite}${sigueAbierto}`,
+                    insignia,
+                    monto: ivaF29.iva_neto.replace(/^-/, ""),
+                    accion,
+                });
+            } else if (!esCero(ivaF29.iva_neto)) {
+                alertas.push({
+                    id: "f29",
+                    // Con IVA a pagar nunca baja de aviso, aunque falten muchos días.
+                    severidad: urgencia === "info" ? "aviso" : urgencia,
+                    icono: "alert",
+                    titulo: `F29 de ${nombreMes}: IVA estimado a pagar${vencido ? " (plazo vencido)" : ""}`,
+                    detalle: `${desglose} Faltan PPM y retenciones. ${limite}${sigueAbierto}`,
+                    insignia,
+                    monto: ivaF29.iva_neto,
+                    accion,
+                });
+            } else {
+                alertas.push(sinMonto);
+            }
+        } else {
+            alertas.push(sinMonto);
         }
     }
 
