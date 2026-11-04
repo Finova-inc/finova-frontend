@@ -42,6 +42,9 @@ export const IMPORTABLES: readonly Importable[] = [
     { id: "xml", etiqueta: "DTE (XML suelto, sobre EnvioDTE o ZIP)", esRcv: false, acepta: ".xml,.zip,application/xml,text/xml,application/zip", reporte: "Mis DTE → descargar los DTE (archivos XML): sueltos, en un sobre EnvioDTE o en un ZIP" },
 ];
 
+/** Tope del archivo a subir (10 MB), igual que el del backend. Se valida en el navegador y en el servidor. */
+export const TAMANO_MAXIMO_ARCHIVO = 10 * 1024 * 1024;
+
 /**
  * Cookie con lo último que se eligió en el importador (`tipo|periodo`). Vive aquí y no
  * en el componente: un archivo "use client" no puede dar constantes a un Server

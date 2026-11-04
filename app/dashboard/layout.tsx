@@ -3,7 +3,8 @@ import { CerrarSesionBoton } from "@/components/CerrarSesionBoton";
 import { SelectorEmpresa } from "@/components/dashboard/SelectorEmpresa";
 import { Icon } from "@/components/ui/Icon";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { authApi, type EmpresaDelUsuario } from "@/lib/api";
+import { redirect } from "next/navigation";
+import { ApiError, authApi, type EmpresaDelUsuario } from "@/lib/api";
 import { exigirTokenSesion, obtenerEmpresaDelToken } from "@/lib/session";
 
 /* ============================================================================
@@ -36,7 +37,11 @@ export default async function DashboardLayout({
     let empresas: EmpresaDelUsuario[] = [];
     try {
         empresas = await authApi.misEmpresas({ token, cache: "no-store" });
-    } catch {
+    } catch (error) {
+        // Excepto una sesión vencida o revocada: ahí no hay panel que mostrar.
+        // Es el único sitio que corre antes de cualquier pantalla del panel, así
+        // que cubre también las que no tratan el 401 por su cuenta.
+        if (error instanceof ApiError && error.status === 401) redirect("/login");
         empresas = [];
     }
 

@@ -27,14 +27,17 @@ import {
     ApiError,
     asientosApi,
     borradoresApi,
+    contabilizacionApi,
     cuentasApi,
     periodosApi,
     type AsientoBorrador,
     type AsientoListado,
     type CuentaContable,
     type PeriodoContable,
+    type PorContabilizar,
     type ResumenPanel,
 } from "@/lib/api";
+import { periodoPorDefecto } from "@/lib/f29";
 import {
     formatearCLP,
     formatearComprobante,
@@ -67,6 +70,8 @@ type DatosPanel = {
     readonly recientes: readonly AsientoListado[] | null;
     readonly cuentas: readonly CuentaContable[] | null;
     readonly borradores: readonly AsientoBorrador[] | null;
+    /** Documentos del SII del mes que abre /dashboard/contabilizacion; null si la consulta falló. */
+    readonly porContabilizar: PorContabilizar | null;
     readonly sinConexion: boolean;
 };
 
@@ -91,12 +96,13 @@ async function cargarPanel(token: string): Promise<DatosPanel> {
         asientosApi.listar({ por_pagina: 5 }, opciones),
         cuentasApi.listar(opciones),
         borradoresApi.listar(opciones),
+        contabilizacionApi.listar(periodoPorDefecto(hoy), opciones),
     ]);
     // Una sesión vencida da 401 en todas: se vuelve al login en vez de mostrar un panel de "—".
     if (resultados.some((r) => r.status === "rejected" && r.reason instanceof ApiError && r.reason.status === 401)) {
         redirect("/login");
     }
-    const [resumen, resumenAnterior, periodos, recientes, cuentas, borradores] = resultados;
+    const [resumen, resumenAnterior, periodos, recientes, cuentas, borradores, porContabilizar] = resultados;
 
     const valor = <T,>(resultado: PromiseSettledResult<T>): T | null =>
         resultado.status === "fulfilled" ? resultado.value : null;
@@ -111,6 +117,7 @@ async function cargarPanel(token: string): Promise<DatosPanel> {
         recientes: valor(recientes)?.items ?? null,
         cuentas: valor(cuentas),
         borradores: valor(borradores),
+        porContabilizar: valor(porContabilizar),
         sinConexion: resultados.every(
             (r) => r.status === "rejected" && r.reason instanceof ApiError && r.reason.status === 0,
         ),
@@ -298,6 +305,22 @@ function construirAlertas(datos: DatosPanel): Alerta[] {
                 accion: { texto: "Cerrar períodos", href: "/dashboard/periodos" },
             });
         }
+    }
+
+    // Un cero o una consulta caída no dicen nada: la alerta solo existe si hay pendientes.
+    const pendientesSii = datos.porContabilizar?.resumen.pendientes ?? 0;
+    if (pendientesSii > 0) {
+        alertas.push({
+            id: "por-contabilizar",
+            severidad: "info",
+            icono: "document",
+            titulo:
+                pendientesSii === 1
+                    ? "1 documento del SII por contabilizar"
+                    : `${pendientesSii} documentos del SII por contabilizar`,
+            detalle: "Finova propone un borrador por documento; tú lo revisas y lo contabilizas.",
+            accion: { texto: "Ver documentos", href: `/dashboard/contabilizacion?periodo=${periodoPorDefecto(datos.hoy)}` },
+        });
     }
 
     const cantidadBorradores = datos.borradores?.length ?? 0;
