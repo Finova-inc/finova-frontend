@@ -10,7 +10,7 @@ import { notFound, redirect } from "next/navigation";
 import { Panel } from "@/components/ui/Panel";
 import { Etiqueta } from "@/components/ui/Etiqueta";
 import { ApiError, asientosApi, type AsientoDetalle } from "@/lib/api";
-import { formatearPesos, sumarPesos, tieneMonto } from "@/lib/decimal";
+import { sumarPesos, tieneMonto } from "@/lib/decimal";
 import {
     NOMBRE_TIPO_COMPROBANTE,
     formatearCLP,
@@ -180,10 +180,10 @@ export default async function DetalleAsientoPage({ params }: { params: Promise<{
                                     Totales
                                 </td>
                                 <td className="tabular border-t-2 border-[var(--border-strong)] px-4 py-3 text-right font-bold">
-                                    {formatearPesos(totalDebe)}
+                                    {formatearCLP(totalDebe)}
                                 </td>
                                 <td className="tabular border-t-2 border-[var(--border-strong)] px-4 py-3 text-right font-bold">
-                                    {formatearPesos(totalHaber)}
+                                    {formatearCLP(totalHaber)}
                                 </td>
                             </tr>
                         </tfoot>

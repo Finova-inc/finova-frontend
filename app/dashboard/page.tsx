@@ -192,7 +192,21 @@ export default async function DashboardPage({
                     <CifraClave
                         etiqueta="Por cobrar"
                         valor={resumen?.saldos.por_cobrar}
-                        detalle="Clientes y otros deudores"
+                        detalle={
+                            resumen && esNegativo(resumen.saldos.por_cobrar) ? (
+                                <span role="note">
+                                    <span className="font-semibold text-[var(--aviso)]">Saldo negativo.</span> Hay más cobros
+                                    que ventas contabilizadas (por ejemplo, un cobro sin factura previa). Revisa las cuentas de
+                                    clientes en el{" "}
+                                    <Link href="/dashboard/libro-mayor" className="font-semibold underline-offset-2 hover:underline">
+                                        libro mayor
+                                    </Link>
+                                    .
+                                </span>
+                            ) : (
+                                "Clientes y otros deudores"
+                            )
+                        }
                     />
                     <CifraClave
                         etiqueta="Por pagar"

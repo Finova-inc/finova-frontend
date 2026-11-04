@@ -50,16 +50,8 @@ export function soloDigitos(texto: string): string {
     return texto.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
 }
 
-const FORMATO_CLP = new Intl.NumberFormat("es-CL", {
-    style: "currency",
-    currency: "CLP",
-    maximumFractionDigits: 0,
-});
-
-/** $1.190.000, sin pasar por Number: Intl acepta BigInt directamente. */
-export function formatearPesos(valor: bigint): string {
-    return FORMATO_CLP.format(valor);
-}
+/* Para mostrar pesos con signo y simbolo (-$1.190.000) usar formatearCLP de lib/formato.ts,
+   que acepta bigint: aqui no hay un segundo formateador. */
 
 /** 1190000 -> "1.190.000", para mostrar dentro de un campo de monto. */
 export function separarMiles(digitos: string): string {

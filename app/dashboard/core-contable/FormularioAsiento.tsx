@@ -16,8 +16,9 @@ import { Boton } from "@/components/ui/Boton";
 import { Icon } from "@/components/ui/Icon";
 import { Panel } from "@/components/ui/Panel";
 import type { AsientoBorrador, TipoComprobante } from "@/lib/api";
-import { CERO, formatearPesos, separarMiles, soloDigitos, sumarPesos, tieneMonto } from "@/lib/decimal";
-import { nombreMesLargo, nombrePeriodo } from "@/lib/formato";
+import { CERO, separarMiles, soloDigitos, sumarPesos, tieneMonto } from "@/lib/decimal";
+import { formatearCLP, nombreMesLargo, nombrePeriodo } from "@/lib/formato";
+import { dejaPorCobrarNegativo, proyectarPorCobrar } from "@/lib/por-cobrar";
 import { abrirMes } from "../periodos/actions";
 import {
     contabilizarBorrador,
@@ -59,6 +60,8 @@ type FormularioAsientoProps = {
     readonly puedeAbrirPeriodo: boolean;
     /** Hoy en Chile, calculado en el servidor: el reloj del navegador puede mentir. */
     readonly hoy: string;
+    /** Saldo actual de Por cobrar (clientes), para avisar si este asiento lo deja negativo. */
+    readonly saldoPorCobrar?: string | null;
     readonly borrador?: AsientoBorrador | null;
 };
 
@@ -135,6 +138,7 @@ export function FormularioAsiento({
     periodos,
     puedeAbrirPeriodo,
     hoy,
+    saldoPorCobrar = null,
     borrador = null,
 }: FormularioAsientoProps) {
     const idBase = useId();
@@ -185,6 +189,9 @@ export function FormularioAsiento({
     const totalHaber = sumarPesos(lineas.map((linea) => linea.haber));
     const diferencia = totalDebe > totalHaber ? totalDebe - totalHaber : totalHaber - totalDebe;
     const cuadra = totalDebe === totalHaber && totalDebe > CERO;
+    // Solo advertencia: un cobro sin venta previa es un asiento válido, no se bloquea.
+    const porCobrar = proyectarPorCobrar(saldoPorCobrar, lineas, cuentas);
+    const avisaPorCobrar = dejaPorCobrarNegativo(porCobrar);
 
     // Lo que falta para poder contabilizar, en el orden en que se llena la
     // pantalla. Es la misma lista que haria rechazar el asiento en el backend.
@@ -209,7 +216,7 @@ export function FormularioAsiento({
         }
     });
     if (!cuadra && totalDebe + totalHaber > CERO) {
-        faltantes.push(`El asiento no cuadra: diferencia de ${formatearPesos(diferencia)}`);
+        faltantes.push(`El asiento no cuadra: diferencia de ${formatearCLP(diferencia)}`);
     }
     const listoParaContabilizar = faltantes.length === 0;
 
@@ -541,10 +548,10 @@ export function FormularioAsiento({
                                     </Boton>
                                 </td>
                                 <td className="tabular border-t-2 border-[var(--border-strong)] px-2 pt-4 text-right font-bold">
-                                    {formatearPesos(totalDebe)}
+                                    {formatearCLP(totalDebe)}
                                 </td>
                                 <td className="tabular border-t-2 border-[var(--border-strong)] px-2 pt-4 text-right font-bold">
-                                    {formatearPesos(totalHaber)}
+                                    {formatearCLP(totalHaber)}
                                 </td>
                                 <td className="border-t-2 border-[var(--border-strong)]" />
                             </tr>
@@ -566,11 +573,25 @@ export function FormularioAsiento({
                 >
                     <Icon name={cuadra ? "check" : "alert"} className="size-4 shrink-0" />
                     {cuadra
-                        ? `Cuadrado: debe y haber suman ${formatearPesos(totalDebe)}`
+                        ? `Cuadrado: debe y haber suman ${formatearCLP(totalDebe)}`
                         : totalDebe + totalHaber > CERO
-                          ? `Descuadre de ${formatearPesos(diferencia)} (${totalDebe > totalHaber ? "falta haber" : "falta debe"})`
+                          ? `Descuadre de ${formatearCLP(diferencia)} (${totalDebe > totalHaber ? "falta haber" : "falta debe"})`
                           : "Sin montos todavía"}
                 </div>
+                {avisaPorCobrar && porCobrar ? (
+                    <div
+                        aria-live="polite"
+                        className="flex items-start gap-2 border-t border-[var(--border-subtle)] bg-[var(--aviso-bg)] px-5 py-3 text-[13px] text-[var(--foreground)]"
+                    >
+                        <Icon name="alert" className="mt-0.5 size-4 shrink-0 text-[var(--aviso)]" />
+                        <p>
+                            <span className="font-semibold">Por cobrar quedaría en {formatearCLP(porCobrar.proyectado)}.</span>{" "}
+                            Este asiento baja la cuenta de clientes más de lo que hay registrado: normalmente un cobro sigue
+                            a una venta o factura. Puedes contabilizarlo igual (es válido, por ejemplo un anticipo); si
+                            falta la venta, regístrala primero.
+                        </p>
+                    </div>
+                ) : null}
             </Panel>
 
             {errores.length > 0 ? (
@@ -591,7 +612,7 @@ export function FormularioAsiento({
                     className="rounded-xl border border-[var(--aviso)] bg-[var(--aviso-bg)] p-4 text-[13px]"
                 >
                     <p id={`${idBase}-confirmar`} className="font-semibold text-[var(--foreground)]">
-                        ¿Contabilizar este {nombreTipo.toLowerCase()} por {formatearPesos(totalDebe)} con fecha{" "}
+                        ¿Contabilizar este {nombreTipo.toLowerCase()} por {formatearCLP(totalDebe)} con fecha{" "}
                         {fecha.split("-").reverse().join("-")}?
                     </p>
                     <p className="mt-1 text-[var(--foreground-muted)]">

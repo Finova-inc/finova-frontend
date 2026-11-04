@@ -1,4 +1,5 @@
-import { ApiError, cuentasApi, periodosApi, tercerosApi } from "@/lib/api";
+import { ApiError, asientosApi, cuentasApi, periodosApi, tercerosApi } from "@/lib/api";
+import { hoyEnChile } from "@/lib/formato";
 import { claseDe } from "@/lib/planCuentas";
 import type { CuentaOpcion, PeriodoOpcion, TerceroOpcion } from "./FormularioAsiento";
 
@@ -19,13 +20,16 @@ export async function cargarOpcionesDelFormulario(token: string): Promise<{
     readonly terceros: TerceroOpcion[];
     /** null si no se pudieron cargar: el formulario no avisa y decide el backend. */
     readonly periodos: PeriodoOpcion[] | null;
+    /** Saldo actual de Por cobrar, para avisar si el asiento lo deja negativo; null si no se pudo leer (no se avisa). */
+    readonly saldoPorCobrar: string | null;
     readonly error: ApiError | null;
 }> {
     const opciones = { token, cache: "no-store" } as const;
-    const [cuentas, terceros, periodos] = await Promise.allSettled([
+    const [cuentas, terceros, periodos, resumen] = await Promise.allSettled([
         cuentasApi.listar(opciones),
         tercerosApi.listar(opciones),
         periodosApi.listar(opciones),
+        asientosApi.resumen(Number(hoyEnChile().slice(0, 4)), opciones),
     ]);
 
     const error =
@@ -63,6 +67,7 @@ export async function cargarOpcionesDelFormulario(token: string): Promise<{
             periodos.status === "fulfilled"
                 ? periodos.value.map(({ anio, mes, estado }) => ({ anio, mes, estado }))
                 : null,
+        saldoPorCobrar: resumen.status === "fulfilled" ? resumen.value.saldos.por_cobrar : null,
         error,
     };
 }
