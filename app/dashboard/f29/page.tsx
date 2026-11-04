@@ -14,8 +14,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Etiqueta } from "@/components/ui/Etiqueta";
 import { Panel, PanelCabecera } from "@/components/ui/Panel";
-import { ApiError, f29Api, type F29DelMes, type ResumenPropuestaF29 } from "@/lib/api";
+import { ApiError, f29Api, utmApi, type F29DelMes, type ResumenPropuestaF29 } from "@/lib/api";
 import { desplazarMes, ESTADOS, nombreDelMes, periodoPorDefecto } from "@/lib/f29";
+import { anioYMes } from "@/lib/utm-sugerida";
 import { formatearCLP, hoyEnChile } from "@/lib/formato";
 import { periodoValido } from "@/lib/sii";
 import { exigirTokenSesion, obtenerRolDelToken, puedeRegistrar } from "@/lib/session";
@@ -53,6 +54,16 @@ const REGLAS: readonly string[] = [
 
 type Parametros = Record<string, string | string[] | undefined>;
 
+/** UTM sugerida de un mes, o null si el backend no la tiene o la consulta falla: el formulario funciona igual. */
+async function sugerirUtm(periodo: string, opciones: { readonly token: string; readonly cache: "no-store" }): Promise<string | null> {
+    const { anio, mes } = anioYMes(periodo);
+    try {
+        return (await utmApi.obtener(anio, mes, opciones)).valor;
+    } catch {
+        return null;
+    }
+}
+
 export default async function F29Page({ searchParams }: { searchParams: Promise<Parametros> }) {
     const token = await exigirTokenSesion();
     const rol = await obtenerRolDelToken();
@@ -65,11 +76,17 @@ export default async function F29Page({ searchParams }: { searchParams: Promise<
 
     let datos: F29DelMes | null = null;
     let delAnio: ResumenPropuestaF29[] = [];
+    // UTM sugeridas para reajustar el remanente: la del mes anterior y la del mes que se declara
+    // (los mismos del formulario). Si no se pueden obtener, queda null y se escriben a mano.
+    const mesAnterior = desplazarMes(periodo, -1);
+    const utmSugerida: { anterior: string | null; actual: string | null } = { anterior: null, actual: null };
     try {
-        [datos, delAnio] = await Promise.all([
+        [datos, delAnio, utmSugerida.anterior, utmSugerida.actual] = await Promise.all([
             f29Api.obtener(periodo, opciones),
             // Si falla, la pantalla se ve igual, solo que sin los estados del año.
             f29Api.listar(anio, opciones).catch(() => []),
+            sugerirUtm(mesAnterior, opciones),
+            sugerirUtm(periodo, opciones),
         ]);
     } catch (error) {
         if (error instanceof ApiError && error.status === 401) redirect("/login");
@@ -214,9 +231,10 @@ export default async function F29Page({ searchParams }: { searchParams: Promise<
                             // key: al cambiar de mes o guardar, el formulario parte de lo guardado.
                             key={`${periodo}-${propuesta?.version ?? 0}`}
                             periodo={periodo}
-                            periodoAnterior={desplazarMes(periodo, -1)}
+                            periodoAnterior={mesAnterior}
                             inicial={{ remanente: remanente.mes_anterior, utmAnterior: remanente.utm_anterior, utmActual: remanente.utm_actual }}
                             sugerido={remanente.sugerido?.monto ?? null}
+                            utmSugerida={utmSugerida}
                             version={propuesta?.version}
                         />
                     ) : (

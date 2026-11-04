@@ -4,6 +4,7 @@ import { useId, useState, useTransition, type FormEvent } from "react";
 import { Boton } from "@/components/ui/Boton";
 import { formatearCLP } from "@/lib/formato";
 import { aPesosEnteros, nombreDelMes, reajustar } from "@/lib/f29";
+import { marcaUtm, valorInicialUtm } from "@/lib/utm-sugerida";
 import { guardarRemanenteF29, type EstadoF29 } from "./actions";
 
 const CLASES_CAMPO =
@@ -12,19 +13,35 @@ const CLASES_CAMPO =
 /** "69751" → "69.751" para mostrarlo en el campo; vacío si no hay valor. */
 const conPuntos = (valor: string | null) => (valor ? BigInt(valor).toLocaleString("es-CL") : "");
 
+/** Marca de origen bajo un campo de UTM (ver marcaUtm). */
+function MarcaUtm({ valor, sugerida }: { readonly valor: string; readonly sugerida: string | null }) {
+    const marca = marcaUtm(valor, sugerida);
+    if (!marca) return null;
+    return (
+        <p
+            className={`text-[11.5px] ${marca.tipo === "sugerida" ? "text-[var(--positivo)]" : "text-[var(--foreground-muted)]"}`}
+            role={marca.tipo === "sin-sugerencia" ? "status" : undefined}
+        >
+            {marca.texto}
+        </p>
+    );
+}
+
 /**
  * Remanente de crédito fiscal del mes anterior (código 504).
  *
  * Art. 27 del DL 825: el remanente se convierte a UTM del mes en que se
  * produjo y se reconvierte a la UTM del mes en que se usa. El contador
  * escribe las dos UTM (las publica el SII) y Finova calcula el reajuste; sin
- * UTM, el remanente entra tal cual.
+ * UTM, el remanente entra tal cual. Finova sugiere las dos UTM (las lee el
+ * backend de una API pública); la persona puede dejarlas o escribir otras.
  */
 export function FormularioRemanente({
     periodo,
     periodoAnterior,
     inicial,
     sugerido,
+    utmSugerida,
     version,
 }: {
     readonly periodo: string;
@@ -32,12 +49,15 @@ export function FormularioRemanente({
     readonly inicial: { readonly remanente: string; readonly utmAnterior: string | null; readonly utmActual: string | null };
     /** El 77 del F29 aprobado del mes anterior, si Finova lo tiene. */
     readonly sugerido: string | null;
+    /** UTM sugeridas (pesos enteros) de los dos meses, o null si no estuvieron disponibles. */
+    readonly utmSugerida: { readonly anterior: string | null; readonly actual: string | null };
     readonly version?: number;
 }) {
     const id = useId();
     const [remanente, setRemanente] = useState(conPuntos(inicial.remanente === "0" ? null : inicial.remanente));
-    const [utmAnterior, setUtmAnterior] = useState(conPuntos(inicial.utmAnterior));
-    const [utmActual, setUtmActual] = useState(conPuntos(inicial.utmActual));
+    // Lo guardado manda; la sugerida solo rellena lo que no hay (nunca lo sobrescribe).
+    const [utmAnterior, setUtmAnterior] = useState(conPuntos(valorInicialUtm(inicial.utmAnterior, utmSugerida.anterior)));
+    const [utmActual, setUtmActual] = useState(conPuntos(valorInicialUtm(inicial.utmActual, utmSugerida.actual)));
     const [estado, setEstado] = useState<EstadoF29>({});
     const [enCurso, iniciar] = useTransition();
 
@@ -81,6 +101,7 @@ export function FormularioRemanente({
                         onChange={(e) => setUtmAnterior(e.target.value)}
                         className={CLASES_CAMPO}
                     />
+                    <MarcaUtm valor={utmAnterior} sugerida={utmSugerida.anterior} />
                 </div>
                 <div className="flex flex-col gap-1.5">
                     <label htmlFor={`${id}-utm-act`} className="text-[12.5px] font-medium text-[var(--foreground-muted)]">
@@ -94,6 +115,7 @@ export function FormularioRemanente({
                         onChange={(e) => setUtmActual(e.target.value)}
                         className={CLASES_CAMPO}
                     />
+                    <MarcaUtm valor={utmActual} sugerida={utmSugerida.actual} />
                 </div>
             </div>
 
