@@ -141,3 +141,90 @@ export function aniosDelSelector(pedido: number, periodos: readonly AnioMes[], h
         anterior: primero > ANIO_MINIMO ? primero - 1 : null,
     };
 }
+
+/* ----------------------------------------------------------------------------
+   Plazo del F29 y resumen del ejercicio.
+
+   Las usan Períodos y el panel: el vencimiento se calcula en un solo lugar.
+   Solo presentación; el cálculo de la propuesta es del backend y lib/f29.ts.
+   -------------------------------------------------------------------------- */
+
+/**
+ * Día del mes siguiente en que vence el F29.
+ *
+ * shortcut: plazo fijo del día 20 (facturador electrónico que declara y paga por
+ * internet; quien no, tiene hasta el 12 o el 28) y sin correr por fin de semana
+ * ni feriado. Cambiarlo aquí cambia Períodos y el panel a la vez; un calendario
+ * de feriados haría falta si se quiere el día hábil exacto.
+ */
+export const DIA_VENCE_F29 = 20;
+
+export interface PlazoF29 {
+    /** Mes cuyo F29 se declara (no el mes del plazo). */
+    readonly anio: number;
+    readonly mes: number;
+    /** Fecha límite 'YYYY-MM-DD': el día 20 del mes siguiente. */
+    readonly vence: string;
+    /** Días de hoy al plazo: positivo faltan, 0 vence hoy, negativo ya venció. */
+    readonly dias: number;
+}
+
+/** El plazo del F29 del mes (anio, mes), visto desde `hoy`. */
+export function plazoF29(anio: number, mes: number, hoy: string): PlazoF29 {
+    const siguiente = mes === 12 ? { anio: anio + 1, mes: 1 } : { anio, mes: mes + 1 };
+    const dosDigitos = (valor: number) => String(valor).padStart(2, "0");
+    const vence = `${siguiente.anio}-${dosDigitos(siguiente.mes)}-${dosDigitos(DIA_VENCE_F29)}`;
+    const aMilisegundos = (fecha: string) => {
+        const [a, m, d] = fecha.split("-").map(Number);
+        return Date.UTC(a, m - 1, d);
+    };
+    return { anio, mes, vence, dias: Math.round((aMilisegundos(vence) - aMilisegundos(hoy)) / 86_400_000) };
+}
+
+/**
+ * El F29 que toca mirar hoy: hasta el día 20 corre el del mes anterior; pasado
+ * el 20, ya no se mira ese y toca el del mes en curso.
+ */
+export function f29Vigente(hoy: string): AnioMes {
+    const { anio, mes } = anioMesDe(hoy);
+    const dia = Number(hoy.slice(8, 10));
+    if (dia > DIA_VENCE_F29) return { anio, mes };
+    return mes === 1 ? { anio: anio - 1, mes: 12 } : { anio, mes: mes - 1 };
+}
+
+/** Qué tan urgente es un plazo: de 3 días o menos (o ya vencido) es crítico. */
+export function severidadPlazoF29(dias: number): "critica" | "aviso" | "info" {
+    if (dias <= 3) return "critica";
+    return dias <= 10 ? "aviso" : "info";
+}
+
+export interface ResumenDelEjercicio {
+    /** Con período abierto, incluidos los que ya terminaron y esperan su cierre. */
+    readonly abiertos: number;
+    readonly cerrados: number;
+    /** Abiertos cuyo mes ya terminó: son un subconjunto de `abiertos`. */
+    readonly porCerrar: number;
+    /** Meses que ya comenzaron y no tienen período (hay que abrirlos o cargarlos). */
+    readonly sinAbrir: number;
+    /** Meses que todavía no comienzan y no tienen período. */
+    readonly porComenzar: number;
+}
+
+/** Cuenta los doce meses del ejercicio por estado, sin dejar ninguno fuera. */
+export function resumenDelEjercicio(meses: readonly Pick<MesDelEjercicio<unknown>, "estado" | "terminado" | "futuro">[]): ResumenDelEjercicio {
+    const cuenta = (condicion: (m: (typeof meses)[number]) => boolean) => meses.filter(condicion).length;
+    return {
+        abiertos: cuenta((m) => m.estado === "abierto"),
+        cerrados: cuenta((m) => m.estado === "cerrado"),
+        porCerrar: cuenta((m) => m.estado === "abierto" && m.terminado),
+        sinAbrir: cuenta((m) => m.estado === "sin-abrir" && !m.futuro),
+        porComenzar: cuenta((m) => m.estado === "sin-abrir" && m.futuro),
+    };
+}
+
+/** "vence hoy", "vence en 3 días", "venció hace 1 día": la insignia del aviso del plazo. */
+export function insigniaPlazoF29(dias: number): string {
+    const plural = (n: number) => `${n} día${n === 1 ? "" : "s"}`;
+    if (dias < 0) return `venció hace ${plural(-dias)}`;
+    return dias === 0 ? "vence hoy" : `vence en ${plural(dias)}`;
+}

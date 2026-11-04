@@ -18,13 +18,23 @@
    ========================================================================== */
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { Etiqueta } from "@/components/ui/Etiqueta";
 import { Icon } from "@/components/ui/Icon";
 import { Panel, PanelCabecera } from "@/components/ui/Panel";
 import { ApiError, periodosApi, type PeriodoContable } from "@/lib/api";
 import { formatearFechaLarga, hoyEnChile, nombreMesLargo, nombrePeriodo } from "@/lib/formato";
-import { aniosDelSelector, mesesDelEjercicio, ultimoDiaDelMes, type MesDelEjercicio } from "@/lib/periodos";
+import {
+    aniosDelSelector,
+    f29Vigente,
+    mesesDelEjercicio,
+    plazoF29,
+    resumenDelEjercicio,
+    ultimoDiaDelMes,
+    type MesDelEjercicio,
+    type PlazoF29,
+} from "@/lib/periodos";
 import { ROL, exigirTokenSesion, obtenerRolDelToken, puedeRegistrar } from "@/lib/session";
 import { Aviso, Encabezado, Guia, ReglasGuia } from "../core-contable/partes";
 import { AccionesPeriodo } from "./AccionesPeriodo";
@@ -47,12 +57,57 @@ const REGLAS: readonly string[] = [
 
 type Mes = MesDelEjercicio<PeriodoContable>;
 
+/** Qué significa cada etiqueta de una tarjeta, para quien llega sin conocer el cierre mensual. */
+function LeyendaEstados({ esHistoria }: { readonly esHistoria: boolean }) {
+    const sinPeriodo = esHistoria ? "Sin cargar" : "Sin abrir";
+    const filas: readonly { readonly etiqueta: ReactNode; readonly texto: string }[] = [
+        { etiqueta: <Etiqueta tono="positivo">Abierto</Etiqueta>, texto: "Recibe asientos. Es el mes en curso." },
+        {
+            etiqueta: <Etiqueta tono="aviso">Por cerrar</Etiqueta>,
+            texto: "El mes ya terminó y sigue abierto. Ciérralo, en orden y desde el más antiguo, cuando esté declarado.",
+        },
+        {
+            etiqueta: (
+                <Etiqueta tono="neutro">
+                    <Icon name="lock" className="mr-1 size-3" />
+                    Cerrado
+                </Etiqueta>
+            ),
+            texto: "No admite asientos, aunque cuadren. Solo un administrador puede reabrirlo.",
+        },
+        {
+            etiqueta: <Etiqueta tono="neutro">{sinPeriodo}</Etiqueta>,
+            texto: esHistoria
+                ? "El mes no tiene período: no admite asientos hasta cargarlo. Carga solo los que vas a trabajar."
+                : "El mes no tiene período: no admite asientos hasta abrirlo. No es un error: se abre el mes que vas a trabajar.",
+        },
+        { etiqueta: <Etiqueta tono="neutro">Aún no comienza</Etiqueta>, texto: "Un mes futuro no se puede abrir." },
+        {
+            etiqueta: <Etiqueta tono="critico">Vencido</Etiqueta>,
+            texto: "El plazo del F29 (día 20 del mes siguiente) ya pasó y el mes sigue abierto.",
+        },
+    ];
+    return (
+        <ul
+            aria-label="Significado de los estados"
+            className="grid gap-x-6 gap-y-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] p-4 text-[12.5px] text-[var(--foreground-muted)] md:grid-cols-2"
+        >
+            {filas.map(({ etiqueta, texto }, indice) => (
+                <li key={indice} className="flex items-start gap-2.5">
+                    <span className="mt-px w-[7.5rem] shrink-0">{etiqueta}</span>
+                    <span>{texto}</span>
+                </li>
+            ))}
+        </ul>
+    );
+}
+
 const dosDigitos = (valor: number) => String(valor).padStart(2, "0");
 
-/** "20 de octubre": vencimiento del F29 del mes (facturadores electrónicos). */
-function vencimientoF29(anio: number, mes: number): string {
-    const siguiente = mes === 12 ? { anio: anio + 1, mes: 1 } : { anio, mes: mes + 1 };
-    return `20 de ${nombreMesLargo(siguiente.mes)}${siguiente.anio !== anio ? ` ${siguiente.anio}` : ""}`;
+/** "20 de octubre": la fecha límite del F29 del mes, con el año solo si cae en otro. El cálculo es de lib/periodos.ts. */
+function textoPlazoF29(plazo: PlazoF29): string {
+    const [anioPlazo, mesPlazo, diaPlazo] = plazo.vence.split("-").map(Number);
+    return `${diaPlazo} de ${nombreMesLargo(mesPlazo)}${anioPlazo !== plazo.anio ? ` ${anioPlazo}` : ""}`;
 }
 
 /** "1 de noviembre", con el año solo si no es el actual: cuándo comienza un mes futuro. */
@@ -104,6 +159,7 @@ function TarjetaMes({
     mes,
     esHistoria,
     anioHoy,
+    hoy,
     puede,
     esAdmin,
 }: {
@@ -111,10 +167,14 @@ function TarjetaMes({
     /** Año anterior al actual: sus meses se "cargan" en vez de "abrirse". */
     readonly esHistoria: boolean;
     readonly anioHoy: number;
+    readonly hoy: string;
     readonly puede: boolean;
     readonly esAdmin: boolean;
 }) {
     const { anio, numero, periodo } = mes;
+    const plazo = plazoF29(anio, numero, hoy);
+    // Un mes cerrado ya se declaró (se cierra cuando está declarado): su plazo pasado no es una falta.
+    const f29Vencido = plazo.dias < 0 && mes.estado === "abierto";
     const nombre = nombrePeriodo(anio, numero);
     const sinAbrir = mes.estado === "sin-abrir";
     // Color del borde: el mes en curso manda; un mes sin abrir es un hueco punteado.
@@ -156,7 +216,16 @@ function TarjetaMes({
                     {mes.futuro && mes.estado === "abierto" ? (
                         <p>Admitirá asientos desde el {primerDia(anio, numero, anioHoy)}.</p>
                     ) : null}
-                    <p>F29 hasta el {vencimientoF29(anio, numero)}</p>
+                    {f29Vencido ? (
+                        <p className="flex flex-wrap items-center gap-1.5 font-medium text-[var(--critico)]">
+                            <Etiqueta tono="critico">Vencido</Etiqueta>
+                            F29: el plazo era el {textoPlazoF29(plazo)}
+                        </p>
+                    ) : plazo.dias < 0 ? (
+                        <p>Plazo del F29: {textoPlazoF29(plazo)}</p>
+                    ) : (
+                        <p>F29 hasta el {textoPlazoF29(plazo)}</p>
+                    )}
                     {mes.estado === "cerrado" && periodo.cerrado_at ? (
                         <p>Cerrado el {formatearFechaLarga(periodo.cerrado_at)}</p>
                     ) : periodo.motivo_reapertura ? (
@@ -210,7 +279,7 @@ export default async function PeriodosPage({ searchParams }: { searchParams: Pro
     const rol = await obtenerRolDelToken();
     const parametros = await searchParams;
     const hoy = hoyEnChile();
-    const [anioHoy, mesHoy, diaHoy] = hoy.split("-").map(Number);
+    const anioHoy = Number(hoy.slice(0, 4));
     const puede = puedeRegistrar(rol);
     const esAdmin = rol === ROL.ADMINISTRADOR;
 
@@ -229,10 +298,9 @@ export default async function PeriodosPage({ searchParams }: { searchParams: Pro
     const meses = mesesDelEjercicio(anio, periodos, hoy);
     const sinPeriodos = meses.every((mes) => mes.periodo === null);
 
-    const cuenta = (estado: Mes["estado"], terminado?: boolean) =>
-        meses.filter((m) => m.estado === estado && (terminado === undefined || m.terminado === terminado)).length;
-    // Hasta el día 20 vence el F29 del mes anterior; después, el del mes en curso.
-    const f29 = diaHoy <= 20 ? (mesHoy === 1 ? { anio: anioHoy - 1, mes: 12 } : { anio: anioHoy, mes: mesHoy - 1 }) : { anio: anioHoy, mes: mesHoy };
+    const resumen = resumenDelEjercicio(meses);
+    const f29 = f29Vigente(hoy);
+    const plazoVigente = plazoF29(f29.anio, f29.mes, hoy);
 
     return (
         <div className="flex flex-col gap-4">
@@ -291,21 +359,32 @@ export default async function PeriodosPage({ searchParams }: { searchParams: Pro
                         <p className="text-[12.5px] text-[var(--foreground-muted)]">
                             {sinPeriodos ? null : (
                                 <>
-                                    <span className="tabular font-semibold text-[var(--foreground)]">{cuenta("abierto")}</span> abiertos
+                                    <span className="tabular font-semibold text-[var(--foreground)]">{resumen.abiertos}</span> abiertos
+                                    {resumen.porCerrar > 0 ? (
+                                        <>
+                                            {" ("}
+                                            <span className="tabular font-semibold text-[var(--aviso)]">{resumen.porCerrar}</span> por cerrar)
+                                        </>
+                                    ) : null}
                                     {" · "}
-                                    <span className="tabular font-semibold text-[var(--foreground)]">{cuenta("cerrado")}</span> cerrados
-                                    {cuenta("abierto", true) > 0 ? (
+                                    <span className="tabular font-semibold text-[var(--foreground)]">{resumen.cerrados}</span> cerrados
+                                    {" · "}
+                                    <span className="tabular font-semibold text-[var(--foreground)]">{resumen.sinAbrir}</span>{" "}
+                                    {esHistoria ? "sin cargar" : "sin abrir"}
+                                    {resumen.porComenzar > 0 ? (
                                         <>
                                             {" · "}
-                                            <span className="tabular font-semibold text-[var(--aviso)]">{cuenta("abierto", true)}</span> por cerrar
+                                            <span className="tabular font-semibold text-[var(--foreground)]">{resumen.porComenzar}</span> por comenzar
                                         </>
                                     ) : null}
                                     {" · "}
                                 </>
                             )}
-                            F29 de {nombreMesLargo(f29.mes)}: hasta el {vencimientoF29(f29.anio, f29.mes)}
+                            F29 de {nombreMesLargo(f29.mes)}: hasta el {textoPlazoF29(plazoVigente)}
                         </p>
                     </div>
+
+                    {sinPeriodos ? null : <LeyendaEstados esHistoria={esHistoria} />}
 
                     {sinPeriodos ? (
                         <Panel>
@@ -350,6 +429,7 @@ export default async function PeriodosPage({ searchParams }: { searchParams: Pro
                                     mes={mes}
                                     esHistoria={esHistoria}
                                     anioHoy={anioHoy}
+                                    hoy={hoy}
                                     puede={puede}
                                     esAdmin={esAdmin}
                                 />
