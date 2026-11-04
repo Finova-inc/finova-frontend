@@ -15,7 +15,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ApiError, mensajesDelBackend, siiApi, type ImportacionSii, type VistaPreviaSii } from "@/lib/api";
-import { IMPORTABLES, periodoValido } from "@/lib/sii";
+import { mensajeDeSubida } from "@/lib/errores-subida";
+import { IMPORTABLES, TAMANO_MAXIMO_ARCHIVO, periodoValido } from "@/lib/sii";
 import { exigirTokenSesion } from "@/lib/session";
 
 export interface EstadoImportacion {
@@ -28,9 +29,6 @@ export interface EstadoRevision {
     readonly vista?: VistaPreviaSii;
 }
 
-/** Igual que el tope del backend (10 MB). */
-const MAX_BYTES = 10 * 1024 * 1024;
-
 /** Valida lo que se eligió y arma el FormData que el backend espera, o los mensajes de lo que falta. */
 function prepararEnvio(formData: FormData): { envio: FormData } | { errores: string[] } {
     const libro = IMPORTABLES.find((l) => l.id === formData.get("tipo"));
@@ -40,7 +38,7 @@ function prepararEnvio(formData: FormData): { envio: FormData } | { errores: str
     if (!(archivo instanceof File) || archivo.size === 0) {
         return { errores: ["Elige el archivo que descargaste del SII."] };
     }
-    if (archivo.size > MAX_BYTES) {
+    if (archivo.size > TAMANO_MAXIMO_ARCHIVO) {
         return { errores: ["El archivo pesa más de 10 MB. Un reporte mensual normal pesa mucho menos: revisa que sea el correcto."] };
     }
 
@@ -58,10 +56,8 @@ function prepararEnvio(formData: FormData): { envio: FormData } | { errores: str
 function traducirError(error: unknown, porDefecto: string): string[] {
     if (error instanceof ApiError) {
         if (error.status === 401) redirect("/login");
-        if (error.status === 403) return ["Tu rol en esta empresa no permite importar archivos."];
-        if (error.status === 0 || error.status === 408) {
-            return ["El servidor no respondió a tiempo (puede estar despertando). Reintenta en unos segundos."];
-        }
+        const propio = mensajeDeSubida(error.status, error.body);
+        if (propio) return propio;
     }
     return mensajesDelBackend(error) ?? [porDefecto];
 }

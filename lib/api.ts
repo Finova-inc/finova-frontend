@@ -1259,6 +1259,19 @@ export const f29Api = {
     ) => api.post<PropuestaF29>(`${rutaF29(periodo)}/declaracion`, datos, opciones),
 };
 
+/** UTM de un mes que el backend sugiere para el F29. `valor` (pesos enteros, texto) es null si no está disponible. */
+export interface UtmSugerida {
+    readonly anio: number;
+    readonly mes: number;
+    readonly valor: string | null;
+    readonly fuente: string | null;
+}
+
+export const utmApi = {
+    /** Cualquier rol con sesión. El backend la lee de su tabla o de una API pública; el frontend nunca llama a esa API. */
+    obtener: (anio: number, mes: number, opciones?: ApiFetchOptions) => api.get<UtmSugerida>(`/utm/${anio}/${mes}`, opciones),
+};
+
 /** Las 8 columnas del balance. Montos como string con 4 decimales, igual que el libro. */
 export interface ColumnasBalance {
     readonly debitos: string;
@@ -1507,12 +1520,12 @@ export const periodosApi = {
 /**
  * Mensajes que el backend escribio para la persona usuaria.
  *
- * Los 400, 404 y 409 del modulo contable traen mensajes en espanol pensados
+ * Los 400, 404, 409 y 422 del modulo contable traen mensajes en espanol pensados
  * para mostrarse ("El periodo 9/2026 esta cerrado..."). Un 500 no: su cuerpo
  * es generico o tecnico, y ahi se usa el mensaje por defecto de quien llama.
  */
 export function mensajesDelBackend(error: unknown): string[] | null {
-    if (!(error instanceof ApiError) || ![400, 404, 409].includes(error.status)) {
+    if (!(error instanceof ApiError) || ![400, 404, 409, 422].includes(error.status)) {
         return null;
     }
     const cuerpo = error.body as { message?: unknown } | null;
@@ -1554,6 +1567,17 @@ export const authApi = {
     /** Empresas del usuario, para poblar el selector de la cabecera. */
     misEmpresas: (opciones?: ApiFetchOptions) =>
         api.get<EmpresaDelUsuario[]>("/auth/mis-empresas", opciones),
+
+    /** Pide el enlace de recuperación (público). El backend responde siempre lo mismo, exista o no la cuenta. */
+    recuperar: (identificador: string) =>
+        api.post<{ message: string }>("/auth/recuperar", { identificador }),
+
+    /** Cambia la contraseña con el token del correo (público). 400 si el enlace no sirve o la contraseña no cumple. */
+    restablecer: (token: string, nuevaClave: string) =>
+        api.post<{ message: string }>("/auth/restablecer", { token, nueva_clave: nuevaClave }),
+
+    /** Revoca el token en el backend (POST /auth/logout). Solo desde el servidor de Next. */
+    logout: (opciones?: ApiFetchOptions) => api.post<{ ok: boolean }>("/auth/logout", undefined, opciones),
 
     /**
      * Pide un token nuevo para otra empresa.
