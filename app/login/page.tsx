@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
+import { AvisoSesionExpirada } from "@/components/login/AvisoSesionExpirada";
 import { CarruselLogin } from "@/components/login/CarruselLogin";
 import { LoginForm } from "@/components/login/LoginForm";
 import { Icon } from "@/components/ui/Icon";
@@ -71,6 +72,10 @@ export default function LoginPage() {
                     <p className="mt-3 mb-10 text-center text-[15px] leading-relaxed text-[var(--foreground-muted)]">
                         Ingresa con tu RUT y contraseña para continuar.
                     </p>
+
+                    <Suspense fallback={null}>
+                        <AvisoSesionExpirada />
+                    </Suspense>
 
                     {/* useSearchParams() dentro de LoginForm obliga a este
                         límite de Suspense para poder prerenderizar la página. */}
