@@ -24,6 +24,7 @@ import { tieneMonto } from "@/lib/decimal";
 import { exigirTokenSesion } from "@/lib/session";
 import { BotonCsv } from "@/components/ui/BotonCsv";
 import { mayorACsv } from "@/lib/libros";
+import { cuentasDelLibroMayor } from "@/lib/planCuentas";
 import { BotonImprimir } from "../core-contable/BotonImprimir";
 import { Aviso, CLASES_TH, Encabezado } from "../core-contable/partes";
 
@@ -76,9 +77,7 @@ export default async function LibroMayorPage({ searchParams }: { searchParams: P
     // movimientos (una cuenta ya usada puede haber pasado a agrupacion).
     const imputables =
         cuentas.status === "fulfilled"
-            ? cuentas.value
-                  .filter((c) => c.acepta_movimiento || c.tiene_movimientos)
-                  .sort((a, b) => a.codigo.localeCompare(b.codigo, "es", { numeric: true }))
+            ? cuentasDelLibroMayor(cuentas.value)
             : [];
 
     const error =

@@ -16,6 +16,8 @@
 import { NextResponse } from "next/server";
 import { authApi, ApiError } from "@/lib/api";
 import { formatearRut } from "@/lib/formato";
+import { opcionesConIp } from "@/lib/ip-visitante";
+import { esFalloTransitorio } from "@/lib/reintentos";
 import { validatePassword, validateRut } from "@/lib/validation";
 import {
     DURACION_SESION_SEGUNDOS,
@@ -52,7 +54,7 @@ export async function POST(request: Request) {
     }
 
     try {
-        const { access_token } = await authApi.login(formatearRut(rut), password);
+        const { access_token } = await authApi.login(formatearRut(rut), password, await opcionesConIp());
 
         // La respuesta NO incluye el token: si viajara en el cuerpo, el
         // JavaScript de la página podría leerlo y httpOnly no serviría de nada.
@@ -79,9 +81,10 @@ export async function POST(request: Request) {
             if (error.status === 401 || error.status === 400) {
                 return NextResponse.json({ error: ERROR_GENERICO }, { status: 401 });
             }
-            if (error.status === 0 || error.status === 408) {
+            // Tras agotar los reintentos: red cortada, 502/503/504 o tiempo agotado.
+            if (esFalloTransitorio(error.status) || error.status === 408) {
                 return NextResponse.json(
-                    { error: "No pudimos contactar al servidor. Inténtalo más tarde." },
+                    { error: "El servicio está despertando. Inténtalo de nuevo en unos segundos." },
                     { status: 503 },
                 );
             }

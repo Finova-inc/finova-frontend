@@ -10,6 +10,7 @@
    ========================================================================== */
 
 import { redirect } from "next/navigation";
+import { opcionesConIp } from "@/lib/ip-visitante";
 import { ApiError, authApi, mensajesDelBackend } from "@/lib/api";
 import { errorDeConfirmacion, mensajeDeError, MENSAJE_ENLACE_INVALIDO, tokenDeUrl } from "@/lib/recuperacion";
 import { validateNuevaPassword } from "@/lib/validation";
@@ -35,7 +36,7 @@ export async function restablecerClave(_anterior: EstadoRestablecer, formData: F
     if (noCoincide) return { errorConfirmacion: noCoincide };
 
     try {
-        await authApi.restablecer(token, clave);
+        await authApi.restablecer(token, clave, await opcionesConIp());
     } catch (error) {
         if (error instanceof ApiError) {
             // Con 400 puede ser el enlace o la política (el backend dice cuál): la política se muestra tal cual.

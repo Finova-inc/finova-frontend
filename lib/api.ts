@@ -26,6 +26,8 @@
  *                      privada más corta que la ruta pública.
  */
 
+import { conReintentos, esFalloTransitorio } from "./reintentos";
+
 /** Se normaliza sin barra final para que unir rutas nunca produzca una doble barra. */
 function normalizeBaseUrl(rawUrl: string): string {
     return rawUrl.trim().replace(/\/+$/, "");
@@ -74,6 +76,13 @@ export interface ApiFetchOptions extends Omit<RequestInit, "body"> {
     readonly formData?: FormData;
     /** Token de acceso a enviar como Bearer, cuando exista autenticación real. */
     readonly token?: string;
+    /**
+     * Reintentar si el servicio está despertando (red cortada, 502/503/504). Las
+     * lecturas (GET) ya lo hacen siempre; esto es para una escritura que es SEGURA
+     * repetir (el login). Nunca activarlo en crear asientos, importar, etc.: si la
+     * primera llegó y solo se perdió la respuesta, se duplicarían los datos.
+     */
+    readonly reintentar?: boolean;
 }
 
 /**
@@ -86,10 +95,23 @@ export interface ApiFetchOptions extends Omit<RequestInit, "body"> {
  * El AbortController con temporizador es lo que impide que una pestaña quede
  * esperando indefinidamente si el backend no responde (contenedor caído,
  * arranque en frío del proveedor, red intermitente).
+ *
+ * Las lecturas (GET) se reintentan con espera creciente si el servicio está
+ * despertando (ver lib/reintentos.ts); las escrituras no, salvo `reintentar`.
  */
-export async function apiFetch<T>(
+export function apiFetch<T>(path: string, opciones: ApiFetchOptions = {}): Promise<T> {
+    const { reintentar, ...resto } = opciones;
+    const esLectura = (resto.method ?? "GET").toUpperCase() === "GET";
+    if (!esLectura && !reintentar) return unaPeticion<T>(path, resto);
+
+    return conReintentos(() => unaPeticion<T>(path, resto), {
+        reintentar: (error) => error instanceof ApiError && esFalloTransitorio(error.status),
+    });
+}
+
+async function unaPeticion<T>(
     path: string,
-    { json, formData, token, headers, signal, ...init }: ApiFetchOptions = {},
+    { json, formData, token, headers, signal, ...init }: Omit<ApiFetchOptions, "reintentar">,
 ): Promise<T> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -1561,20 +1583,21 @@ export const authApi = {
      * Se llama SOLO desde el servidor (route handler de Next), nunca desde el
      * navegador: el access_token no debe pasar por JavaScript del cliente.
      */
-    login: (rut: string, password: string) =>
-        api.post<LoginResponse>("/auth/login", { rut, password }),
+    login: (rut: string, password: string, opciones?: ApiFetchOptions) =>
+        // Reintentable: repetir un login no duplica nada, y es el primer golpe tras un rato sin uso.
+        api.post<LoginResponse>("/auth/login", { rut, password }, { ...opciones, reintentar: true }),
 
     /** Empresas del usuario, para poblar el selector de la cabecera. */
     misEmpresas: (opciones?: ApiFetchOptions) =>
         api.get<EmpresaDelUsuario[]>("/auth/mis-empresas", opciones),
 
     /** Pide el enlace de recuperación (público). El backend responde siempre lo mismo, exista o no la cuenta. */
-    recuperar: (identificador: string) =>
-        api.post<{ message: string }>("/auth/recuperar", { identificador }),
+    recuperar: (identificador: string, opciones?: ApiFetchOptions) =>
+        api.post<{ message: string }>("/auth/recuperar", { identificador }, opciones),
 
     /** Cambia la contraseña con el token del correo (público). 400 si el enlace no sirve o la contraseña no cumple. */
-    restablecer: (token: string, nuevaClave: string) =>
-        api.post<{ message: string }>("/auth/restablecer", { token, nueva_clave: nuevaClave }),
+    restablecer: (token: string, nuevaClave: string, opciones?: ApiFetchOptions) =>
+        api.post<{ message: string }>("/auth/restablecer", { token, nueva_clave: nuevaClave }, opciones),
 
     /** Revoca el token en el backend (POST /auth/logout). Solo desde el servidor de Next. */
     logout: (opciones?: ApiFetchOptions) => api.post<{ ok: boolean }>("/auth/logout", undefined, opciones),

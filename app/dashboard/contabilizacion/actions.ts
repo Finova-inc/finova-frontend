@@ -32,9 +32,9 @@ function traducirError(error: unknown, porDefecto: string): string[] {
     return mensajesDelBackend(error) ?? [porDefecto];
 }
 
-/** Las pantallas que muestran asientos o el estado de los documentos. */
+/** Las pantallas que muestran asientos o el estado de los documentos (el Panel de control incluye «Por contabilizar»). */
 function revalidar() {
-    revalidatePath("/dashboard/contabilizacion");
+    revalidatePath("/dashboard");
     revalidatePath("/dashboard/parametros");
     revalidatePath("/dashboard/core-contable");
     revalidatePath("/dashboard/f29");

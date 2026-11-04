@@ -365,7 +365,7 @@ function TablaComprobantes({
                     <tbody>
                         {pagina.items.map((asiento) => (
                             <tr key={asiento.id_asiento} className="border-b border-[var(--border-subtle)] last:border-0">
-                                <td className="px-4 py-2.5">
+                                <td className="whitespace-nowrap px-4 py-2.5">
                                     <Link
                                         href={`${RUTA}/${asiento.id_asiento}`}
                                         className="tabular font-medium text-[var(--accent)] underline-offset-4 hover:underline"
@@ -373,7 +373,7 @@ function TablaComprobantes({
                                         {formatearComprobante(asiento.tipo_comprobante, asiento.numero, asiento.anio)}
                                     </Link>
                                 </td>
-                                <td className="tabular px-4 py-2.5">{formatearFechaContable(asiento.fecha_contable)}</td>
+                                <td className="tabular whitespace-nowrap px-4 py-2.5">{formatearFechaContable(asiento.fecha_contable)}</td>
                                 <td className="px-4 py-2.5 text-[var(--foreground-muted)]">
                                     {NOMBRE_TIPO_COMPROBANTE[asiento.tipo_comprobante]}
                                 </td>

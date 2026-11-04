@@ -24,7 +24,8 @@ import {
     type EstadoCambioEmpresa,
 } from "@/app/dashboard/acciones-empresa";
 import type { EmpresaDelUsuario } from "@/lib/api";
-import { formatearRut, formatearRutAlEscribir } from "@/lib/formato";
+import { confirmaEliminacion, textoDeConfirmacion } from "@/lib/empresas";
+import { formatearRutAlEscribir } from "@/lib/formato";
 import { validarNuevaEmpresa, validarRazonSocial } from "@/lib/validation";
 
 /* ============================================================================
@@ -605,8 +606,9 @@ function PasoEliminar({
     const [enCurso, iniciar] = useTransition();
 
     const nombre = empresa.razon_social ?? "esta empresa";
-    // Se compara normalizado: da igual escribirlo con o sin puntos.
-    const coincide = empresa.rut !== null && formatearRut(escrito) === empresa.rut;
+    // Misma regla que aplica la Server Action (lib/empresas.ts): da igual escribir el RUT con o sin puntos.
+    const coincide = confirmaEliminacion(escrito, empresa);
+    const pideRut = empresa.rut !== null;
 
     function alConfirmar(evento: FormEvent<HTMLFormElement>) {
         evento.preventDefault();
@@ -614,7 +616,7 @@ function PasoEliminar({
 
         setErrores([]);
         iniciar(async () => {
-            const resultado = await eliminarEmpresa(empresa.id_empresa, nombre);
+            const resultado = await eliminarEmpresa(empresa.id_empresa, escrito);
             // Igual que al agregar: el aviso y la lista sin la empresa, juntos.
             startTransition(() => {
                 if (resultado.errores) setErrores(resultado.errores);
@@ -644,13 +646,13 @@ function PasoEliminar({
 
                 <div className="flex flex-col gap-1.5">
                     <label htmlFor={idCampo} className="text-[12.5px] font-medium text-[var(--foreground-muted)]">
-                        Para confirmar, escribe el RUT de la empresa:{" "}
-                        <span className="tabular font-semibold text-[var(--foreground)]">{empresa.rut}</span>
+                        Para confirmar, escribe {pideRut ? "el RUT" : "el nombre exacto"} de la empresa:{" "}
+                        <span className="tabular font-semibold text-[var(--foreground)]">{textoDeConfirmacion(empresa)}</span>
                     </label>
                     <input
                         id={idCampo}
                         value={escrito}
-                        onChange={(evento) => setEscrito(formatearRutAlEscribir(evento.target.value))}
+                        onChange={(evento) => setEscrito(pideRut ? formatearRutAlEscribir(evento.target.value) : evento.target.value)}
                         autoFocus
                         autoComplete="off"
                         spellCheck={false}

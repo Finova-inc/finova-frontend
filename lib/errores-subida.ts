@@ -29,7 +29,7 @@ export function mensajeDeSubida(status: number, cuerpo: unknown): string[] | nul
         return ["El archivo es demasiado grande (máximo 10 MB). Revisa que sea el reporte descargado del SII y no uno con más contenido."];
     }
     if (status === 415) {
-        return ["Ese formato de archivo no es compatible. Sube el CSV tal como se descarga del SII, sin abrirlo ni guardarlo desde otro programa."];
+        return ["Ese formato de archivo no es compatible. Guarda el archivo como .xlsx o como CSV."];
     }
     if (status === 422) {
         return mensajesDelCuerpo(cuerpo) ?? ["No pudimos leer el archivo. Revisa que sea el reporte del SII y que no esté dañado."];

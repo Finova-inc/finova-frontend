@@ -46,14 +46,14 @@ export default async function DashboardLayout({
     }
 
     return (
-        <div className="flex min-h-screen flex-col bg-[var(--background)] md:flex-row">
+        <div className="flex min-h-screen flex-col bg-[var(--background)] lg:flex-row">
             <Sidebar />
 
             <div className="flex min-w-0 flex-1 flex-col">
                 {/* La cabecera es sticky para que el buscador y la accion rapida
                     sigan al alcance al recorrer una tabla larga. z-10 la mantiene
                     sobre el contenido al desplazarse. */}
-                <header className="sticky top-0 z-10 flex h-[60px] items-center gap-4 border-b border-[var(--border-subtle)] bg-[var(--surface)] px-4 sm:px-6">
+                <header className="sticky top-0 z-10 flex h-[60px] items-center gap-4 border-b border-[var(--border-subtle)] bg-[var(--surface)] pl-16 pr-4 sm:pr-6 lg:pl-6">
                     {empresas.length > 0 ? (
                         <SelectorEmpresa
                             empresas={empresas}

@@ -7,7 +7,7 @@ export default function CopilotoPage() {
         <PantallaPendiente
             titulo="Copiloto IA"
             icono="sparkle"
-            descripcion="Asistente para clasificar documentos y detectar inconsistencias antes de declarar. Pendiente de definir el modelo y, sobre todo, qué datos salen de la base: un tercero persona natural es dato personal bajo la Ley 21.719."
+            descripcion="Un asistente que te ayudará a clasificar tus documentos y a detectar inconsistencias antes de declarar."
         />
     );
 }

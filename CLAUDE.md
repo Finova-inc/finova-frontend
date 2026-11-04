@@ -31,9 +31,13 @@ app/
     └── auditoria/page.tsx            🚧 placeholder
 ```
 
-**`core-contable/`** (libro diario): `page.tsx` (listado + vista imprimible), `[id]/page.tsx` (detalle read-only), `nuevo/page.tsx` (alta), `borradores/[id]/page.tsx` (edición de borrador), `FormularioAsiento.tsx` (~550 líneas, cliente, con balance en vivo vía `lib/decimal.ts`), `DialogoRevertir.tsx`, `BotonImprimir.tsx`, `actions.ts` (Server Actions), `error.tsx` (usa el nuevo prop `retry` de Next 16.3, no el `reset` anterior).
+**`core-contable/`** (libro diario): `page.tsx` (listado + vista imprimible), `[id]/page.tsx` (detalle read-only), `nuevo/page.tsx` (alta), `borradores/[id]/page.tsx` (edición de borrador), `FormularioAsiento.tsx` (~550 líneas, cliente, con balance en vivo vía `lib/decimal.ts`), `DialogoRevertir.tsx`, `BotonImprimir.tsx`, `actions.ts` (Server Actions). Sus errores y 404 los cubre `app/dashboard/error.tsx` / `not-found.tsx` (ver "Errores y pantallas 404").
 
-**Componentes cliente** (`"use client"` — confirmado por grep, más de lo que dice un comentario obsoleto en `ThemeToggle.tsx`/`docs/LANDING.md` que afirma "solo tres"): `ThemeToggle`, `Reveal`, `HeaderScroll` (header fijo de la landing que se compacta al hacer scroll), `LoginForm`, `Sidebar`, `CerrarSesionBoton`, `SelectorEmpresa`, `BotonImprimir`, `DialogoRevertir`, `FormularioAsiento`, `core-contable/error.tsx`, `AccionesPeriodo`, `NuevoPeriodoForm`, `BotonPlanBase`. Todo lo demás es Server Component, incluyendo `dashboard/layout.tsx` y todas las páginas de core-contable.
+**Componentes cliente** (`"use client"` — confirmado por grep, más de lo que dice un comentario obsoleto en `ThemeToggle.tsx`/`docs/LANDING.md` que afirma "solo tres"): `ThemeToggle`, `Reveal`, `HeaderScroll` (header fijo de la landing que se compacta al hacer scroll), `LoginForm`, `Sidebar`, `CerrarSesionBoton`, `SelectorEmpresa`, `BotonImprimir`, `DialogoRevertir`, `FormularioAsiento`, `app/error.tsx`, `app/global-error.tsx`, `app/dashboard/error.tsx`, `EstadoDeVista`, `EsperaConLimite`, `AccionesPeriodo`, `NuevoPeriodoForm`, `BotonPlanBase`. Todo lo demás es Server Component, incluyendo `dashboard/layout.tsx` y todas las páginas de core-contable.
+
+## Errores y pantallas 404
+
+Cada pantalla dice de cuál se trata cuando falla o no existe: `lib/vistas.ts` mapea la ruta a su nombre ("el balance de comprobación", "el asiento"…) y su test (`lib/vistas.test.mjs`) falla si se agrega una pantalla sin nombre. `app/dashboard/error.tsx` y `not-found.tsx` (más `app/dashboard/[...ruta]/page.tsx`, que manda las rutas inventadas al 404 dentro del panel) usan `components/dashboard/EstadoDeVista.tsx`; la parte pública usa `app/error.tsx` y `app/not-found.tsx`, y `app/global-error.tsx` cubre el layout raíz. Todos usan el prop `retry` de Next 16.3 (no el `reset` anterior) y `components/ui/MensajeDeEstado.tsx`. Los `loading.tsx` de libro diario y mayor usan `EsperaConLimite`: a los 10 s avisan que el servicio está despertando y ofrecen reintentar. Las lecturas (GET) y el login se reintentan con espera creciente ante 0/502/503/504 (`lib/reintentos.ts`); las escrituras no.
 
 ## `proxy.ts` (raíz, ~45 líneas)
 

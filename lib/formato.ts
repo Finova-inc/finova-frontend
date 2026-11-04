@@ -33,21 +33,24 @@
  * mostrar "$1.250.000,00" en una interfaz contable chilena se ve como un error
  * de localizacion.
  */
-export function formatearCLP(monto: string | number): string {
+export function formatearCLP(monto: string | number | bigint): string {
     const valor = typeof monto === "string" ? Number(monto) : monto;
 
     // Un NaN llegando a pantalla como "$NaN" es peor que un guion: parece un
     // fallo del sistema en vez de un dato ausente.
-    if (!Number.isFinite(valor)) {
+    if (typeof valor === "number" && !Number.isFinite(valor)) {
         return "—";
     }
 
-    return new Intl.NumberFormat("es-CL", {
-        style: "currency",
-        currency: "CLP",
-        maximumFractionDigits: 0,
-    }).format(valor);
+    // El signo se arma aqui y no con style:"currency": en es-CL, Intl lo pone
+    // ENTRE el simbolo y la cifra ("$-100"), y asi se leia un saldo negativo.
+    // Un monto que redondea a cero ("-0,4") no lleva signo.
+    const cifra = ENTERO_CLP.format(valor);
+    return `${valor < 0 && cifra !== "0" ? "-" : ""}$${cifra}`;
 }
+
+// signDisplay "never": el signo lo pone formatearCLP; sin esto Intl imprime "-0" para el cero negativo.
+const ENTERO_CLP = new Intl.NumberFormat("es-CL", { maximumFractionDigits: 0, signDisplay: "never" });
 
 const UN_DECIMAL = new Intl.NumberFormat("es-CL", { maximumFractionDigits: 1 });
 

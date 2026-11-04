@@ -238,3 +238,19 @@ export function problemaDePropia(
 export function textoRecomendadas(total: number, marcadas: number): string {
     return total === 0 ? "Ya tienes todas las cuentas recomendadas" : `${marcadas} de ${total} recomendadas marcadas`;
 }
+
+/**
+ * Las cuentas que ofrece el desplegable del libro mayor, por código.
+ *
+ * Entran las que aceptan movimientos y las de agrupación que alguna vez
+ * tuvieron. Una cuenta inactiva solo si tiene historia: sus movimientos siguen
+ * en los libros y hay que poder consultarlos; una inactiva sin movimientos no
+ * tiene nada que mostrar y solo estorba.
+ */
+export function cuentasDelLibroMayor<C extends Pick<CuentaContable, "codigo" | "is_active" | "acepta_movimiento" | "tiene_movimientos">>(
+    cuentas: readonly C[],
+): C[] {
+    return cuentas
+        .filter((c) => (c.acepta_movimiento || c.tiene_movimientos) && (c.is_active || c.tiene_movimientos))
+        .sort((a, b) => a.codigo.localeCompare(b.codigo, "es", { numeric: true }));
+}

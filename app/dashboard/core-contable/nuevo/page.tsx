@@ -40,7 +40,7 @@ export default async function NuevoAsientoPage() {
         );
     }
 
-    const { cuentas, terceros, periodos, error } = await cargarOpcionesDelFormulario(token);
+    const { cuentas, terceros, periodos, saldoPorCobrar, error } = await cargarOpcionesDelFormulario(token);
     if (error?.status === 401) redirect("/login");
 
     if (error) {
@@ -76,6 +76,7 @@ export default async function NuevoAsientoPage() {
                 cuentas={cuentas}
                 terceros={terceros}
                 periodos={periodos}
+                saldoPorCobrar={saldoPorCobrar}
                 puedeAbrirPeriodo
                 hoy={hoyEnChile()}
             />

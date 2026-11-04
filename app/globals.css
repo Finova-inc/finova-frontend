@@ -351,6 +351,14 @@
         overflow-x: hidden;
     }
 
+    /* Toda tabla del panel va dentro de un .overflow-x-auto. Sin `position: relative`
+       ahí, un .sr-only (absoluto) de la tabla —el "Acciones" de una cabecera, el
+       radio oculto de un selector— no queda recortado por el contenedor y estira
+       la página al ancho de la tabla: en móvil se ve un panel de ~750 px. */
+    .overflow-x-auto {
+        position: relative;
+    }
+
     /* Foco visible y consistente en todo el sitio. Requisito de accesibilidad:
        quien navega con teclado tiene que saber siempre dónde está parado. */
     :focus-visible {

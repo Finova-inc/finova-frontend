@@ -18,7 +18,16 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { ApiError, authApi, empresasApi, mensajesDelBackend, type Empresa, type EmpresaCreada } from "@/lib/api";
+import {
+    ApiError,
+    authApi,
+    empresasApi,
+    mensajesDelBackend,
+    type Empresa,
+    type EmpresaCreada,
+    type EmpresaDelUsuario,
+} from "@/lib/api";
+import { confirmaEliminacion } from "@/lib/empresas";
 import { formatearRut } from "@/lib/formato";
 import {
     DURACION_SESION_SEGUNDOS,
@@ -32,6 +41,8 @@ import { validarNuevaEmpresa, validarRazonSocial } from "@/lib/validation";
 export interface EstadoCambioEmpresa {
     readonly error?: string;
 }
+
+const SIN_PERMISO_ELIMINAR = "Solo un administrador de esa empresa puede eliminarla.";
 
 /** Resultado de agregar o eliminar: errores para el paso, o un aviso para la lista. */
 export interface ResultadoEmpresa {
@@ -127,7 +138,10 @@ export async function crearEmpresa(rut: string, razon_social: string): Promise<R
 /**
  * Da de baja una empresa (el backend exige ser su administrador).
  *
- * `razon_social` solo arma el aviso; la autorización va por el id.
+ * `confirmacion` es lo que la persona escribió en el diálogo (el RUT de la
+ * empresa). Se valida AQUÍ, contra los datos que da el backend y no contra lo
+ * que mande el cliente: el botón deshabilitado del diálogo no protege de quien
+ * llama a esta acción directamente.
  *
  * Si era la empresa activa, el token queda apuntando a una empresa que ya no
  * existe para nadie, así que se cambia a otra antes de volver a pintar el
@@ -135,20 +149,29 @@ export async function crearEmpresa(rut: string, razon_social: string): Promise<R
  */
 export async function eliminarEmpresa(
     id_empresa: string,
-    razon_social: string,
+    confirmacion: string,
 ): Promise<ResultadoEmpresa> {
     const token = await exigirTokenSesion();
     const idEmpresaActual = await obtenerEmpresaDelToken();
+
+    let objetivo: EmpresaDelUsuario | undefined;
+    try {
+        objetivo = (await authApi.misEmpresas({ token, cache: "no-store" })).find((e) => e.id_empresa === id_empresa);
+    } catch (error) {
+        return { errores: traducirError(error, "No pudimos eliminar la empresa. Inténtalo de nuevo.", SIN_PERMISO_ELIMINAR) };
+    }
+    // Misma respuesta que el backend da sin pertenencia: no se confirma que exista.
+    if (!objetivo) return { errores: ["No encontramos esa empresa entre las tuyas."] };
+    if (!confirmaEliminacion(confirmacion, objetivo)) {
+        return { errores: ["Lo escrito no coincide con el RUT de la empresa. No la eliminamos."] };
+    }
+    const razon_social = objetivo.razon_social ?? "la empresa";
 
     try {
         await empresasApi.eliminar(id_empresa, { token });
     } catch (error) {
         return {
-            errores: traducirError(
-                error,
-                "No pudimos eliminar la empresa. Inténtalo de nuevo.",
-                "Solo un administrador de esa empresa puede eliminarla.",
-            ),
+            errores: traducirError(error, "No pudimos eliminar la empresa. Inténtalo de nuevo.", SIN_PERMISO_ELIMINAR),
         };
     }
 

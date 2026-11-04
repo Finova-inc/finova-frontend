@@ -48,7 +48,7 @@ export default async function BorradorPage({ params }: { params: Promise<{ id: s
         );
     }
 
-    const { cuentas, terceros, periodos, error } = await cargarOpcionesDelFormulario(token);
+    const { cuentas, terceros, periodos, saldoPorCobrar, error } = await cargarOpcionesDelFormulario(token);
     if (error?.status === 401) redirect("/login");
     if (error) {
         return (
@@ -68,6 +68,7 @@ export default async function BorradorPage({ params }: { params: Promise<{ id: s
                 cuentas={cuentas}
                 terceros={terceros}
                 periodos={periodos}
+                saldoPorCobrar={saldoPorCobrar}
                 puedeAbrirPeriodo
                 hoy={hoyEnChile()}
                 borrador={borrador}
