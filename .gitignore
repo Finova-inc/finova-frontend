@@ -42,3 +42,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Claude Code: notas y permisos personales (no se comparten)
+CLAUDE.local.md
+.claude/settings.local.json

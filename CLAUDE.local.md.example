@@ -1,0 +1,11 @@
+# Notas personales para Claude (plantilla)
+
+Copia este archivo como `CLAUDE.local.md` en la raíz del repo y completa lo tuyo.
+`CLAUDE.local.md` está en `.gitignore`: lo lee Claude en tu máquina, pero no se comparte con el equipo.
+
+Úsalo para lo que solo vale para ti:
+- **Entorno local:** puertos (por ejemplo, backend en 3000, frontend en 3001, Postgres en 5433), cómo levantas la base (Docker o tu rama de Neon) y si tienes los dos repos lado a lado.
+- **Tu forma de trabajar:** idioma de las respuestas, cuánto detalle quieres, si prefieres que Claude te pregunte antes de hacer commits.
+- **Trabajo en curso:** la rama y el ticket en que estás, y lo que dejaste a medias.
+
+Nunca pongas aquí contraseñas, tokens ni cadenas de conexión: van en `.env`, que tampoco se comparte.
