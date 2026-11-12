@@ -69,22 +69,22 @@ npm run dev                    # http://localhost:3000
 
 ### Levantar frontend y backend a la vez
 
-Ambos usan el puerto 3000 por defecto, así que chocan. La convención es dejar Next en 3000 y mover Nest a 3001, que es lo que `lib/api.ts` usa si no defines `NEXT_PUBLIC_API_URL`:
+La convención es frontend en el 3000 y backend en el 3001. Las plantillas `.env.example` de ambos repos ya vienen así: si las copias sin cambiar los puertos, funcionan juntas.
 
 ```bash
 # Terminal 1 — base de datos
 cd ../finova-backend && docker compose up -d postgres
 
-# Terminal 2 — API
-cd ../finova-backend && PORT=3001 npm run start:dev
+# Terminal 2 — API (toma PORT=3001 de su .env)
+cd ../finova-backend && npm run start:dev
 
 # Terminal 3 — frontend
 npm run dev
 ```
 
-En PowerShell, la segunda terminal es `$env:PORT = "3001"; npm run start:dev`.
+**Para entrar en local** usa la cuenta de desarrollo común: RUT `11.111.111-1`, contraseña `FinovaLocal-2026`. Se crea con `npm run seed:dev` en el backend; el detalle está en la sección 6 de su README. Esa cuenta solo existe en la base local.
 
-Si prefieres el orden inverso (backend en 3000, frontend en otro puerto), ajusta `NEXT_PUBLIC_API_URL` en `.env.local` y `CORS_ORIGINS` en el `.env` del backend.
+Si cambias los puertos, ajusta `NEXT_PUBLIC_API_URL` y `CSP_CONNECT_SRC` en `.env.local`, y `CORS_ORIGINS` en el `.env` del backend.
 
 ---
 
@@ -304,7 +304,7 @@ function traducirError(error: unknown, porDefecto: string): string[] {
 
 ## 11. Despliegue en Vercel
 
-El plan completo, paso a paso, está en **[`docs/DESPLIEGUE-VERCEL.md`](docs/DESPLIEGUE-VERCEL.md)**. Su sección C.2 describe arreglos del backend que ya están hechos.
+El plan completo, paso a paso, está en **[`docs/DESPLIEGUE-VERCEL.md`](docs/DESPLIEGUE-VERCEL.md)**. Hoy sirve como runbook para rehacer o revisar el despliegue.
 
 En corto:
 - El frontend va a Vercel sin configuración especial: no se usa `vercel.json`, a propósito. Un merge a `main` despliega solo.
@@ -342,8 +342,7 @@ El detalle está en `.claude/rules/` y en `CLAUDE.md`, que sirven igual para per
 | 2 | Los precios de la landing son referenciales (lo dice la propia sección). | Bajo: definir precios reales. |
 | 3 | Copiloto y auditoría siguen como `PantallaPendiente`. | Funcional: auditoría ya tiene backend. |
 | 4 | Solo hay pruebas unitarias de `lib/`; no hay pruebas de interfaz ni de extremo a extremo en navegador. | Medio. |
-| 5 | `docs/DESPLIEGUE-VERCEL.md` (§C.2) y `docs/LANDING.md` describen cosas que ya cambiaron: arreglos del backend hechos y archivos que ya no existen. | Bajo: confunden al leerlos. |
-| 6 | SVGs de `create-next-app` sin uso en `public/` (`file`, `globe`, `next`, `vercel`, `window`). | Bajo: borrarlos. |
+| 5 | SVGs de `create-next-app` sin uso en `public/` (`file`, `globe`, `next`, `vercel`, `window`). | Bajo: borrarlos. |
 
 ---
 

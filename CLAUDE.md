@@ -10,7 +10,7 @@ Interfaz web de Finova, un SaaS contable multiempresa para PYMEs chilenas.
 `README.md` tiene secciones desactualizadas: "Conexión con el backend" y "Deuda técnica conocida". Su sección "6. Estado real de cada ruta" sí está al día. **El código es la fuente de verdad.**
 
 ## Comandos
-- **Levantar en local:** `npm run dev`. Next toma el 3000 o, si el backend lo ocupa, el siguiente libre. `NEXT_PUBLIC_API_URL` en `.env.local` apunta al backend, y el `CORS_ORIGINS` del backend tiene que incluir el origen del frontend.
+- **Levantar en local:** `npm run dev`, en el puerto 3000. La convención es backend en 3001, y las plantillas `.env.example` de ambos repos ya vienen así. `NEXT_PUBLIC_API_URL` apunta al backend, y el `CORS_ORIGINS` del backend incluye `http://localhost:3000`. Para entrar se usa la cuenta de desarrollo común: RUT `11.111.111-1`, clave `FinovaLocal-2026`, creada con `npm run seed:dev` en el backend.
 - **Pruebas:** `npm test` (`node --test lib/*.test.mjs`, sin dependencias; requiere Node ≥ 22.18).
 - **Calidad y build:** `npm run lint` (eslint), `npm run build`.
 
@@ -58,7 +58,7 @@ Interfaz web de Finova, un SaaS contable multiempresa para PYMEs chilenas.
   - `ui/`: sistema de diseño propio (`Icon.tsx` con sprite SVG, `Boton`, `Etiqueta`, `Panel`…).
   - `dashboard/`, `landing/` (solo marketing), `login/`.
 - **`next.config.ts`:** cabeceras de seguridad y CSP.
-- **`docs/`:** `DESPLIEGUE-VERCEL.md` (§C.2 desactualizado) y `LANDING.md` (cita archivos que ya no existen).
+- **`docs/`:** `DESPLIEGUE-VERCEL.md` (runbook del despliegue), `LANDING.md` (decisiones de diseño de la landing) y `CLAUDE-EQUIPO.md`.
 
 ## Variables de entorno
 - `NEXT_PUBLIC_API_URL`: URL del backend. Se lee **al compilar**: cambiarla en Vercel exige redeploy sin caché.
