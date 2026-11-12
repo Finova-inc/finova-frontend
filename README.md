@@ -1,18 +1,14 @@
 # Finova — Frontend
 
-Interfaz web de **Finova**, un SaaS de contabilidad y automatización tributaria
-para el mercado chileno: importa Documentos Tributarios Electrónicos (DTE) desde
-el SII, arma una propuesta de **Formulario 29** y revisa inconsistencias con un
-copiloto de IA antes de declarar.
+Interfaz web de **Finova**, un SaaS de contabilidad y automatización tributaria para el mercado chileno. Permite:
+- importar los reportes del SII (registro de compras y ventas, honorarios y DTE);
+- llevar el libro contable;
+- armar la propuesta del **Formulario 29**;
+- y, a futuro, revisar inconsistencias con un copiloto de IA antes de declarar.
 
-Este repositorio contiene **solo el frontend**. La lógica de negocio, la base de
-datos y la integración con el SII viven en `finova-backend` (NestJS + PostgreSQL
-+ Docker).
+Este repositorio contiene **solo el frontend**. La lógica de negocio, la base de datos y la importación del SII viven en `finova-backend` (NestJS + PostgreSQL).
 
-> **Estado del proyecto:** la landing, el acceso y el núcleo contable (libro
-> diario, asientos, períodos y plan de cuentas) funcionan contra el backend
-> real. Documentos, terceros, F29, copiloto y auditoría siguen como pantallas
-> pendientes. Ver [Estado real de cada ruta](#estado-real-de-cada-ruta).
+> **Estado del proyecto (2026-11-12):** la landing, el acceso y todo el panel funcionan contra el backend real. Eso incluye libros diario y mayor, balances, plan de cuentas, períodos, importación del SII, contabilización, F29, terceros y usuarios. Quedan pendientes el copiloto y la auditoría. Ver [Estado real de cada ruta](#estado-real-de-cada-ruta). Los cambios se registran en [`CHANGELOG.md`](CHANGELOG.md).
 
 ---
 
@@ -39,17 +35,14 @@ datos y la integración con el SII viven en `finova-backend` (NestJS + PostgreSQ
 
 | Pieza | Versión | Nota |
 |---|---|---|
-| **Next.js** | 16.3.4 | App Router. Ojo: Next 16 renombró `middleware.ts` a `proxy.ts` y cambió varias APIs respecto de Next 14/15. |
+| **Next.js** | 16.3.4 | App Router. Ojo: Next 16 renombró `middleware.ts` a `proxy.ts` y cambió varias APIs respecto de Next 14/15 (ver `AGENTS.md`). |
 | **React** | 19.2.8 | Server Components por defecto. |
 | **TypeScript** | 5.x | `strict: true`. Alias `@/*` apunta a la raíz. |
 | **Tailwind CSS** | 4.x | Configuración **en CSS**, no en `tailwind.config.js`. Los tokens viven en `@theme` dentro de `app/globals.css`. |
 | **ESLint** | 9.x | Flat config (`eslint.config.mjs`) con `core-web-vitals` + `typescript`. |
-| **Node** | ≥ 20 (probado en 24) | Vercel usa 20/22 según lo que configures. |
+| **Node** | ≥ 20 para correr, ≥ 22.18 para `npm test` | Los tests importan los `.ts` directamente; Node les quita los tipos. |
 
-**Sin dependencias de UI de terceros.** No hay Radix, shadcn, framer-motion ni
-librerías de iconos: todo —iconos, animaciones, acordeón del FAQ, revelado al
-hacer scroll— está construido a mano con CSS y APIs del navegador. Eso mantiene
-el bundle pequeño y el control total sobre la accesibilidad.
+**Sin dependencias de UI de terceros.** No hay Radix, shadcn, framer-motion, librerías de iconos, de estado ni de formularios. Todo está construido a mano con CSS y APIs del navegador: iconos, animaciones, gráficos, diálogos y formularios. Eso mantiene el bundle pequeño y el control total sobre la accesibilidad, y permite una CSP estricta.
 
 ---
 
@@ -72,15 +65,15 @@ npm run dev                    # http://localhost:3000
 | `npm run build` | Compilación de producción. **Ejecútalo antes de cada push:** es lo mismo que corre Vercel, y falla ante cualquier error de tipos. |
 | `npm start` | Sirve la compilación de producción localmente. |
 | `npm run lint` | ESLint sobre todo el proyecto. |
+| `npm test` | Pruebas unitarias de `lib/` con `node --test`, sin dependencias. |
 
 ### Levantar frontend y backend a la vez
 
-Ambos usan el puerto 3000 por defecto, así que chocan. La convención de este
-proyecto es dejar Next en 3000 y mover Nest a 3001:
+Ambos usan el puerto 3000 por defecto, así que chocan. La convención es dejar Next en 3000 y mover Nest a 3001, que es lo que `lib/api.ts` usa si no defines `NEXT_PUBLIC_API_URL`:
 
 ```bash
 # Terminal 1 — base de datos
-cd ../finova-backend && docker compose up -d
+cd ../finova-backend && docker compose up -d postgres
 
 # Terminal 2 — API
 cd ../finova-backend && PORT=3001 npm run start:dev
@@ -91,6 +84,8 @@ npm run dev
 
 En PowerShell, la segunda terminal es `$env:PORT = "3001"; npm run start:dev`.
 
+Si prefieres el orden inverso (backend en 3000, frontend en otro puerto), ajusta `NEXT_PUBLIC_API_URL` en `.env.local` y `CORS_ORIGINS` en el `.env` del backend.
+
 ---
 
 ## 4. Variables de entorno
@@ -100,16 +95,13 @@ Resumen:
 
 | Variable | Ámbito | Para qué |
 |---|---|---|
-| `NEXT_PUBLIC_API_URL` | Navegador + servidor | URL pública del backend NestJS, sin barra final. |
+| `NEXT_PUBLIC_API_URL` | Navegador + servidor | URL pública del backend NestJS, sin barra final. Se lee **al compilar**: cambiarla en Vercel exige redeploy sin caché. |
 | `API_URL_INTERNA` | Solo servidor | Opcional. Ruta privada al backend para componentes de servidor. |
 | `CSP_CONNECT_SRC` | Build | Orígenes que la Content Security Policy autoriza en `connect-src`. **Sin esto, el navegador bloquea todo fetch al backend en producción.** |
 | `NEXT_PUBLIC_SITE_URL` | Navegador | Opcional. URL canónica para las etiquetas Open Graph. |
+| `IP_FIRMA_SECRETO` | Solo servidor | Firma la IP del visitante que se envía al backend para el límite de intentos de login. Mínimo 32 caracteres, el mismo valor que en el backend. |
 
-> **Regla de oro:** todo lo que lleve el prefijo `NEXT_PUBLIC_` queda incrustado
-> en el JavaScript que descarga el navegador y es **público**. Claves de API de
-> LLM, credenciales del SII o secretos de base de datos nunca llevan ese
-> prefijo — de hecho, no deberían estar en este repositorio en absoluto: van en
-> el backend.
+> **Regla de oro:** todo lo que lleve el prefijo `NEXT_PUBLIC_` queda incrustado en el JavaScript que descarga el navegador y es **público**. Ningún secreto lleva ese prefijo.
 
 ---
 
@@ -117,69 +109,55 @@ Resumen:
 
 ```
 finova-frontend/
-├── app/                        Rutas (App Router)
-│   ├── layout.tsx              Layout raíz: fuentes, metadata, script de tema
-│   ├── globals.css             Tokens de diseño + animaciones (Tailwind v4)
-│   ├── favicon.ico             Icono 16/32/48/64 — Next lo enlaza solo
-│   ├── icon.png                Icono 256 px para navegadores modernos
-│   ├── apple-icon.png          Icono 180 px para iOS
-│   ├── page.tsx                Landing pública — solo composición de secciones
-│   ├── login/page.tsx          Pantalla de acceso (dos columnas)
-│   ├── dashboard/
-│   │   ├── layout.tsx          Layout privado: sidebar + cabecera
-│   │   └── page.tsx            Panel de control con cifras reales del libro
-│   ├── empresas/page.tsx       ┐
-│   ├── documentos/page.tsx     │
-│   ├── core-contable/page.tsx  ├ Placeholders de 7 líneas, uno por épica
-│   ├── f29/page.tsx            │
-│   ├── copiloto/page.tsx       │
-│   └── auditoria/page.tsx      ┘
+├── app/                          Rutas (App Router)
+│   ├── layout.tsx                Layout raíz: fuentes, metadata, script de tema
+│   ├── globals.css               Tokens de diseño + animaciones (Tailwind v4)
+│   ├── page.tsx                  Landing pública
+│   ├── login/ recuperar/ restablecer/   Acceso y recuperación de contraseña
+│   ├── api/auth/{login,logout}/  Route handlers que fijan y borran la cookie de sesión
+│   ├── error.tsx, not-found.tsx, global-error.tsx
+│   └── dashboard/                Panel privado (exige sesión)
+│       ├── layout.tsx            Barra lateral + cabecera con el selector de empresa
+│       ├── page.tsx              Panel de control
+│       ├── acciones-empresa.ts   Server Actions del popup de empresas
+│       ├── core-contable/        Libro diario (patrón de referencia del panel)
+│       ├── libro-mayor/  balance/  plan-cuentas/  periodos/
+│       ├── documentos/  contabilizacion/  parametros/  f29/
+│       ├── terceros/  usuarios/
+│       ├── copiloto/  auditoria/ Pantallas pendientes
+│       └── [...ruta]/            Rutas inventadas → 404 dentro del panel
 │
 ├── components/
-│   ├── landing/                Una sección de la landing por archivo
-│   │   ├── SiteHeader.tsx      Cabecera con navegación y ThemeToggle
-│   │   ├── HeroSection.tsx     Titular + animación del ciclo DTE → F29
-│   │   ├── AsciiBanner.tsx     Marquesina ASCII de módulos contables
-│   │   ├── AboutSection.tsx    Qué es Finova
-│   │   ├── FeaturesSection.tsx Capacidades del producto
-│   │   ├── ProcessSequence.tsx Secuencia animada del proceso contable
-│   │   ├── PricingSection.tsx  Planes
-│   │   ├── TrustSection.tsx    Señales de confianza
-│   │   ├── FaqSection.tsx      Acordeón accesible
-│   │   └── SiteFooter.tsx      Pie con enlaces y aviso legal
-│   ├── login/LoginForm.tsx     Formulario de credenciales (cliente)
-│   ├── Sidebar.tsx             Navegación del área privada
-│   └── ui/
-│       ├── Icon.tsx            14 iconos SVG propios, tipados por nombre
-│       ├── InlineScript.tsx    Inyecta el script anti-parpadeo en <head>
-│       ├── Reveal.tsx          Revelado al entrar en viewport
-│       ├── SectionShell.tsx    Contenedor común de las secciones
-│       └── ThemeToggle.tsx     Botón de tema claro/oscuro
+│   ├── ui/                       Sistema de diseño propio (Icon, Boton, Etiqueta, Panel,
+│   │                             MensajeDeEstado, ThemeToggle, InlineScript…)
+│   ├── dashboard/                Selector de empresa, gráfico, alertas, estados de error/espera
+│   ├── landing/                  Una sección de la landing por archivo
+│   ├── login/                    Formularios de acceso y recuperación
+│   ├── Sidebar.tsx               Navegación del panel
+│   └── CerrarSesionBoton.tsx
 │
-├── lib/
-│   ├── api.ts                  Cliente HTTP hacia el backend NestJS
-│   ├── fonts.ts                Space Grotesk + Inter vía next/font
-│   ├── theme.ts                Fuente única de verdad del tema
-│   └── validation.ts           Validadores puros del formulario de acceso
+├── lib/                          Lógica sin interfaz, probada con node --test
+│   ├── api.ts                    Única capa de comunicación con el backend + tipos
+│   ├── session.ts                Cookie de sesión
+│   ├── decimal.ts, formato.ts    Montos exactos y formato chileno
+│   ├── vistas.ts                 Nombre de cada pantalla para errores y 404
+│   ├── ip-firmada.ts             IP del visitante firmada para el backend
+│   ├── csv.ts                    Exportación CSV segura
+│   └── *.ts + *.test.mjs         Funciones puras de cada módulo y sus pruebas
 │
-├── docs/
-│   ├── LANDING.md              Documentación detallada de la landing
-│   └── DESPLIEGUE-VERCEL.md    Plan paso a paso de despliegue
-│
-├── images/                     Mockups de referencia (NO se sirven)
-├── public/                     Assets servidos: logo, foto de login, SVG
-├── next.config.ts              Cabeceras de seguridad y CSP
-├── .env.example                Plantilla de variables de entorno
-├── CLAUDE.md                   Contexto de producto para agentes de IA
-└── AGENTS.md                   Aviso de Next 16 (autogenerado por `next dev`)
+├── proxy.ts                      Exige la cookie para entrar a /dashboard (Next 16)
+├── next.config.ts                Cabeceras de seguridad y CSP
+├── docs/                         Despliegue, landing y guía de Claude para el equipo
+├── .claude/, CLAUDE.md           Configuración de Claude Code (ver docs/CLAUDE-EQUIPO.md)
+├── public/                       Assets servidos: logo, foto de login
+├── images/, Referencias/         Mockups y referencias de diseño (NO se sirven)
+├── scripts/generar-iconos.py     Regenera los íconos de app/ desde el logo (manual)
+└── Fase 1/                       Entregables académicos del Capstone (no es código)
 ```
 
 ### Nota sobre `images/` vs `public/`
 
-Son cosas distintas y se confunden con facilidad. `public/` se sirve tal cual en
-la raíz del sitio: cualquiera puede abrir `/logo-finova.png`. `images/` guarda
-los mockups de referencia del diseño y **no** se publica. No muevas archivos
-entre ambas sin pensar en eso.
+Son cosas distintas y se confunden con facilidad. `public/` se sirve tal cual en la raíz del sitio: cualquiera puede abrir `/logo-finova.png`. `images/` guarda los mockups de referencia del diseño y **no** se publica. No muevas archivos entre ambas sin pensar en eso.
 
 ---
 
@@ -187,34 +165,38 @@ entre ambas sin pensar en eso.
 
 | Ruta | Estado | Detalle |
 |---|---|---|
-| `/` | ✅ Terminada | Landing de 8 secciones, tema claro/oscuro, animaciones CSS. |
-| `/login` | ✅ Real | Autentica contra el backend; el JWT queda en una cookie httpOnly. |
-| `/dashboard` | ✅ Real | Cifras clave del libro (efectivo, por cobrar, por pagar, resultado del ejercicio), alertas reales (IVA estimado del F29 del mes anterior, meses sin cerrar, período del mes, borradores, plan vacío), ingresos y gastos por mes y últimos asientos. Sale de `GET /asientos-contables/resumen` y de períodos, borradores y asientos. |
-| Popup de empresas (cabecera) | ✅ Real | Cambiar la empresa activa, agregar (administrador o contador), cambiar el nombre (solo la razón social; administrador de esa empresa) y eliminar con doble confirmación: papelera y escribir el RUT. Reemplaza a la antigua página `/dashboard/empresas`. |
-| `/dashboard/core-contable` | ✅ Real | Libro diario: comprobantes con filtros y paginación, vista de libro imprimible con resumen por día, borradores. |
-| `/dashboard/core-contable/nuevo` y `/borradores/[id]` | ✅ Real | Formulario de asiento: líneas dinámicas, cuadre en vivo con aritmética exacta (`lib/decimal.ts`), guardar borrador y contabilizar con confirmación. |
-| `/dashboard/core-contable/[id]` | ✅ Real | Detalle del comprobante y reversión (art. 32 del Código de Comercio). |
-| `/dashboard/periodos` | ✅ Real | Abrir mes, cerrar (administrador o contador) y reabrir con motivo (solo administrador). |
-| `/dashboard/plan-cuentas` | ✅ Real | Árbol del plan con crear, editar, eliminar (popup de confirmación) y exportar CSV. `configurar/`: "Configurar plan de cuentas" elige las cuentas del plan base NIIF y agrega cuentas propias (administrador o contador). |
-| `/dashboard/documentos`, `/terceros`, `/f29`, `/copiloto`, `/auditoria` | 🚧 Placeholder | `PantallaPendiente` con los endpoints que usará cada una. |
+| `/` | ✅ Terminada | Landing con cabecera que se compacta al hacer scroll, hero con demo animada del panel, carrusel de módulos, tema claro/oscuro y animaciones solo CSS. |
+| `/login` | ✅ Real | Acceso por RUT y contraseña contra el backend. El JWT queda en una cookie httpOnly. Avisa si la sesión expiró. |
+| `/recuperar`, `/restablecer` | ✅ Real | Recuperación de contraseña por correo, con enlace de un solo uso. |
+| `/dashboard` | ✅ Real | Panel de control con datos reales del libro: efectivo, por cobrar, por pagar, resultado del ejercicio, ingresos y gastos por mes, últimos asientos y documentos por contabilizar. Alertas de IVA estimado, vencimiento del F29, meses sin cerrar y borradores. |
+| Popup de empresas (cabecera) | ✅ Real | Cambiar la empresa activa, agregar, renombrar (solo la razón social) y eliminar con doble confirmación. |
+| `/dashboard/core-contable` | ✅ Real | Libro diario: comprobantes con filtros y paginación, vista imprimible, borradores, alta con cuadre en vivo (`lib/decimal.ts`), detalle y reversión. |
+| `/dashboard/libro-mayor` | ✅ Real | Mayor por cuenta y rango de fechas, con vista analítica y exportación CSV. |
+| `/dashboard/balance` | ✅ Real | Balance de comprobación, balance general, estado de resultados, balance tributario y notas a los estados financieros (editables y exportables). |
+| `/dashboard/plan-cuentas` | ✅ Real | Árbol del plan con crear, editar, eliminar y exportar CSV. `configurar/` elige las cuentas del plan base NIIF y agrega cuentas propias. |
+| `/dashboard/periodos` | ✅ Real | Abrir meses, cerrar en orden (administrador o contador) y reabrir con motivo (solo administrador). |
+| `/dashboard/documentos` | ✅ Real | Importación de reportes del SII, con vista previa e historial: compras y ventas, honorarios, y XML o ZIP de DTE. Libros de compras y ventas con filtros, y detalle de cada documento. |
+| `/dashboard/contabilizacion` | ✅ Real | Documentos del SII por contabilizar: Finova propone el asiento y la persona lo revisa y lo contabiliza. |
+| `/dashboard/parametros` | ✅ Real | Cuentas que usa la contabilización para cada función. |
+| `/dashboard/f29` | ✅ Real | Propuesta del Formulario 29 del mes a partir de compras, ventas y honorarios. Incluye remanente con UTM sugerida, aprobación y folio de la declaración. No presenta ante el SII. |
+| `/dashboard/terceros` | ✅ Real | Libreta de clientes y proveedores, con sugerencias desde los documentos del SII, ficha con actividad y descarga de datos personales (Ley 21.719). |
+| `/dashboard/usuarios` | ✅ Real | Miembros de la empresa: agregar, cambiar rol y quitar acceso (administrador). |
+| `/dashboard/copiloto`, `/dashboard/auditoria` | 🚧 Pendiente | `PantallaPendiente`. Auditoría ya tiene endpoint en el backend; el copiloto no. |
 
-Los botones que registran (nuevo asiento, revertir, cerrar período) se ocultan
-al rol "consulta" leyendo el rol del JWT (`obtenerRolDelToken`). Es solo
-presentación: el backend responde 403 igual si alguien fuerza la llamada.
+Los botones que registran se ocultan al rol "consulta" leyendo el rol del JWT (`obtenerRolDelToken`). Es solo presentación: el backend responde 403 igual si alguien fuerza la llamada.
 
 ---
 
 ## 7. Sistema de diseño
 
-La paleta parte de una idea concreta y no de un gusto: son **colores de
-destacador**, el lápiz con que un contador marca un formulario en papel.
+La paleta parte de una idea concreta y no de un gusto: son **colores de destacador**, el lápiz con que un contador marca un formulario en papel.
 
-**Ningún fondo es blanco ni negro puro.** El blanco puro deslumbra en una
-herramienta donde se pasan horas revisando montos; el negro puro genera halo
-contra texto claro y arrastre al hacer scroll en pantallas OLED. Ambos fondos
-comparten temperatura cálida a propósito: con un fondo neutro frío el naranjo
-de acento se veía sucio. En oscuro la superficie elevada es `#1E1A17` y el
-texto `#F4F1EC`; en claro, `#F1EBE1` y `#14110F`.
+**Ningún fondo es blanco ni negro puro.**
+- El blanco puro deslumbra en una herramienta donde se pasan horas revisando montos.
+- El negro puro genera halo contra el texto claro y arrastre al hacer scroll en pantallas OLED.
+- Ambos fondos comparten temperatura cálida a propósito: con un fondo neutro frío, el naranjo de acento se veía sucio.
+
+En oscuro, la superficie elevada es `#1E1A17` y el texto `#F4F1EC`; en claro, `#F1EBE1` y `#14110F`.
 
 | Token | Valor | Uso |
 |---|---|---|
@@ -227,15 +209,16 @@ texto `#F4F1EC`; en claro, `#F1EBE1` y `#14110F`.
 | `--color-highlight` | `#FFC53D` | Resaltado de texto |
 | `--color-graphite` | `#6E6459` | Gris cálido: texto secundario |
 
-**Tipografía:** Space Grotesk para titulares (`font-display`), Inter para cuerpo
-e interfaz (`font-sans`). Ambas autohospedadas por `next/font`, sin petición a
-Google. El brief original pedía **Styrene**, que es comercial y requiere
-licencia; `lib/fonts.ts` documenta la migración exacta —tres líneas— si algún
-día se compra.
+La landing suma una paleta de destacadores (`--hl-*`) y su propio tema oscuro.
 
-**Tailwind v4 se configura en CSS.** No busques `tailwind.config.js`: no existe.
-Los tokens se declaran con `@theme` en `app/globals.css`, y el `dark:` se activa
-por clase mediante `@custom-variant dark`, no por `prefers-color-scheme`.
+**Tipografía** (`lib/fonts.ts`), autohospedada por `next/font`, sin petición a Google desde el navegador:
+- **Space Grotesk:** titulares (`font-display`).
+- **Inter:** cuerpo e interfaz (`font-sans`), por sus cifras tabulares.
+- **Instrument Serif:** solo el titular del hero de la landing.
+
+El brief original pedía **Styrene**, que es comercial; `lib/fonts.ts` documenta cómo migrar si algún día se compra.
+
+**Tailwind v4 se configura en CSS.** No busques `tailwind.config.js`: no existe. Los tokens se declaran con `@theme` en `app/globals.css`, y el `dark:` se activa por clase mediante `@custom-variant dark`, no por `prefers-color-scheme`.
 
 ---
 
@@ -243,31 +226,27 @@ por clase mediante `@custom-variant dark`, no por `prefers-color-scheme`.
 
 Es la parte menos obvia del proyecto y conviene entenderla antes de tocarla.
 
-El servidor no puede saber qué tema eligió la persona: `localStorage` solo
-existe en el navegador. Si React resolviera el tema al hidratar, el navegador ya
-habría pintado la página en claro y se vería un destello blanco antes de pasar a
-oscuro.
+El servidor no puede saber qué tema eligió la persona: `localStorage` solo existe en el navegador. Si React resolviera el tema al hidratar, el navegador ya habría pintado la página en claro y se vería un destello blanco antes de pasar a oscuro.
 
 La solución tiene tres piezas que dependen entre sí:
 
-1. **`lib/theme.ts`** exporta `THEME_INIT_SCRIPT`, un script minificado que lee
-   `localStorage`, cae a la preferencia del sistema si no hay nada válido, y
-   aplica la clase `.dark` más `color-scheme` sobre `<html>`.
-2. **`app/layout.tsx`** lo inyecta en `<head>` con `InlineScript`, de modo que
-   corre de forma síncrona durante el parseo, **antes del primer paint**.
-3. **`suppressHydrationWarning` en `<html>` es obligatorio.** Sin él, React
-   detecta que el DOM no coincide con lo que renderizó el servidor, lo trata
-   como error y vuelve a renderizar en el cliente descartando la corrección del
-   script — devolviendo justo el parpadeo que se quería evitar.
+1. **`lib/theme.ts`** exporta `THEME_INIT_SCRIPT`, un script minificado. Lee `localStorage`, cae a la preferencia del sistema si no hay nada válido, y aplica la clase `.dark` más `color-scheme` sobre `<html>`.
+2. **`app/layout.tsx`** lo inyecta en `<head>` con `InlineScript`, de modo que corre de forma síncrona durante el parseo, **antes del primer paint**.
+3. **`suppressHydrationWarning` en `<html>` es obligatorio.** Sin él, React detecta que el DOM no coincide con lo que renderizó el servidor, lo trata como error y vuelve a renderizar en el cliente. Eso descarta la corrección del script y devuelve justo el parpadeo que se quería evitar.
 
-Si cambias la clave de `localStorage` o el nombre de la clase, hazlo **solo** en
-`lib/theme.ts`: es la fuente única de verdad, y el `ThemeToggle` lee de ahí.
+Si cambias la clave de `localStorage` o el nombre de la clase, hazlo **solo** en `lib/theme.ts`: es la fuente única de verdad, y el `ThemeToggle` lee de ahí.
 
 ---
 
 ## 9. Seguridad
 
-`next.config.ts` aplica seis cabeceras a todas las rutas:
+**Sesión.**
+- El backend emite el JWT, pero el navegador nunca lo ve: `app/api/auth/login/route.ts` lo guarda en la cookie `finova_session`, con `httpOnly`, `sameSite: lax`, `secure` en producción y 24 h de duración.
+- Las páginas y Server Actions lo leen en el servidor y lo envían al backend como `Authorization: Bearer`.
+- `proxy.ts` solo comprueba que exista la cookie para entrar a `/dashboard`. La autorización real (rol, empresa, validez del token) la hace el backend en cada petición.
+- El cierre de sesión borra la cookie y pide al backend revocar el token.
+
+**Cabeceras.** `next.config.ts` aplica seis cabeceras a todas las rutas:
 
 | Cabecera | Qué previene |
 |---|---|
@@ -278,130 +257,93 @@ Si cambias la clave de `localStorage` o el nombre de la clase, hazlo **solo** en
 | `Permissions-Policy` | Acceso a cámara, micrófono, ubicación, pagos y USB. |
 | `Content-Security-Policy` | Ejecución de scripts y conexiones no autorizadas. |
 
-Además, `poweredByHeader: false` quita la cabecera que anuncia el framework y su
-versión.
+Además, `poweredByHeader: false` quita la cabecera que anuncia el framework y su versión.
 
-**Sobre `unsafe-inline` en `script-src`:** está aceptado a conciencia. El script
-anti-parpadeo es inline por definición y no interpola nada controlado por el
-usuario. El endurecimiento posible —hash SHA-256 del script— está documentado en
-los comentarios de `next.config.ts`, con su costo de mantenimiento explicado.
+**Sobre `unsafe-inline` en `script-src`:** está aceptado a conciencia. El script anti-parpadeo es inline por definición y no interpola nada controlado por el usuario. El endurecimiento posible está documentado en los comentarios de `next.config.ts`, con su costo explicado: un hash del script, o un nonce que obligaría a perder el prerenderizado estático.
 
-**La validación del formulario es de experiencia de usuario, no de seguridad.**
-`lib/validation.ts` lo dice en su encabezado: corre en el navegador y cualquiera
-la desactiva. Cuando exista autenticación real, el backend NestJS debe volver a
-validar todo desde cero tratando cada campo como entrada hostil.
+**Límite de intentos.** El backend limita los intentos de login y recuperación por IP y por RUT. Para que vea la IP real del visitante, y no la de Vercel, el frontend la envía firmada con HMAC en la cabecera `x-finova-ip` (`lib/ip-firmada.ts`, secreto `IP_FIRMA_SECRETO`).
 
-Otras decisiones deliberadas en `LoginForm.tsx`:
+**La validación del navegador es de experiencia de usuario, no de seguridad.** `lib/validation.ts` lo dice en su encabezado. El backend vuelve a validar todo.
 
-- El formulario no tiene `action` y llama a `preventDefault()`: un `<form>` sin
-  `action` hace GET a la URL actual, lo que dejaría la contraseña en la barra de
-  direcciones, el historial y los logs del servidor.
-- El error de acceso es **genérico**. Distinguir "ese correo no existe" de
-  "contraseña incorrecta" permite enumerar usuarios.
-- La contraseña vive solo en el estado del componente; nunca en `localStorage`,
-  cookies ni URL, y se limpia al fallar.
-- `spellCheck` desactivado: algunos correctores envían el texto a un servicio
-  remoto.
-- El límite de 5 intentos con pausa de 30 segundos es **comodidad, no
-  seguridad**: se salta recargando la página. El límite real va en el servidor.
+Otras decisiones deliberadas en el acceso:
+- El formulario de login no hace GET: la contraseña nunca queda en la URL, el historial ni los logs.
+- El error de acceso es **genérico**. Distinguir "ese RUT no existe" de "contraseña incorrecta" permite enumerar usuarios. La recuperación responde lo mismo exista o no la cuenta.
+- La contraseña vive solo en el estado del componente; nunca en `localStorage`, cookies ni URL.
+- La pausa tras varios intentos fallidos en el formulario es **comodidad, no seguridad**. El límite real lo aplica el backend.
+
+**Exportaciones.** Los CSV se arman con `lib/csv.ts`, que neutraliza las celdas que una planilla interpretaría como fórmula.
 
 ---
 
 ## 10. Conexión con el backend
 
-Todo el tráfico hacia NestJS pasa por **`lib/api.ts`**. No llames a `fetch()`
-directamente desde un componente: la URL base, el timeout, el manejo de errores
-y el envío de credenciales quedarían repetidos y divergiendo.
+Todo el tráfico hacia NestJS pasa por **`lib/api.ts`**. No llames a `fetch()` directamente desde un componente: la URL base, el timeout, el token y el manejo de errores quedarían repetidos y divergiendo.
 
-```tsx
-import { empresasApi, ApiError } from "@/lib/api";
+- **Grupos tipados** por módulo del backend, mapeados 1:1 con sus rutas: `authApi`, `empresasApi`, `usuariosApi`, `cuentasApi`, `periodosApi`, `asientosApi`, `borradoresApi`, `documentosApi`, `siiApi`, `contabilizacionApi`, `f29Api`, `utmApi`, `notasEeffApi`, `tercerosApi`. Para rutas sueltas existe el cliente genérico `api`.
+- **Timeout de 15 s** con `AbortController`. Sin esto, una pestaña queda colgada indefinidamente si el backend está caído o despertando.
+- **`ApiError`** con `status` y cuerpo crudo, para que la interfaz decida qué mostrar. `status 0` o `408` significan red o timeout.
+- **Reintentos con espera creciente**, solo en lecturas y login, ante 0, 502, 503 y 504 (`lib/reintentos.ts`). El plan free de Render duerme el backend tras unos minutos sin uso. Las escrituras nunca se reintentan solas.
+- **Montos siempre como `string`**, operados con `lib/decimal.ts`.
 
-// Componente de servidor
-export default async function EmpresasPage() {
-    try {
-        const empresas = await empresasApi.listar();
-        return <ListaEmpresas empresas={empresas} />;
-    } catch (error) {
-        if (error instanceof ApiError) {
-            return <p>No se pudieron cargar las empresas.</p>;
-        }
-        throw error;
-    }
-}
-```
-
-Para rutas ad hoc está el cliente genérico:
+Cada `actions.ts` traduce los errores del backend a mensajes para la persona:
 
 ```ts
-import { api } from "@/lib/api";
-
-const propuesta = await api.get<PropuestaF29>("/f29/2026-08");
-await api.post("/documentos/importar", { periodo: "2026-08" });
+function traducirError(error: unknown, porDefecto: string): string[] {
+    if (error instanceof ApiError) {
+        if (error.status === 401) redirect("/login");
+        if (error.status === 403) return ["Tu rol en esta empresa no permite esta operación."];
+        if (error.status === 0 || error.status === 408) {
+            return ["El servidor no respondió a tiempo (puede estar despertando). Reintenta en unos segundos."];
+        }
+    }
+    return mensajesDelBackend(error) ?? [porDefecto];
+}
 ```
-
-Lo que `lib/api.ts` te da y `fetch` no:
-
-- **Timeout de 15 s** con `AbortController`, encadenado con cualquier `signal`
-  que le pases. Sin esto, una pestaña queda colgada indefinidamente si el
-  contenedor del backend está caído.
-- **`ApiError`** con `status` y cuerpo crudo, para que la interfaz decida qué
-  mostrar sin filtrar detalles internos del servidor.
-- **`credentials: "include"`**, para cookies entre dominios distintos.
-- **Contrato tipado** por módulo (`empresasApi`), de modo que TypeScript avise
-  cuando el backend cambie.
-- **`verificarBackend()`**, útil para diagnosticar un despliegue: si eso falla,
-  ninguna otra llamada va a funcionar.
-
-> El backend expone hoy un solo módulo (`/empresas`) y su entidad `Empresa` es
-> una clase vacía. La interfaz `Empresa` de `lib/api.ts` es la forma **esperada**
-> y hay que sincronizarla cuando se defina la entidad real.
 
 ---
 
 ## 11. Despliegue en Vercel
 
-El plan completo, paso a paso, está en
-**[`docs/DESPLIEGUE-VERCEL.md`](docs/DESPLIEGUE-VERCEL.md)**.
+El plan completo, paso a paso, está en **[`docs/DESPLIEGUE-VERCEL.md`](docs/DESPLIEGUE-VERCEL.md)**. Su sección C.2 describe arreglos del backend que ya están hechos.
 
-En una línea: el frontend va a Vercel sin ninguna configuración especial, pero
-el backend **no** puede ir a Vercel tal como está (es un servidor persistente
-con conexiones a PostgreSQL, no una función serverless). Necesita un proveedor
-con contenedores. Hay tres puntos que rompen el despliegue si se olvidan: CORS
-en NestJS, `CSP_CONNECT_SRC` en Vercel, y HTTPS en la API.
+En corto:
+- El frontend va a Vercel sin configuración especial: no se usa `vercel.json`, a propósito. Un merge a `main` despliega solo.
+- El backend corre en Render (no puede ir a Vercel: es un servidor persistente con conexiones a PostgreSQL), con la base en Neon.
+- Hay tres cosas que rompen el despliegue si se olvidan:
+  - `CORS_ORIGINS` en el backend;
+  - `CSP_CONNECT_SRC` en Vercel;
+  - HTTPS en la URL de la API.
+
+  Además, `IP_FIRMA_SECRETO` tiene que ser igual en ambos lados.
 
 ---
 
 ## 12. Convenciones de código
 
-- **Indentación de 4 espacios** en TS/TSX.
-- **Comentarios que explican el porqué, no el qué.** El código de este proyecto
-  está densamente comentado a propósito: es un Capstone y cada decisión no
-  evidente lleva su justificación. Mantén ese registro.
-- **Server Components por defecto.** `"use client"` solo donde hay estado,
-  efectos o eventos: `LoginForm`, `Reveal`, `ThemeToggle`, `SiteHeader`.
-  Recuerda que `"use client"` marca un **módulo**, no un subárbol: las secciones
-  pasadas como `children` desde un componente de servidor siguen siendo de
-  servidor.
+El detalle está en `.claude/rules/` y en `CLAUDE.md`, que sirven igual para personas que para Claude. Lo esencial:
+
+- **Indentación de 4 espacios** y comillas dobles en TS/TSX.
+- **Comentarios que explican el porqué, no el qué.** Es un Capstone y cada decisión no evidente lleva su justificación: mantén ese registro.
+- **Server Components por defecto.** `"use client"` solo donde hay estado, efectos o eventos. Recuerda que `"use client"` marca un **módulo**, no un subárbol.
+- **Mutaciones con Server Actions** (`actions.ts` junto a cada página), no con route handlers.
 - **Alias `@/`** para toda importación entre carpetas; nada de `../../`.
 - **Textos de interfaz en español de Chile**, incluidos los mensajes de error.
-- **Nombres de dominio en español** (`empresasApi.listar`), consistentes con el
-  backend y con el lenguaje del negocio.
+- **Nombres de dominio en español** (`asientosApi`, `traducirError`), consistentes con el backend.
+- **Lógica pura en `lib/`** con su prueba `*.test.mjs`.
+- **Todo cambio de comportamiento va en `CHANGELOG.md`** con su ticket `FIN-xx`.
 
 ---
 
 ## 13. Deuda técnica conocida
 
-Nada de esto está oculto, y conviene atacarlo antes de mostrar el proyecto:
-
 | # | Asunto | Impacto |
 |---|---|---|
-| 1 | Los módulos (`/empresas`, `/f29`, …) están fuera de `app/dashboard/`, así que se ven sin sidebar. | Alto — la navegación se rompe al primer clic. |
-| 2 | No hay ninguna llamada real al backend todavía; `lib/api.ts` está listo pero sin usar. | Alto — es el siguiente paso funcional. |
-| 3 | No hay autenticación: `/dashboard` es accesible sin sesión. | Alto — antes de cualquier dato real. |
-| 4 | Los testimonios (María Fernández y los de la landing) son **personas ficticias**. | Legal — hay que reemplazarlos o etiquetarlos como ejemplo antes de publicar. |
-| 5 | `mk.tmp.py` es un script temporal versionado por accidente. | Bajo — borrarlo. |
-| 6 | No hay pruebas. El equipo definió Jest como herramienta de QA. | Medio. |
-| 7 | El backend tiene credenciales de PostgreSQL escritas fijas en `app.module.ts` y `synchronize: true`. | Crítico en producción — pero se corrige en el otro repositorio. |
+| 1 | Las opiniones de clientes de la landing (`components/landing/FaqSection.tsx`) son **personas ficticias**, marcadas así en el código. | Legal: reemplazar por opiniones reales antes de publicar. |
+| 2 | Los precios de la landing son referenciales (lo dice la propia sección). | Bajo: definir precios reales. |
+| 3 | Copiloto y auditoría siguen como `PantallaPendiente`. | Funcional: auditoría ya tiene backend. |
+| 4 | Solo hay pruebas unitarias de `lib/`; no hay pruebas de interfaz ni de extremo a extremo en navegador. | Medio. |
+| 5 | `docs/DESPLIEGUE-VERCEL.md` (§C.2) y `docs/LANDING.md` describen cosas que ya cambiaron: arreglos del backend hechos y archivos que ya no existen. | Bajo: confunden al leerlos. |
+| 6 | SVGs de `create-next-app` sin uso en `public/` (`file`, `globe`, `next`, `vercel`, `window`). | Bajo: borrarlos. |
 
 ---
 
@@ -415,9 +357,14 @@ Proyecto Capstone (APT), Ingeniería en Informática, sede Plaza Vespucio.
 | Nicolás Sazo | Scrum Master · Arquitectura de base de datos |
 | Vicente San Martín | Development Team · Frontend e integración |
 
-Metodología Scrumban. El backlog se gestiona en Jira (proyecto KAN) con seis
-épicas: Core Contable, Motor Tributario y F29, Ingesta de DTE, Usuarios y
-Empresas, Copiloto con IA, y Auditoría y Seguridad.
+Metodología Scrumban. El backlog se gestiona en Jira (proyecto KAN) con seis épicas:
+1. Core Contable.
+2. Motor Tributario y F29.
+3. Ingesta de DTE.
+4. Usuarios y Empresas.
+5. Copiloto con IA.
+6. Auditoría y Seguridad.
 
-Contexto ampliado de producto y alcance del MVP: [`CLAUDE.md`](CLAUDE.md).
-Documentación de la landing: [`docs/LANDING.md`](docs/LANDING.md).
+- Contexto de producto y alcance del MVP: [`.claude/skills/contexto-negocio/SKILL.md`](.claude/skills/contexto-negocio/SKILL.md).
+- Cómo trabajamos con Claude Code: [`docs/CLAUDE-EQUIPO.md`](docs/CLAUDE-EQUIPO.md).
+- Documentación de la landing: [`docs/LANDING.md`](docs/LANDING.md).

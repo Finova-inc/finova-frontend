@@ -68,6 +68,6 @@ Interfaz web de Finova, un SaaS contable multiempresa para PYMEs chilenas.
 - `IP_FIRMA_SECRETO`: solo servidor, 32 caracteres o más. Tiene el mismo valor que en el backend.
 
 ## Pendientes conocidos
-- Testimonio ficticio en `app/login/page.tsx`, marcado para reemplazar antes de publicar.
+- Opiniones de personas ficticias en `components/landing/FaqSection.tsx`, marcadas para reemplazar antes de publicar.
 - Precios "referenciales" en la landing.
 - SVGs de `create-next-app` sin uso en `public/`.
