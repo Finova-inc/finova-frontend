@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Hooks de Claude Code: scripts CommonJS de Node que corre Claude Code, no la app.
+    ".claude/**",
   ]),
 ]);
 
