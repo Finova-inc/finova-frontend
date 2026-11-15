@@ -20,7 +20,7 @@ Next 16 difiere de versiones anteriores. Ante la duda, lee la guía en `node_mod
 - **Filtros de listados:** se pasan por la URL (`<form method="get">`, `searchParams`), no en estado del cliente.
 - **Errores y 404:**
   - `app/dashboard/error.tsx` y `not-found.tsx` usan `components/dashboard/EstadoDeVista.tsx`.
-  - Cada pantalla nueva se registra en `lib/vistas.ts`; su test falla si falta.
+  - Cada pantalla nueva se registra en `lib/vistas.ts`; su test falla si falta. Excepción: las internas del equipo (`/dashboard/interno/*`) no se registran, para que su 404 sea idéntico al de una ruta inventada.
   - Los `loading.tsx` de pantallas lentas usan `EsperaConLimite`, que avisa a los 10 s que el servicio está despertando.
 - **Roles en la UI:** `puedeRegistrar(rol)` (`lib/roles.ts`) solo decide si se muestra un botón o un formulario. La autorización real la hace el backend, que responde 403.
 - **Datos de ejemplo:** si algo se muestra sin backend, el mock va centralizado en un archivo de `lib/` y el componente lleva una `Etiqueta` de tono `demo`. Nunca mezcles datos falsos sin rotular con datos reales.
