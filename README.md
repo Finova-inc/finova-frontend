@@ -8,7 +8,7 @@ Interfaz web de **Finova**, un SaaS de contabilidad y automatización tributaria
 
 Este repositorio contiene **solo el frontend**. La lógica de negocio, la base de datos y la importación del SII viven en `finova-backend` (NestJS + PostgreSQL).
 
-> **Estado del proyecto (2026-11-12):** la landing, el acceso y todo el panel funcionan contra el backend real. Eso incluye libros diario y mayor, balances, plan de cuentas, períodos, importación del SII, contabilización, F29, terceros y usuarios. Quedan pendientes el copiloto y la auditoría. Ver [Estado real de cada ruta](#estado-real-de-cada-ruta). Los cambios se registran en [`CHANGELOG.md`](CHANGELOG.md).
+> **Estado del proyecto (2026-11-12):** la landing, el acceso y todo el panel funcionan contra el backend real. Eso incluye libros diario y mayor, balances, plan de cuentas, períodos, importación del SII, contabilización, F29, terceros y usuarios. El copiloto de IA está en beta (solo el core contable) y queda pendiente la auditoría. Ver [Estado real de cada ruta](#estado-real-de-cada-ruta). Los cambios se registran en [`CHANGELOG.md`](CHANGELOG.md).
 
 ---
 
@@ -124,7 +124,7 @@ finova-frontend/
 │       ├── libro-mayor/  balance/  plan-cuentas/  periodos/
 │       ├── documentos/  contabilizacion/  parametros/  f29/
 │       ├── terceros/  usuarios/
-│       ├── copiloto/  auditoria/ Pantallas pendientes
+│       ├── auditoria/           Pantalla pendiente
 │       └── [...ruta]/            Rutas inventadas → 404 dentro del panel
 │
 ├── components/
@@ -181,7 +181,8 @@ Son cosas distintas y se confunden con facilidad. `public/` se sirve tal cual en
 | `/dashboard/f29` | ✅ Real | Propuesta del Formulario 29 del mes a partir de compras, ventas y honorarios. Incluye remanente con UTM sugerida, aprobación y folio de la declaración. No presenta ante el SII. |
 | `/dashboard/terceros` | ✅ Real | Libreta de clientes y proveedores, con sugerencias desde los documentos del SII, ficha con actividad y descarga de datos personales (Ley 21.719). |
 | `/dashboard/usuarios` | ✅ Real | Miembros de la empresa: agregar, cambiar rol y quitar acceso (administrador). |
-| `/dashboard/copiloto`, `/dashboard/auditoria` | 🚧 Pendiente | `PantallaPendiente`. Auditoría ya tiene endpoint en el backend; el copiloto no. |
+| Copiloto IA (flotante, en todo el panel) | 🧪 Beta | `components/dashboard/copiloto/`, montado en `app/dashboard/layout.tsx`. Chat en streaming vía `/api/copiloto/chat` → `POST /copiloto/chat`. Solo consulta el core contable. Sin `ANTHROPIC_API_KEY` en el backend muestra que no está disponible. Arquitectura y límites: `finova-backend/docs/MODULO-COPILOTO.md`. |
+| `/dashboard/auditoria` | 🚧 Pendiente | `PantallaPendiente`. Ya tiene endpoint en el backend. |
 
 Los botones que registran se ocultan al rol "consulta" leyendo el rol del JWT (`obtenerRolDelToken`). Es solo presentación: el backend responde 403 igual si alguien fuerza la llamada.
 
@@ -340,7 +341,7 @@ El detalle está en `.claude/rules/` y en `CLAUDE.md`, que sirven igual para per
 |---|---|---|
 | 1 | Las opiniones de clientes de la landing (`components/landing/FaqSection.tsx`) son **personas ficticias**, marcadas así en el código. | Legal: reemplazar por opiniones reales antes de publicar. |
 | 2 | Los precios de la landing son referenciales (lo dice la propia sección). | Bajo: definir precios reales. |
-| 3 | Copiloto y auditoría siguen como `PantallaPendiente`. | Funcional: auditoría ya tiene backend. |
+| 3 | Auditoría sigue como `PantallaPendiente`. | Funcional: ya tiene backend. |
 | 4 | Solo hay pruebas unitarias de `lib/`; no hay pruebas de interfaz ni de extremo a extremo en navegador. | Medio. |
 | 5 | SVGs de `create-next-app` sin uso en `public/` (`file`, `globe`, `next`, `vercel`, `window`). | Bajo: borrarlos. |
 

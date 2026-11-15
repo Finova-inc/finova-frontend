@@ -1,6 +1,6 @@
 ---
 name: pantalla-de-modulo
-description: Cómo construir una pantalla nueva del panel de Finova (listado, detalle, formulario y acciones) conectada al backend, siguiendo el patrón de app/dashboard/core-contable. Úsala al crear o rehacer un módulo del panel, por ejemplo auditoría o copiloto, que hoy son PantallaPendiente.
+description: Cómo construir una pantalla nueva del panel de Finova (listado, detalle, formulario y acciones) conectada al backend, siguiendo el patrón de app/dashboard/core-contable. Úsala al crear o rehacer un módulo del panel, por ejemplo auditoría, que hoy es PantallaPendiente.
 ---
 
 # Pantalla de módulo del panel

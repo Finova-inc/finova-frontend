@@ -1539,6 +1539,35 @@ export const periodosApi = {
         ),
 };
 
+/* ---------------------------------------------------------------------------
+   Copiloto IA (POST /copiloto/chat)
+
+   Responde en streaming (Server-Sent Events), por eso no pasa por apiFetch,
+   que espera JSON y corta a los 15 s. Devuelve la Response cruda para que el
+   route handler app/api/copiloto/chat/route.ts reenvie el cuerpo tal cual.
+   Solo se llama desde el servidor: lleva el token del usuario.
+   --------------------------------------------------------------------------- */
+
+export type MensajeCopiloto = { readonly rol: "usuario" | "asistente"; readonly texto: string };
+
+export const copilotoApi = {
+    chat: (
+        cuerpo: { readonly mensaje: string; readonly historial: readonly MensajeCopiloto[] },
+        { token, signal }: { readonly token: string; readonly signal: AbortSignal },
+    ): Promise<Response> =>
+        fetch(`${API_BASE_URL}/copiloto/chat`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "text/event-stream",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(cuerpo),
+            signal,
+            cache: "no-store",
+        }),
+};
+
 /**
  * Mensajes que el backend escribio para la persona usuaria.
  *

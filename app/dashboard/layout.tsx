@@ -1,6 +1,7 @@
 import Sidebar from "@/components/Sidebar";
 import { CerrarSesionBoton } from "@/components/CerrarSesionBoton";
 import { SelectorEmpresa } from "@/components/dashboard/SelectorEmpresa";
+import { CopilotoFlotante } from "@/components/dashboard/copiloto/CopilotoFlotante";
 import { Icon } from "@/components/ui/Icon";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { redirect } from "next/navigation";
@@ -84,6 +85,9 @@ export default async function DashboardLayout({
                     {children}
                 </main>
             </div>
+            {/* En todas las pantallas del panel. La empresa como key: al cambiarla, la
+                conversacion empieza de cero porque hablaba de otros datos. */}
+            <CopilotoFlotante key={idEmpresaActual ?? "sin-empresa"} />
         </div>
     );
 }

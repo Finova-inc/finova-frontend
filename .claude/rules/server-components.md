@@ -24,4 +24,4 @@ Next 16 difiere de versiones anteriores. Ante la duda, lee la guía en `node_mod
   - Los `loading.tsx` de pantallas lentas usan `EsperaConLimite`, que avisa a los 10 s que el servicio está despertando.
 - **Roles en la UI:** `puedeRegistrar(rol)` (`lib/roles.ts`) solo decide si se muestra un botón o un formulario. La autorización real la hace el backend, que responde 403.
 - **Datos de ejemplo:** si algo se muestra sin backend, el mock va centralizado en un archivo de `lib/` y el componente lleva una `Etiqueta` de tono `demo`. Nunca mezcles datos falsos sin rotular con datos reales.
-- **Módulos pendientes** (`auditoria`, `copiloto`): usan `PantallaPendiente`, y lo que muestran lo ve el usuario. `lib/textos-internos.test.mjs` impide filtrar notas del equipo o endpoints en esas pantallas.
+- **Módulos pendientes** (hoy `auditoria`): usan `PantallaPendiente`, y lo que muestran lo ve el usuario. `lib/textos-internos.test.mjs` impide filtrar notas del equipo o endpoints en esas pantallas.

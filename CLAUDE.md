@@ -41,10 +41,10 @@ Interfaz web de Finova, un SaaS contable multiempresa para PYMEs chilenas.
 ## Mapa del repo
 - **`app/`:**
   - Landing `/`, `login`, `recuperar`, `restablecer`.
-  - `api/auth/{login,logout}/route.ts`.
-  - `dashboard/`: panel con layout que exige sesión.
+  - `api/auth/{login,logout}/route.ts` y `api/copiloto/chat/route.ts` (puente en streaming con el chat del copiloto).
+  - `dashboard/`: panel con layout que exige sesión. El layout monta el Copiloto IA flotante (`components/dashboard/copiloto/`, beta, solo lectura; lógica pura en `lib/copiloto.ts` y `lib/texto-enriquecido.ts`).
     - Módulos reales: `core-contable` (libro diario, el más completo y el patrón de referencia), `libro-mayor`, `balance`, `plan-cuentas`, `periodos`, `documentos` (importación del SII), `terceros`, `f29`, `contabilizacion`, `usuarios`, `parametros`.
-    - Pendientes, con `PantallaPendiente`: `auditoria`, `copiloto`.
+    - Pendiente, con `PantallaPendiente`: `auditoria`.
     - Las empresas se gestionan en el popup `components/dashboard/SelectorEmpresa.tsx`, con las acciones en `app/dashboard/acciones-empresa.ts`.
 - **`lib/`:**
   - `api.ts`: única capa de datos y tipos de la API.

@@ -46,7 +46,6 @@ const VISTAS: readonly (readonly [RegExp, Vista])[] = [
     [/^\/dashboard\/terceros\/[^/]+$/, { nombre: "el tercero", volverA: "/dashboard/terceros" }],
     [/^\/dashboard\/terceros$/, { nombre: "los terceros", volverA: "/dashboard" }],
     [/^\/dashboard\/usuarios$/, { nombre: "los usuarios", volverA: "/dashboard" }],
-    [/^\/dashboard\/copiloto$/, { nombre: "el Copiloto IA", volverA: "/dashboard" }],
     [/^\/dashboard\/auditoria$/, { nombre: "la auditoría", volverA: "/dashboard" }],
     [/^\/dashboard$/, { nombre: "el panel de control", volverA: "/dashboard" }],
 ];
