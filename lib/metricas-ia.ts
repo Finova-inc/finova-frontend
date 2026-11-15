@@ -104,3 +104,19 @@ export function simular(e: {
     const ingresoNetoClp = usuarios * netoSinIva(e.precioPorUsuarioClp);
     return { costoIaClp, ingresoNetoClp, porcentajeIa: porcentaje(costoIaClp, ingresoNetoClp) };
 }
+
+/** Cantidad de usuarios del simulador: entero de 1 a 10.000 (acepta puntos de miles). */
+export function leerUsuarios(texto: string): number | null {
+    const limpio = texto.trim().replace(/\./g, "");
+    if (!/^\d+$/.test(limpio)) return null;
+    const usuarios = Number(limpio);
+    return usuarios >= 1 && usuarios <= 10000 ? usuarios : null;
+}
+
+/** Precio por usuario en pesos enteros, de $1 a $99.999.999 (acepta "$" y puntos de miles). */
+export function leerPrecio(texto: string): bigint | null {
+    const limpio = texto.trim().replace(/^\$/, "").replace(/\./g, "");
+    if (!/^\d{1,8}$/.test(limpio)) return null;
+    const precio = BigInt(limpio);
+    return precio > BigInt(0) ? precio : null;
+}

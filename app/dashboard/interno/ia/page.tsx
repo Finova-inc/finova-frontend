@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { GraficoGastoDiario } from "@/components/dashboard/metricas-ia/GraficoGastoDiario";
+import { SimuladorIa } from "@/components/dashboard/metricas-ia/SimuladorIa";
 import { TablasMetricas } from "@/components/dashboard/metricas-ia/TablasMetricas";
 import { TarjetasResumen } from "@/components/dashboard/metricas-ia/TarjetasResumen";
 import { Boton } from "@/components/ui/Boton";
@@ -93,6 +94,18 @@ export default async function CostosIaPage({ searchParams }: { searchParams: Pro
                     <TablasMetricas metricas={metricas} />
                 </>
             )}
+
+            <Panel>
+                <PanelCabecera titulo="Simulador" nota="Costo de IA contra lo que pagarían los usuarios" />
+                <SimuladorIa
+                    costoPorPreguntaMicroUsd={
+                        metricas.totales.preguntas > 0 ? metricas.totales.promedio_por_pregunta.costo_micro_usd : null
+                    }
+                    tokensPorPregunta={metricas.totales.promedio_por_pregunta.tokens}
+                    topeDiarioTokens={supuestos.tope_diario_tokens}
+                    dolar={supuestos.dolar.valor}
+                />
+            </Panel>
 
             <p className="text-[12px] text-[var(--foreground-muted)]">
                 Supuestos:{" "}
