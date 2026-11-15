@@ -1550,6 +1550,65 @@ export const periodosApi = {
 
 export type MensajeCopiloto = { readonly rol: "usuario" | "asistente"; readonly texto: string };
 
+export type ResultadoUsoCopiloto =
+    | "completo"
+    | "rechazo"
+    | "respuesta_cortada"
+    | "limite_vueltas"
+    | "cancelado"
+    | "error"
+    | "tope_diario"
+    | "rafaga";
+
+/**
+ * GET /copiloto/metricas (solo equipo Finova). Montos como string: micro-dólares
+ * (`*_micro_usd`) o pesos enteros (`*_clp`). Espejo de MetricasCopiloto del backend.
+ */
+export type MetricasCopiloto = {
+    readonly mes: string;
+    readonly dias_del_mes: number;
+    readonly dias_transcurridos: number;
+    readonly supuestos: {
+        readonly dolar: { readonly valor: string; readonly fecha: string | null; readonly fuente: "mindicador.cl" | "respaldo" };
+        readonly presupuesto_micro_usd: string | null;
+        readonly modelo: string;
+        readonly tope_diario_tokens: number;
+    };
+    readonly totales: {
+        readonly costo_micro_usd: string;
+        readonly costo_clp: string;
+        readonly preguntas: number;
+        readonly usuarios: number;
+        readonly empresas: number;
+        readonly tokens: {
+            readonly entrada: number;
+            readonly salida: number;
+            readonly cache_escrita: number;
+            readonly cache_leida: number;
+        };
+        readonly promedio_por_pregunta: { readonly costo_micro_usd: string; readonly tokens: number };
+    };
+    readonly proyeccion_micro_usd: string;
+    readonly por_dia: readonly { readonly fecha: string; readonly costo_micro_usd: string; readonly preguntas: number }[];
+    readonly resultados: Readonly<Record<ResultadoUsoCopiloto, number>>;
+    readonly topes: { readonly veces: number; readonly usuarios: number };
+    readonly herramientas: readonly { readonly nombre: string; readonly usos: number }[];
+    readonly empresas: readonly {
+        readonly razon_social: string;
+        readonly costo_micro_usd: string;
+        readonly costo_clp: string;
+        readonly preguntas: number;
+        readonly usuarios: number;
+    }[];
+    readonly usuarios: readonly {
+        readonly etiqueta: string;
+        readonly razon_social: string;
+        readonly costo_micro_usd: string;
+        readonly preguntas: number;
+        readonly topes: number;
+    }[];
+};
+
 export const copilotoApi = {
     chat: (
         cuerpo: { readonly mensaje: string; readonly historial: readonly MensajeCopiloto[] },
@@ -1566,6 +1625,9 @@ export const copilotoApi = {
             signal,
             cache: "no-store",
         }),
+    /** Solo para el equipo Finova: a cualquier otra persona el backend le responde 404. */
+    metricas: (mes: string | undefined, opciones?: ApiFetchOptions) =>
+        api.get<MetricasCopiloto>(`/copiloto/metricas${consulta({ mes })}`, opciones),
 };
 
 /**

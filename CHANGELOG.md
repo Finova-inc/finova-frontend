@@ -14,8 +14,10 @@ dependen del backend, se anotan en su propio apartado.
 
 ### Agregado
 - Copiloto IA (beta): botón flotante en todas las pantallas del panel que abre un chat (también desde «Copiloto IA» en el menú). Responde en streaming preguntas sobre saldos, libro mayor, balance y asientos de la empresa activa, con preguntas sugeridas, botón Detener y formato simple (negrita y listas). La conversación se mantiene al navegar y empieza de cero al cambiar de empresa. Reemplaza la pantalla «Próximamente» de `/dashboard/copiloto`, que se elimina. El navegador le habla a `/api/copiloto/chat`, que agrega el token desde la cookie y reenvía la respuesta del backend (FIN-xx pendiente).
+- `/dashboard/interno/ia`: página interna de costos de IA para el equipo Finova (gasto del mes en dólares y pesos, proyección contra presupuesto, gasto por día, cómo terminan las respuestas, topes, herramientas, empresas y usuarios anónimos que más gastan, y un simulador por usuarios y precio). No está en el menú ni se indexa; a quien no es del equipo le muestra el 404 del panel (FIN-xx pendiente).
 
 ### Dependencias del backend
+- `GET /copiloto/metricas` (responde solo a los RUT de `FINOVA_EQUIPO_RUTS`).
 - `POST /copiloto/chat` (módulo `copiloto` del backend, con `ANTHROPIC_API_KEY` configurada).
 
 ### Cambiado

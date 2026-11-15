@@ -12,38 +12,38 @@
  * components/landing/PricingSection.tsx: Finova no sabe qué plan paga cada
  * empresa, así que la página compara contra este.
  */
-export const PRECIO_PLAN_ESTUDIO_CLP = 49900n;
+export const PRECIO_PLAN_ESTUDIO_CLP = BigInt(49900);
 
 /** Preguntas al mes por usuario, según cuánto usa el copiloto (días hábiles). */
 export const PREGUNTAS_POR_PERFIL = { ligero: 110, medio: 330, intenso: 660 } as const;
 
 /** Estimación del 2026-11-14, para simular mientras no hay preguntas medidas. */
-export const COSTO_ESTIMADO_POR_PREGUNTA_MICRO_USD = 1700n;
+export const COSTO_ESTIMADO_POR_PREGUNTA_MICRO_USD = BigInt(1700);
 
 const TOKENS_POR_PREGUNTA_ESTIMADOS = 13000;
-const IVA_PORCENTAJE = 19n;
+const IVA_PORCENTAJE = BigInt(19);
 
 function separarMiles(digitos: string): string {
     return digitos.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
-/** "945.32" → 94532n. */
+/** "945.32" → BigInt(94532). */
 function aCentavos(dolar: string): bigint {
     const partes = /^(\d+)(?:\.(\d{1,2}))?$/.exec(dolar);
     if (!partes) throw new Error(`Valor de dólar inválido: ${dolar}`);
-    return BigInt(partes[1]) * 100n + BigInt((partes[2] ?? "").padEnd(2, "0"));
+    return BigInt(partes[1]) * BigInt(100) + BigInt((partes[2] ?? "").padEnd(2, "0"));
 }
 
 /** Micro-dólares a pesos enteros, redondeando al peso más cercano. */
 export function microUsdAPesos(microUsd: bigint, dolar: string): bigint {
-    const divisor = 100_000_000n;
-    return (microUsd * aCentavos(dolar) + divisor / 2n) / divisor;
+    const divisor = BigInt(100000000);
+    return (microUsd * aCentavos(dolar) + divisor / BigInt(2)) / divisor;
 }
 
 /** Precio con IVA a neto, redondeado al peso. */
 export function netoSinIva(bruto: bigint): bigint {
-    const divisor = 100n + IVA_PORCENTAJE;
-    return (bruto * 100n + divisor / 2n) / divisor;
+    const divisor = BigInt(100) + IVA_PORCENTAJE;
+    return (bruto * BigInt(100) + divisor / BigInt(2)) / divisor;
 }
 
 /**
@@ -52,20 +52,20 @@ export function netoSinIva(bruto: bigint): bigint {
  */
 export function formatearUsd(microUsd: string): string {
     const micro = BigInt(microUsd);
-    if (micro >= 10_000n || micro === 0n) {
-        const centavos = (micro + 5_000n) / 10_000n;
-        const entero = separarMiles((centavos / 100n).toString());
-        return `US$${entero},${(centavos % 100n).toString().padStart(2, "0")}`;
+    if (micro >= BigInt(10000) || micro === BigInt(0)) {
+        const centavos = (micro + BigInt(5000)) / BigInt(10000);
+        const entero = separarMiles((centavos / BigInt(100)).toString());
+        return `US$${entero},${(centavos % BigInt(100)).toString().padStart(2, "0")}`;
     }
-    const diezmilesimos = (micro + 50n) / 100n;
+    const diezmilesimos = (micro + BigInt(50)) / BigInt(100);
     return `US$0,${diezmilesimos.toString().padStart(4, "0")}`;
 }
 
 /** Porcentaje con un decimal y coma: "1,3%". Sin total, un guion. */
 export function porcentaje(parte: bigint, total: bigint): string {
-    if (total === 0n) return "—";
-    const decimas = (parte * 1000n + total / 2n) / total;
-    return `${decimas / 10n},${decimas % 10n}%`;
+    if (total === BigInt(0)) return "—";
+    const decimas = (parte * BigInt(1000) + total / BigInt(2)) / total;
+    return `${decimas / BigInt(10)},${decimas % BigInt(10)}%`;
 }
 
 export type EstadoPresupuesto = "sin-presupuesto" | "dentro" | "excedido";

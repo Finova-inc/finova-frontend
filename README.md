@@ -182,6 +182,7 @@ Son cosas distintas y se confunden con facilidad. `public/` se sirve tal cual en
 | `/dashboard/terceros` | ✅ Real | Libreta de clientes y proveedores, con sugerencias desde los documentos del SII, ficha con actividad y descarga de datos personales (Ley 21.719). |
 | `/dashboard/usuarios` | ✅ Real | Miembros de la empresa: agregar, cambiar rol y quitar acceso (administrador). |
 | Copiloto IA (flotante, en todo el panel) | 🧪 Beta | `components/dashboard/copiloto/`, montado en `app/dashboard/layout.tsx`. Chat en streaming vía `/api/copiloto/chat` → `POST /copiloto/chat`. Solo consulta el core contable. Sin `ANTHROPIC_API_KEY` en el backend muestra que no está disponible. Arquitectura y límites: `finova-backend/docs/MODULO-COPILOTO.md`. |
+| `/dashboard/interno/ia` | 🔒 Interna | Costos de IA del copiloto, solo para el equipo Finova (`FINOVA_EQUIPO_RUTS` en el backend). No está en el menú ni se indexa; al resto le muestra el 404. |
 | `/dashboard/auditoria` | 🚧 Pendiente | `PantallaPendiente`. Ya tiene endpoint en el backend. |
 
 Los botones que registran se ocultan al rol "consulta" leyendo el rol del JWT (`obtenerRolDelToken`). Es solo presentación: el backend responde 403 igual si alguien fuerza la llamada.
