@@ -18,6 +18,7 @@ dependen del backend, se anotan en su propio apartado.
 
 ### Dependencias del backend
 - `GET /copiloto/metricas` (responde solo a los RUT de `FINOVA_EQUIPO_RUTS`).
+- `GET /copiloto/estado` y `POST /copiloto/valoracion`. `POST /copiloto/chat` debe aceptar `pantalla` y un historial de 20 mensajes: el backend se despliega primero, porque el anterior rechaza esos campos con 400.
 - `POST /copiloto/chat` (módulo `copiloto` del backend, con `ANTHROPIC_API_KEY` configurada).
 
 ### Cambiado

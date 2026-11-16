@@ -1548,7 +1548,21 @@ export const periodosApi = {
    Solo se llama desde el servidor: lleva el token del usuario.
    --------------------------------------------------------------------------- */
 
-export type MensajeCopiloto = { readonly rol: "usuario" | "asistente"; readonly texto: string };
+/** `pantalla`: lo que la persona tenía abierto al preguntar; solo en los mensajes del usuario. */
+export type MensajeCopiloto = {
+    readonly rol: "usuario" | "asistente";
+    readonly texto: string;
+    readonly pantalla?: string;
+};
+
+/** GET /copiloto/estado: si hay API key y cuánto del tope diario lleva gastado el usuario. */
+export type EstadoCopiloto = {
+    readonly disponible: boolean;
+    readonly tokens_hoy: number;
+    readonly tope_diario: number;
+};
+
+export type ValorValoracionCopiloto = "util" | "no_util" | null;
 
 export type ResultadoUsoCopiloto =
     | "completo"
@@ -1586,12 +1600,19 @@ export type MetricasCopiloto = {
             readonly cache_escrita: number;
             readonly cache_leida: number;
         };
-        readonly promedio_por_pregunta: { readonly costo_micro_usd: string; readonly tokens: number };
+        readonly promedio_por_pregunta: {
+            readonly costo_micro_usd: string;
+            readonly tokens: number;
+            /** Promedio con el criterio del tope diario (la lectura de caché cuenta 10%). */
+            readonly tokens_tope: number;
+        };
     };
     readonly proyeccion_micro_usd: string;
     readonly por_dia: readonly { readonly fecha: string; readonly costo_micro_usd: string; readonly preguntas: number }[];
     readonly resultados: Readonly<Record<ResultadoUsoCopiloto, number>>;
     readonly topes: { readonly veces: number; readonly usuarios: number };
+    /** Respuestas marcadas como útiles o no útiles (sin texto). */
+    readonly valoraciones: { readonly utiles: number; readonly no_utiles: number };
     readonly herramientas: readonly { readonly nombre: string; readonly usos: number }[];
     readonly empresas: readonly {
         readonly razon_social: string;
@@ -1611,7 +1632,11 @@ export type MetricasCopiloto = {
 
 export const copilotoApi = {
     chat: (
-        cuerpo: { readonly mensaje: string; readonly historial: readonly MensajeCopiloto[] },
+        cuerpo: {
+            readonly mensaje: string;
+            readonly historial: readonly MensajeCopiloto[];
+            readonly pantalla?: string;
+        },
         { token, signal }: { readonly token: string; readonly signal: AbortSignal },
     ): Promise<Response> =>
         fetch(`${API_BASE_URL}/copiloto/chat`, {
@@ -1625,6 +1650,10 @@ export const copilotoApi = {
             signal,
             cache: "no-store",
         }),
+    estado: (opciones?: ApiFetchOptions) => api.get<EstadoCopiloto>("/copiloto/estado", opciones),
+    /** Marca una respuesta propia; el backend responde 404 si la fila no es de quien valora. */
+    valorar: (cuerpo: { readonly id_uso: string; readonly valor: ValorValoracionCopiloto }, opciones?: ApiFetchOptions) =>
+        api.post<{ ok: true }>("/copiloto/valoracion", cuerpo, opciones),
     /** Solo para el equipo Finova: a cualquier otra persona el backend le responde 404. */
     metricas: (mes: string | undefined, opciones?: ApiFetchOptions) =>
         api.get<MetricasCopiloto>(`/copiloto/metricas${consulta({ mes })}`, opciones),
