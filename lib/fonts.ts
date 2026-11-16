@@ -5,49 +5,29 @@
  * nuestro propio dominio, sin request a Google, y con el CSS de @font-face
  * generado en build para que no haya salto de layout al cargar.
  *
- * ---------------------------------------------------------------------------
- * NOTA SOBRE STYRENE
- * ---------------------------------------------------------------------------
- * El brief original pedía Styrene. Es una tipografía comercial de Commercial
- * Type: no está en Google Fonts y requiere licencia pagada, así que no se puede
- * incluir en el repositorio.
+ * - Newsreader: titulares del panel y de la landing, y la serifa editorial del
+ *   hero. Es una serifa de texto con eje de tamaño óptico: se lee bien a 15 px
+ *   y se ve elegante a 80 px.
+ * - Inter: cuerpo e interfaz. Altura-x alta y cifras tabulares, para que los
+ *   montos y los RUT no se muevan al actualizarse.
  *
- * Space Grotesk es el reemplazo elegido por cercanía real, no por conveniencia:
- * comparte con Styrene la construcción de grotesca geométrica, los bowls
- * ligeramente cuadrados y el aire técnico algo irregular en las diagonales.
- *
- * Para migrar a Styrene cuando exista la licencia:
- *   1. Copiar los .woff2 a app/fonts/
- *   2. Reemplazar el bloque de displayFont por:
- *
- *      import localFont from "next/font/local";
- *
- *      const displayFont = localFont({
- *          src: [
- *              { path: "../app/fonts/StyreneA-Regular.woff2", weight: "400", style: "normal" },
- *              { path: "../app/fonts/StyreneA-Medium.woff2",  weight: "500", style: "normal" },
- *              { path: "../app/fonts/StyreneA-Bold.woff2",    weight: "700", style: "normal" },
- *          ],
- *          variable: "--font-space-grotesk",
- *          display: "swap",
- *      });
- *
- * El resto del proyecto no cambia: globals.css mapea esa variable al token
- * --font-display de Tailwind, y los componentes solo usan la utilidad
- * font-display. Nunca se referencia el nombre de la familia directamente.
+ * Los componentes no nombran la familia: usan las utilidades font-display,
+ * font-serif y font-sans, que globals.css mapea a estas variables. Para cambiar
+ * una tipografía se edita aquí y en globals.css, y nada más.
  */
 
-import { Instrument_Serif, Inter, Space_Grotesk } from "next/font/google";
+import { Inter, Newsreader } from "next/font/google";
 
 /**
- * Tipografía de titulares.
+ * Titulares y serifa editorial.
  *
  * Se expone como variable CSS en vez de className para poder combinarla con la
- * de cuerpo en el mismo <html> y elegir cuál aplica desde Tailwind.
+ * de cuerpo en el mismo <html> y elegir cuál aplica desde Tailwind. Va en
+ * <html> y no solo en la landing porque el panel también usa los titulares.
  */
-export const displayFont = Space_Grotesk({
+export const displayFont = Newsreader({
     subsets: ["latin"],
-    variable: "--font-space-grotesk",
+    variable: "--font-newsreader",
     display: "swap",
 });
 
@@ -60,20 +40,6 @@ export const displayFont = Space_Grotesk({
 export const bodyFont = Inter({
     subsets: ["latin"],
     variable: "--font-inter",
-    display: "swap",
-});
-
-/**
- * Serifa editorial, SOLO para el titular del hero de la landing.
- *
- * Su variable se aplica en el envoltorio .landing de app/page.tsx y no en
- * <html>: así next/font la precarga únicamente en "/", y el panel y el login
- * no descargan una fuente que no usan.
- */
-export const serifFont = Instrument_Serif({
-    subsets: ["latin"],
-    weight: "400",
-    variable: "--font-instrument-serif",
     display: "swap",
 });
 

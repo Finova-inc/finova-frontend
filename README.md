@@ -214,9 +214,8 @@ En oscuro, la superficie elevada es `#1E1A17` y el texto `#F4F1EC`; en claro, `#
 La landing suma una paleta de destacadores (`--hl-*`) y su propio tema oscuro.
 
 **Tipografía** (`lib/fonts.ts`), autohospedada por `next/font`, sin petición a Google desde el navegador:
-- **Space Grotesk:** titulares (`font-display`).
+- **Newsreader:** titulares (`font-display`) y la serifa editorial del hero de la landing (`font-serif`).
 - **Inter:** cuerpo e interfaz (`font-sans`), por sus cifras tabulares.
-- **Instrument Serif:** solo el titular del hero de la landing.
 
 El brief original pedía **Styrene**, que es comercial; `lib/fonts.ts` documenta cómo migrar si algún día se compra.
 

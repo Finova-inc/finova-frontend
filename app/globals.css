@@ -27,17 +27,17 @@
    ========================================================================== */
 @theme {
     /* Tipografías.
-       next/font expone --font-space-grotesk y --font-inter (ver lib/fonts.ts).
+       next/font expone --font-newsreader y --font-inter (ver lib/fonts.ts).
        Aquí se mapean a los tokens que consume Tailwind, de modo que queden
        disponibles las utilidades font-display y font-sans.
 
        Los nombres de origen y destino son distintos a propósito: si ambos se
        llamaran --font-display, la variable se referenciaría a sí misma y la
        declaración quedaría inválida. */
-    --font-display: var(--font-space-grotesk), system-ui, sans-serif;
+    --font-display: var(--font-newsreader), Georgia, serif;
     --font-sans: var(--font-inter), system-ui, sans-serif;
-    /* Solo el titular del hero (lib/fonts.ts, serifFont). */
-    --font-serif: var(--font-instrument-serif), Georgia, serif;
+    /* Serifa editorial del hero: la misma familia que los titulares. */
+    --font-serif: var(--font-newsreader), Georgia, serif;
 
     /* ----------------------------------------------------------------------
        Paleta base
@@ -294,15 +294,6 @@
    tengan contra qué brillar. Va por :has() para que también lo tome el body;
    la especificidad (0,2,0) le gana a .dark sin !important, y el panel y el
    login conservan su tema. */
-/* La serifa del titular se carga solo en la landing: su variable vive en el
-   envoltorio .landing (app/page.tsx), no en <html>. Por eso --font-serif se
-   vuelve a declarar aquí. El de @theme se resuelve en :root, donde la
-   variable de la fuente no existe; la declaración queda inválida y todo cae
-   en Inter sin ningún error visible. */
-.landing {
-    --font-serif: var(--font-instrument-serif), Georgia, serif;
-}
-
 .dark:has(.landing) {
     --background: #0e0b09;
     --background-raised: #17120f;

@@ -21,6 +21,7 @@ dependen del backend, se anotan en su propio apartado.
 - `POST /copiloto/chat` (módulo `copiloto` del backend, con `ANTHROPIC_API_KEY` configurada).
 
 ### Cambiado
+- Tipografía: los titulares del panel y de la landing, y la serifa del hero, usan Newsreader (antes Space Grotesk e Instrument Serif). El cuerpo sigue en Inter (FIN-xx pendiente).
 - Documentación para el equipo: `docs/HERRAMIENTAS-CLAUDE.md` (plugins y skills personales con su instalación y uso en Finova) y `.claude/settings.json` declara los plugins `superpowers` y `claude-mem` para que Claude Code los ofrezca al abrir el repo (FIN-xx pendiente).
 
 ## 2026-11-04 — PR #13

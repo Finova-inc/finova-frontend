@@ -8,7 +8,6 @@ import { SiteFooter } from "@/components/landing/SiteFooter";
 import { SiteHeader } from "@/components/landing/SiteHeader";
 import { TrustSection } from "@/components/landing/TrustSection";
 import { Reveal } from "@/components/ui/Reveal";
-import { serifFont } from "@/lib/fonts";
 
 /**
  * Página de inicio de Finova.
@@ -19,8 +18,7 @@ import { serifFont } from "@/lib/fonts";
  *
  * El envoltorio .landing activa el tema oscuro propio de la landing
  * (globals.css, `.dark:has(.landing)`); `contents` hace que no exista como
- * caja, así que no altera el layout del body. También lleva la variable de la
- * serifa del titular, para que next/font la precargue solo en esta página.
+ * caja, así que no altera el layout del body.
  *
  * Detalle importante sobre Reveal: las secciones se pasan como `children` desde
  * aquí, que es un componente de servidor. Así siguen renderizándose en el
@@ -32,7 +30,7 @@ import { serifFont } from "@/lib/fonts";
  */
 export default function LandingPage() {
     return (
-        <div className={`${serifFont.variable} landing contents`}>
+        <div className="landing contents">
             <SiteHeader />
 
             <main className="flex-1">

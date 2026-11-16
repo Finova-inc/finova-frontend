@@ -10,7 +10,7 @@ import { HeroDemo } from "@/components/landing/HeroDemo";
  * dashboard (HeroDemo). Sin botones: la acción de entrar vive en el header.
  * El fondo es el de la página (papel / negro cálido) con halos de color.
  *
- * El titular va en serifa editorial (Instrument Serif, solo aquí) y se pinta
+ * El titular va en serifa editorial (Newsreader) y se pinta
  * de inmediato, sin animación: con un fade desde opacity 0 la página se veía
  * vacía un instante y se sentía lenta. El resto entra con soft-in, corto y con
  * retrasos mínimos.

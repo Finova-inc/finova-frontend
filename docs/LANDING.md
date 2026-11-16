@@ -41,12 +41,12 @@ así que se usaron fuentes libres.
 
 | Rol | Fuente | Razón |
 |---|---|---|
-| Titulares | **Space Grotesk** | Comparte con Styrene la construcción de grotesca geométrica, los bowls ligeramente cuadrados y el aire técnico algo irregular en las diagonales. |
+| Titulares y serifa del hero | **Newsreader** (desde 2026-11-16) | Serifa de texto con eje de tamaño óptico: se lee a 15 px en el panel y se ve editorial a 80 px en el hero. Reemplazó a Space Grotesk, que era el reemplazo de Styrene, y a Instrument Serif. |
 | Cuerpo e interfaz | **Inter** | Altura-x alta y cifras tabulares reales, necesarias en una interfaz llena de montos y RUT. |
 
-`lib/fonts.ts` documenta la ruta exacta de migración a Styrene si se compra la
-licencia: se cambian tres líneas y nada más, porque los componentes consumen la
-utilidad `font-display`, nunca el nombre de la familia.
+Si algún día se compra la licencia de Styrene, el cambio está en `lib/fonts.ts` y
+`app/globals.css`: los componentes consumen las utilidades `font-display` y
+`font-serif`, nunca el nombre de la familia.
 
 ### 2.2 Paleta: el naranjo y el amarillo tienen una razón
 
@@ -68,8 +68,8 @@ las acciones y el amarillo resalta la palabra clave del titular.
 Ningún fondo es blanco ni negro puro: los dos temas comparten una temperatura
 cálida, porque sobre un neutro frío el naranjo se veía sucio. La landing suma
 una paleta de destacadores (`--hl-*`: naranjo, amarillo, menta, rosa, celeste,
-lila) y su propio tema oscuro. El titular del hero usa **Instrument Serif**,
-cargada solo en `/`.
+lila) y su propio tema oscuro. El titular del hero usa **Newsreader**, la misma
+familia que los titulares del panel.
 
 ### 2.3 Las imágenes de referencia
 
