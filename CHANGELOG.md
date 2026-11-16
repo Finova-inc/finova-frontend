@@ -21,6 +21,7 @@ dependen del backend, se anotan en su propio apartado.
 - `POST /copiloto/chat` (módulo `copiloto` del backend, con `ANTHROPIC_API_KEY` configurada).
 
 ### Cambiado
+- Copiloto IA: el historial que acompaña a cada pregunta se recorta por bloques de 10 mensajes (viajan entre 10 y 19) y con un presupuesto de 24.000 caracteres, para que el modelo reutilice su caché en conversaciones largas (FIN-xx pendiente).
 - Tipografía: los titulares del panel y de la landing, y la serifa del hero, usan Newsreader (antes Space Grotesk e Instrument Serif). El cuerpo sigue en Inter (FIN-xx pendiente).
 - Documentación para el equipo: `docs/HERRAMIENTAS-CLAUDE.md` (plugins y skills personales con su instalación y uso en Finova) y `.claude/settings.json` declara los plugins `superpowers` y `claude-mem` para que Claude Code los ofrezca al abrir el repo (FIN-xx pendiente).
 
