@@ -6,7 +6,7 @@ import { Icon } from "@/components/ui/Icon";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { redirect } from "next/navigation";
 import { ApiError, authApi, type EmpresaDelUsuario } from "@/lib/api";
-import { exigirTokenSesion, obtenerEmpresaDelToken } from "@/lib/session";
+import { exigirTokenSesion, obtenerEmpresaDelToken, obtenerUsuarioDelToken } from "@/lib/session";
 
 /* ============================================================================
    Estructura del panel: barra lateral fija + cabecera pegajosa + lienzo.
@@ -32,6 +32,8 @@ export default async function DashboardLayout({
 }>) {
     const token = await exigirTokenSesion();
     const idEmpresaActual = await obtenerEmpresaDelToken();
+    // Solo para la clave con que el copiloto guarda la conversacion en el navegador.
+    const idUsuario = await obtenerUsuarioDelToken();
 
     // Un fallo aquí no debe tumbar el panel: sin empresas el selector
     // simplemente no se dibuja, y el resto de la pantalla sigue funcionando.
@@ -87,7 +89,11 @@ export default async function DashboardLayout({
             </div>
             {/* En todas las pantallas del panel. La empresa como key: al cambiarla, la
                 conversacion empieza de cero porque hablaba de otros datos. */}
-            <CopilotoFlotante key={idEmpresaActual ?? "sin-empresa"} />
+            <CopilotoFlotante
+                key={idEmpresaActual ?? "sin-empresa"}
+                idUsuario={idUsuario}
+                idEmpresa={idEmpresaActual}
+            />
         </div>
     );
 }

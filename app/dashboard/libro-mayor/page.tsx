@@ -11,6 +11,7 @@
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ContextoCopiloto } from "@/components/dashboard/copiloto/ContextoCopiloto";
 import { Etiqueta } from "@/components/ui/Etiqueta";
 import { Panel, PanelCabecera } from "@/components/ui/Panel";
 import { ApiError, asientosApi, cuentasApi, type LibroMayor } from "@/lib/api";
@@ -146,6 +147,7 @@ export default async function LibroMayorPage({ searchParams }: { searchParams: P
                 <Aviso tono="critico">{error}</Aviso>
             ) : mayor.status === "fulfilled" && mayor.value ? (
                 <>
+                    <ContextoCopiloto detalle={`cuenta ${mayor.value.cuenta.codigo} ${mayor.value.cuenta.nombre}`} />
                     <TablaMayor mayor={mayor.value} />
                     {conAnalitico ? <DetalleAnalitico mayor={mayor.value} /> : null}
                 </>

@@ -179,7 +179,7 @@ export default function Sidebar() {
                                             type="button"
                                             onClick={() => {
                                                 setAbierto(false);
-                                                abrirCopiloto();
+                                                abrirCopiloto("ampliado");
                                             }}
                                             className="mx-2.5 flex items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[13.5px] transition-colors hover:bg-[var(--sidebar-hover)]"
                                         >

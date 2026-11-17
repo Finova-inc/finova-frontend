@@ -1,56 +1,136 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent, type KeyboardEvent } from "react";
 import { Boton } from "@/components/ui/Boton";
 import { Etiqueta } from "@/components/ui/Etiqueta";
 import { Icon } from "@/components/ui/Icon";
+import type { EstadoCopiloto } from "@/lib/api";
 import {
     armarHistorial,
     etiquetaHerramienta,
     leerEventosSse,
     MAX_MENSAJE,
     mensajeDeError,
+    preguntasRestantes,
+    sugerenciasPara,
     validarPregunta,
 } from "@/lib/copiloto";
+import {
+    claveDeMemoria,
+    guardarMemoria,
+    leerMemoria,
+    type Almacen,
+    type MensajeGuardado,
+    type Valoracion,
+} from "@/lib/copiloto-memoria";
+import { describirPantalla } from "@/lib/copiloto-pantalla";
+import { formatearFecha } from "@/lib/formato";
+import { valorarRespuesta } from "./acciones";
+import { leerDetalle, suscribir } from "./contexto-pantalla";
+import type { ModoCopiloto } from "./eventos";
 import { BurbujaAsistente, BurbujaUsuario, Sugerencias, type MensajeVista } from "./partes";
 
 /* ============================================================================
    Chat del copiloto, dentro del panel flotante (CopilotoFlotante).
 
    Le habla a /api/copiloto/chat (mismo sitio; el route handler agrega el
-   token) y lee la respuesta a medida que llega. Sigue montado aunque el panel
-   este cerrado: asi la conversacion sobrevive a abrir y cerrar, y una
-   respuesta en curso termina igual. Vive solo en memoria: se pierde al
-   recargar y al cambiar de empresa.
+   token) y lee la respuesta a medida que llega. Se monta la primera vez que se
+   abre el panel y despues sigue montado aunque se cierre: asi una respuesta en
+   curso termina igual.
+
+   La conversacion se guarda en el navegador (lib/copiloto-memoria.ts), por
+   usuario y empresa: vuelve al recargar y se borra con "Nueva conversacion",
+   al cerrar sesion o a los 7 dias. El servidor nunca guarda el texto.
+
+   El tablero para escribir flota sobre la lista (vidrio al 30%): los mensajes
+   pasan por detras, y la lista lleva relleno abajo para que el ultimo no quede
+   tapado.
    ========================================================================== */
 
+/** Sin borde ni fondo propios: el foco se marca en el tablero completo (.copiloto-tablero). */
 const CAMPO =
-    "w-full resize-none rounded-lg border border-[var(--border-strong)] bg-[var(--background)] px-3 py-2 text-[13.5px] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)]";
+    "w-full resize-none bg-transparent px-1.5 py-1 text-[13.5px] text-[var(--foreground)] outline-none placeholder:text-[var(--foreground-muted)] disabled:cursor-not-allowed";
 
 /** Si quien lee esta a menos de esto del final, la respuesta nueva lo arrastra hacia abajo. */
 const MARGEN_PEGADO_PX = 80;
 
+/** Desde cuantas preguntas restantes el aviso cambia de tono. */
+const POCAS_PREGUNTAS = 3;
+
 type ChatCopilotoProps = {
     /** Para llevar el foco al cuadro de texto cada vez que se abre el panel. */
     readonly abierto: boolean;
+    readonly modo: ModoCopiloto;
+    readonly alCambiarModo: () => void;
     readonly alCerrar: () => void;
     /** Avisa que termino una respuesta (para marcar el boton si el panel esta cerrado). */
     readonly alResponder: () => void;
+    readonly idUsuario: string | null;
+    readonly idEmpresa: string | null;
 };
 
-export function ChatCopiloto({ abierto, alCerrar, alResponder }: ChatCopilotoProps) {
+/** localStorage, o null si el navegador no deja usarlo (modo privado, bloqueado). */
+function almacen(): Almacen | null {
+    try {
+        return window.localStorage;
+    } catch {
+        return null;
+    }
+}
+
+function aGuardados(mensajes: readonly MensajeVista[]): MensajeGuardado[] {
+    return mensajes
+        .filter((m) => m.estado === "listo")
+        .map(({ id, rol, texto, aviso, pantalla, idUso, valoracion }) => ({
+            id,
+            rol,
+            texto,
+            aviso,
+            ...(pantalla ? { pantalla } : {}),
+            ...(idUso ? { idUso } : {}),
+            ...(valoracion ? { valoracion } : {}),
+        }));
+}
+
+export function ChatCopiloto({ abierto, modo, alCambiarModo, alCerrar, alResponder, idUsuario, idEmpresa }: ChatCopilotoProps) {
     const router = useRouter();
-    const [mensajes, setMensajes] = useState<MensajeVista[]>([]);
+    const ruta = usePathname();
+    const parametros = useSearchParams();
+    const detalle = useSyncExternalStore(suscribir, leerDetalle, () => null);
+    const clave = claveDeMemoria(idUsuario, idEmpresa);
+
+    // Se lee una sola vez, al montar, y el montaje ocurre solo en el navegador.
+    const [guardada] = useState(() => leerMemoria(almacen(), clave, new Date()));
+    const [restauradaEl, setRestauradaEl] = useState<string | null>(guardada?.guardadoEn ?? null);
+    const [mensajes, setMensajes] = useState<MensajeVista[]>(() =>
+        (guardada?.mensajes ?? []).map((m) => ({ ...m, estado: "listo", consultando: null })),
+    );
     const [entrada, setEntrada] = useState("");
     const [errorEntrada, setErrorEntrada] = useState<string | null>(null);
-    const siguienteId = useRef(0);
+    const [estado, setEstado] = useState<EstadoCopiloto | null>(null);
+    /** Lo que costaron las preguntas de esta sesion, para estimar cuantas quedan. */
+    const [medida, setMedida] = useState({ preguntas: 0, tokens: 0 });
     const controlador = useRef<AbortController | null>(null);
     const lista = useRef<HTMLDivElement>(null);
     const pegadoAbajo = useRef(true);
     const campo = useRef<HTMLTextAreaElement>(null);
+    const recienMontado = useRef(true);
 
     const respondiendo = mensajes.some((m) => m.estado === "respondiendo");
+    const pantalla = describirPantalla(ruta, Object.fromEntries(parametros.entries()), detalle);
+    const ampliado = modo === "ampliado";
+
+    const noDisponible = estado !== null && !estado.disponible;
+    const restantes = estado
+        ? preguntasRestantes(
+              estado.tokens_hoy,
+              estado.tope_diario,
+              medida.preguntas > 0 ? medida.tokens / medida.preguntas : 0,
+          )
+        : null;
+    const sinPreguntas = restantes === 0;
+    const bloqueado = noDisponible || sinPreguntas;
 
     // Al cambiar de empresa (el componente se remonta) o cerrar sesion, se corta la respuesta en curso.
     useEffect(() => () => controlador.current?.abort(), []);
@@ -61,10 +141,36 @@ export function ChatCopiloto({ abierto, alCerrar, alResponder }: ChatCopilotoPro
 
     useEffect(() => {
         if (pegadoAbajo.current && lista.current) lista.current.scrollTop = lista.current.scrollHeight;
-    }, [mensajes, abierto]);
+    }, [mensajes, abierto, modo]);
+
+    // Cuanto queda del tope diario: se pregunta al abrir y despues lo actualiza cada respuesta.
+    useEffect(() => {
+        if (!abierto) return;
+        const corte = new AbortController();
+        fetch("/api/copiloto/estado", { signal: corte.signal })
+            .then((respuesta) => (respuesta.ok ? (respuesta.json() as Promise<EstadoCopiloto>) : null))
+            .then((datos) => {
+                if (datos) setEstado(datos);
+            })
+            .catch(() => {
+                // Sin estado no se muestra el aviso; el servidor igual aplica el tope.
+            });
+        return () => corte.abort();
+    }, [abierto]);
+
+    // Se guarda al terminar cada respuesta, no mientras llega el texto. La primera
+    // pasada se salta: reescribir lo recien leido le renovaria el vencimiento.
+    useEffect(() => {
+        if (recienMontado.current) {
+            recienMontado.current = false;
+            return;
+        }
+        if (respondiendo) return;
+        guardarMemoria(almacen(), clave, aGuardados(mensajes), new Date());
+    }, [mensajes, respondiendo, clave]);
 
     async function enviar(pregunta: string) {
-        if (respondiendo) return;
+        if (respondiendo || bloqueado) return;
         const error = validarPregunta(pregunta);
         if (error) {
             setErrorEntrada(error);
@@ -72,11 +178,12 @@ export function ChatCopiloto({ abierto, alCerrar, alResponder }: ChatCopilotoPro
         }
         const texto = pregunta.trim();
         const historial = armarHistorial(mensajes.filter((m) => m.estado === "listo"));
-        const idPregunta = siguienteId.current++;
-        const idRespuesta = siguienteId.current++;
+        const idPregunta = mensajes.length > 0 ? mensajes[mensajes.length - 1].id + 1 : 0;
+        const idRespuesta = idPregunta + 1;
+        const conPantalla = pantalla ? { pantalla } : {};
         setMensajes((previos) => [
             ...previos,
-            { id: idPregunta, rol: "usuario", texto, estado: "listo", consultando: null, aviso: null },
+            { id: idPregunta, rol: "usuario", texto, estado: "listo", consultando: null, aviso: null, ...conPantalla },
             { id: idRespuesta, rol: "asistente", texto: "", estado: "respondiendo", consultando: null, aviso: null },
         ]);
         setEntrada("");
@@ -92,7 +199,7 @@ export function ChatCopiloto({ abierto, alCerrar, alResponder }: ChatCopilotoPro
             const respuesta = await fetch("/api/copiloto/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ mensaje: texto, historial }),
+                body: JSON.stringify({ mensaje: texto, historial, ...conPantalla }),
                 signal: corte.signal,
             });
             if (respuesta.status === 401) {
@@ -125,7 +232,19 @@ export function ChatCopiloto({ abierto, alCerrar, alResponder }: ChatCopilotoPro
                         actualizar(() => ({ consultando: etiquetaHerramienta(evento.nombre) }));
                     } else if (evento.tipo === "fin") {
                         termino = true;
-                        actualizar(() => ({ estado: "listo", consultando: null, aviso: evento.aviso }));
+                        actualizar(() => ({
+                            estado: "listo",
+                            consultando: null,
+                            aviso: evento.aviso,
+                            ...(evento.id_uso ? { idUso: evento.id_uso } : {}),
+                        }));
+                        const { tokens_hoy: tokensHoy, tokens_pregunta: tokensPregunta } = evento;
+                        if (tokensHoy !== undefined) {
+                            setEstado((previo) => (previo ? { ...previo, tokens_hoy: tokensHoy } : previo));
+                        }
+                        if (tokensPregunta !== undefined && tokensPregunta > 0) {
+                            setMedida((m) => ({ preguntas: m.preguntas + 1, tokens: m.tokens + tokensPregunta }));
+                        }
                     } else {
                         termino = true;
                         actualizar(() => ({ estado: "error", consultando: null, aviso: evento.mensaje }));
@@ -168,9 +287,36 @@ export function ChatCopiloto({ abierto, alCerrar, alResponder }: ChatCopilotoPro
     function nuevaConversacion() {
         controlador.current?.abort();
         setMensajes([]);
+        setRestauradaEl(null);
         setErrorEntrada(null);
+        // El efecto de guardado no corre si habia una respuesta a medias: se borra aqui.
+        guardarMemoria(almacen(), clave, [], new Date());
         campo.current?.focus();
     }
+
+    // La marca se pinta de inmediato y se revierte si el servidor no la guardo.
+    function valorar(idMensaje: number, valor: Valoracion | null) {
+        const mensaje = mensajes.find((m) => m.id === idMensaje);
+        if (!mensaje?.idUso) return;
+        const anterior = mensaje.valoracion;
+        const marcar = (marca: Valoracion | undefined) =>
+            setMensajes((previos) => previos.map((m) => (m.id === idMensaje ? { ...m, valoracion: marca } : m)));
+        marcar(valor ?? undefined);
+        valorarRespuesta(mensaje.idUso, valor)
+            .then((resultado) => {
+                if (!resultado.ok) marcar(anterior);
+            })
+            .catch(() => marcar(anterior));
+    }
+
+    const ayuda = errorEntrada
+        ? errorEntrada
+        : noDisponible
+          ? "El copiloto no está disponible en este servidor"
+          : sinPreguntas
+            ? "Llegaste al límite de hoy. Vuelve mañana."
+            : "Enter envía · Shift + Enter, nueva línea";
+    const ancho = ampliado ? "mx-auto w-full max-w-[720px]" : "";
 
     return (
         <div className="flex h-full min-h-0 flex-col">
@@ -195,80 +341,126 @@ export function ChatCopiloto({ abierto, alCerrar, alResponder }: ChatCopilotoPro
                         <Icon name="undo" className="size-4" />
                     </Boton>
                 )}
+                {/* En el celular los dos tamaños son pantalla completa: no hay nada que cambiar. */}
+                <span className="max-sm:hidden">
+                    <Boton
+                        variante="fantasma"
+                        soloIcono
+                        onClick={alCambiarModo}
+                        aria-label={ampliado ? "Achicar el copiloto" : "Agrandar el copiloto"}
+                        title={ampliado ? "Achicar" : "Agrandar"}
+                    >
+                        <Icon name={ampliado ? "collapse" : "expand"} className="size-4" />
+                    </Boton>
+                </span>
                 <Boton variante="fantasma" soloIcono onClick={alCerrar} aria-label="Cerrar el copiloto" title="Cerrar">
                     <Icon name="close" className="size-4" />
                 </Boton>
             </div>
 
-            <div
-                ref={lista}
-                role="log"
-                aria-label="Conversación con el copiloto"
-                aria-busy={respondiendo}
-                onScroll={(evento) => {
-                    const el = evento.currentTarget;
-                    pegadoAbajo.current = el.scrollHeight - el.scrollTop - el.clientHeight < MARGEN_PEGADO_PX;
-                }}
-                className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 py-4"
-            >
-                {mensajes.length === 0 ? (
-                    <Sugerencias alElegir={(pregunta) => void enviar(pregunta)} />
-                ) : (
-                    mensajes.map((m) =>
-                        m.rol === "usuario" ? (
-                            <BurbujaUsuario key={m.id} texto={m.texto} />
-                        ) : (
-                            <BurbujaAsistente key={m.id} mensaje={m} />
-                        ),
-                    )
-                )}
-            </div>
-
-            <form onSubmit={alEnviar} className="border-t border-[var(--border-subtle)] p-3">
-                <label htmlFor="pregunta-copiloto" className="sr-only">
-                    Tu pregunta para el copiloto
-                </label>
-                <div className="flex items-end gap-2">
-                    <textarea
-                        id="pregunta-copiloto"
-                        ref={campo}
-                        rows={2}
-                        maxLength={MAX_MENSAJE}
-                        value={entrada}
-                        onChange={(evento) => {
-                            setEntrada(evento.target.value);
-                            if (errorEntrada) setErrorEntrada(null);
-                        }}
-                        onKeyDown={alPresionarTecla}
-                        placeholder="Pregunta por saldos, movimientos o el balance…"
-                        aria-describedby="ayuda-copiloto"
-                        aria-invalid={errorEntrada !== null}
-                        className={CAMPO}
-                    />
-                    {respondiendo ? (
-                        <Boton soloIcono onClick={() => controlador.current?.abort()} aria-label="Detener la respuesta" title="Detener">
-                            <Icon name="close" className="size-4" />
-                        </Boton>
-                    ) : (
-                        <Boton
-                            type="submit"
-                            variante="acento"
-                            soloIcono
-                            disabled={entrada.trim() === ""}
-                            aria-label="Enviar la pregunta"
-                            title="Enviar"
-                        >
-                            <Icon name="arrowRight" className="size-4" />
-                        </Boton>
-                    )}
-                </div>
-                <p
-                    id="ayuda-copiloto"
-                    className={`mt-1.5 text-[11px] ${errorEntrada ? "text-[var(--critico)]" : "text-[var(--foreground-muted)]"}`}
+            <div className="relative flex min-h-0 flex-1 flex-col">
+                <div
+                    ref={lista}
+                    role="log"
+                    aria-label="Conversación con el copiloto"
+                    aria-busy={respondiendo}
+                    onScroll={(evento) => {
+                        const el = evento.currentTarget;
+                        pegadoAbajo.current = el.scrollHeight - el.scrollTop - el.clientHeight < MARGEN_PEGADO_PX;
+                    }}
+                    className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-40 pt-4"
                 >
-                    {errorEntrada ?? "Enter envía · Shift + Enter, nueva línea"}
-                </p>
-            </form>
+                    <div className={`flex flex-1 flex-col gap-5 ${ancho}`}>
+                        {mensajes.length === 0 ? (
+                            <Sugerencias preguntas={sugerenciasPara(ruta)} alElegir={(pregunta) => void enviar(pregunta)} />
+                        ) : (
+                            <>
+                                {restauradaEl && (
+                                    <p className="text-center text-[11.5px] text-[var(--foreground-muted)]">
+                                        Conversación guardada en este navegador el {formatearFecha(restauradaEl)}.
+                                    </p>
+                                )}
+                                {mensajes.map((m) =>
+                                    m.rol === "usuario" ? (
+                                        <BurbujaUsuario key={m.id} texto={m.texto} />
+                                    ) : (
+                                        <BurbujaAsistente key={m.id} mensaje={m} alValorar={valorar} />
+                                    ),
+                                )}
+                            </>
+                        )}
+                    </div>
+                </div>
+
+                <div className="pointer-events-none absolute inset-x-3 bottom-3">
+                    <form onSubmit={alEnviar} className={`copiloto-tablero pointer-events-auto p-2.5 ${ancho}`}>
+                        {pantalla && (
+                            <p className="mb-1 truncate px-1.5 text-[11px] text-[var(--foreground-muted)]" title={pantalla}>
+                                Viendo: {pantalla}
+                            </p>
+                        )}
+                        <label htmlFor="pregunta-copiloto" className="sr-only">
+                            Tu pregunta para el copiloto
+                        </label>
+                        <div className="flex items-end gap-2">
+                            <textarea
+                                id="pregunta-copiloto"
+                                ref={campo}
+                                rows={2}
+                                maxLength={MAX_MENSAJE}
+                                value={entrada}
+                                disabled={bloqueado}
+                                onChange={(evento) => {
+                                    setEntrada(evento.target.value);
+                                    if (errorEntrada) setErrorEntrada(null);
+                                }}
+                                onKeyDown={alPresionarTecla}
+                                placeholder="Pregunta por saldos, movimientos o el balance…"
+                                aria-describedby="ayuda-copiloto"
+                                aria-invalid={errorEntrada !== null}
+                                className={CAMPO}
+                            />
+                            {respondiendo ? (
+                                <Boton soloIcono onClick={() => controlador.current?.abort()} aria-label="Detener la respuesta" title="Detener">
+                                    <Icon name="close" className="size-4" />
+                                </Boton>
+                            ) : (
+                                <Boton
+                                    type="submit"
+                                    variante="acento"
+                                    soloIcono
+                                    disabled={bloqueado || entrada.trim() === ""}
+                                    aria-label="Enviar la pregunta"
+                                    title="Enviar"
+                                >
+                                    <Icon name="arrowRight" className="size-4" />
+                                </Boton>
+                            )}
+                        </div>
+                        <div className="mt-1 flex items-baseline justify-between gap-3 px-1.5 text-[11px]">
+                            <p
+                                id="ayuda-copiloto"
+                                className={
+                                    errorEntrada || bloqueado ? "text-[var(--critico)]" : "text-[var(--foreground-muted)]"
+                                }
+                            >
+                                {ayuda}
+                            </p>
+                            {restantes !== null && restantes > 0 && !noDisponible && (
+                                <p
+                                    className={`shrink-0 ${
+                                        restantes <= POCAS_PREGUNTAS
+                                            ? "font-medium text-[var(--critico)]"
+                                            : "text-[var(--foreground-muted)]"
+                                    }`}
+                                >
+                                    {restantes === 1 ? "Te queda 1 pregunta hoy" : `Te quedan unas ${restantes} preguntas hoy`}
+                                </p>
+                            )}
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     );
 }

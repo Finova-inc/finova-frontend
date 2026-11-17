@@ -3,6 +3,11 @@
 
 export const EVENTO_ABRIR_COPILOTO = "finova:abrir-copiloto";
 
-export function abrirCopiloto(): void {
-    window.dispatchEvent(new Event(EVENTO_ABRIR_COPILOTO));
+/** "compacto": el panel chico de la esquina. "ampliado": la ventana grande sobre la pantalla. */
+export type ModoCopiloto = "compacto" | "ampliado";
+
+export type DetalleAbrirCopiloto = { readonly modo: ModoCopiloto };
+
+export function abrirCopiloto(modo: ModoCopiloto = "compacto"): void {
+    window.dispatchEvent(new CustomEvent<DetalleAbrirCopiloto>(EVENTO_ABRIR_COPILOTO, { detail: { modo } }));
 }

@@ -1,6 +1,6 @@
 import { Boton } from "@/components/ui/Boton";
 import { Icon } from "@/components/ui/Icon";
-import { PREGUNTAS_SUGERIDAS } from "@/lib/copiloto";
+import type { Valoracion } from "@/lib/copiloto-memoria";
 import { interpretarTexto, type Fragmento } from "@/lib/texto-enriquecido";
 
 /* Piezas de presentacion del chat del copiloto. Sin estado: lo maneja ChatCopiloto. */
@@ -16,6 +16,11 @@ export type MensajeVista = {
     readonly consultando: string | null;
     /** Nota bajo la respuesta (detenida, incompleta) o el error si estado es "error". */
     readonly aviso: string | null;
+    /** Pantalla abierta al preguntar (mensajes del usuario). */
+    readonly pantalla?: string;
+    /** Fila de uso de la respuesta, para valorarla (mensajes del asistente). */
+    readonly idUso?: string;
+    readonly valoracion?: Valoracion;
 };
 
 function Fragmentos({ fragmentos }: { readonly fragmentos: readonly Fragmento[] }) {
@@ -73,8 +78,19 @@ export function BurbujaUsuario({ texto }: { readonly texto: string }) {
     );
 }
 
-export function BurbujaAsistente({ mensaje }: { readonly mensaje: MensajeVista }) {
+const BOTON_VALORAR =
+    "grid size-7 place-items-center rounded-md text-[var(--foreground-muted)] transition-colors hover:bg-[var(--background-raised)] hover:text-[var(--foreground)] aria-pressed:bg-[var(--background-raised)] aria-pressed:text-[var(--accent)]";
+
+type BurbujaAsistenteProps = {
+    readonly mensaje: MensajeVista;
+    /** Pulsar el boton ya marcado quita la marca (null). */
+    readonly alValorar: (idMensaje: number, valor: Valoracion | null) => void;
+};
+
+export function BurbujaAsistente({ mensaje, alValorar }: BurbujaAsistenteProps) {
     const esperando = mensaje.estado === "respondiendo" && (mensaje.consultando !== null || mensaje.texto === "");
+    const valorable = mensaje.estado === "listo" && mensaje.idUso !== undefined;
+    const alternar = (valor: Valoracion) => alValorar(mensaje.id, mensaje.valoracion === valor ? null : valor);
     return (
         <div className="flex max-w-[92%] gap-3">
             <div
@@ -102,12 +118,42 @@ export function BurbujaAsistente({ mensaje }: { readonly mensaje: MensajeVista }
                         {mensaje.aviso}
                     </p>
                 )}
+                {valorable && (
+                    <div className="mt-1.5 flex gap-1">
+                        <button
+                            type="button"
+                            onClick={() => alternar("util")}
+                            aria-pressed={mensaje.valoracion === "util"}
+                            aria-label="Respuesta útil"
+                            title="Útil"
+                            className={BOTON_VALORAR}
+                        >
+                            <Icon name="thumbUp" className="size-3.5" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => alternar("no_util")}
+                            aria-pressed={mensaje.valoracion === "no_util"}
+                            aria-label="Respuesta no útil"
+                            title="No útil"
+                            className={BOTON_VALORAR}
+                        >
+                            <Icon name="thumbDown" className="size-3.5" />
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );
 }
 
-export function Sugerencias({ alElegir }: { readonly alElegir: (pregunta: string) => void }) {
+type SugerenciasProps = {
+    /** Segun la pantalla abierta: ver sugerenciasPara. */
+    readonly preguntas: readonly string[];
+    readonly alElegir: (pregunta: string) => void;
+};
+
+export function Sugerencias({ preguntas, alElegir }: SugerenciasProps) {
     return (
         <div className="m-auto flex max-w-lg flex-col items-center gap-4 py-6 text-center">
             <div className="grid size-10 place-items-center rounded-lg bg-[var(--background-raised)] text-[var(--accent)]">
@@ -122,7 +168,7 @@ export function Sugerencias({ alElegir }: { readonly alElegir: (pregunta: string
                 </p>
             </div>
             <div className="flex flex-wrap justify-center gap-2">
-                {PREGUNTAS_SUGERIDAS.map((pregunta) => (
+                {preguntas.map((pregunta) => (
                     <Boton key={pregunta} onClick={() => alElegir(pregunta)}>
                         {pregunta}
                     </Boton>
