@@ -101,7 +101,7 @@ export default async function CostosIaPage({ searchParams }: { searchParams: Pro
                     costoPorPreguntaMicroUsd={
                         metricas.totales.preguntas > 0 ? metricas.totales.promedio_por_pregunta.costo_micro_usd : null
                     }
-                    tokensPorPregunta={metricas.totales.promedio_por_pregunta.tokens}
+                    tokensPorPregunta={metricas.totales.promedio_por_pregunta.tokens_tope}
                     topeDiarioTokens={supuestos.tope_diario_tokens}
                     dolar={supuestos.dolar.valor}
                 />

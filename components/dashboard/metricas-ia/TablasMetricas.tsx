@@ -46,6 +46,8 @@ function Tabla({ cabeceras, children }: { readonly cabeceras: readonly string[];
 export function TablasMetricas({ metricas }: { readonly metricas: MetricasCopiloto }) {
     const respondidas = RESULTADOS.reduce((suma, r) => suma + metricas.resultados[r.clave], 0);
     const netoPlan = netoSinIva(PRECIO_PLAN_ESTUDIO_CLP);
+    const { utiles, no_utiles } = metricas.valoraciones;
+    const valoradas = utiles + no_utiles;
 
     return (
         <div className="grid gap-4 lg:grid-cols-2">
@@ -67,6 +69,13 @@ export function TablasMetricas({ metricas }: { readonly metricas: MetricasCopilo
                         </tr>
                     ))}
                 </Tabla>
+                <p className="border-t border-[var(--border-subtle)] px-4 py-2.5 text-[12.5px] text-[var(--foreground-muted)]">
+                    {valoradas === 0
+                        ? "Sin valoraciones todavía"
+                        : `Valoraciones: ${utiles} ${utiles === 1 ? "útil" : "útiles"} · ${no_utiles} no ${
+                              no_utiles === 1 ? "útil" : "útiles"
+                          } (${porcentaje(BigInt(utiles), BigInt(valoradas))})`}
+                </p>
             </Panel>
 
             <Panel sinRelleno>
