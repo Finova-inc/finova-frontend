@@ -41,8 +41,8 @@ Interfaz web de Finova, un SaaS contable multiempresa para PYMEs chilenas.
 ## Mapa del repo
 - **`app/`:**
   - Landing `/`, `login`, `recuperar`, `restablecer`.
-  - `api/auth/{login,logout}/route.ts` y `api/copiloto/chat/route.ts` (puente en streaming con el chat del copiloto).
-  - `dashboard/`: panel con layout que exige sesión. El layout monta el Copiloto IA flotante (`components/dashboard/copiloto/`, beta, solo lectura; lógica pura en `lib/copiloto.ts` y `lib/texto-enriquecido.ts`).
+  - `api/auth/{login,logout}/route.ts` y `api/copiloto/{chat,estado}/route.ts` (puente en streaming con el chat del copiloto y su estado).
+  - `dashboard/`: panel con layout que exige sesión. El layout monta el Copiloto IA flotante (`components/dashboard/copiloto/`, beta, solo lectura), en dos tamaños: compacto (botón redondo) y ampliado (menú lateral). La conversación se guarda solo en el navegador. Una página le declara su contexto con `<ContextoCopiloto detalle="…" />`. Lógica pura en `lib/copiloto.ts`, `lib/copiloto-memoria.ts`, `lib/copiloto-pantalla.ts` y `lib/texto-enriquecido.ts`.
     - Módulos reales: `core-contable` (libro diario, el más completo y el patrón de referencia), `libro-mayor`, `balance`, `plan-cuentas`, `periodos`, `documentos` (importación del SII), `terceros`, `f29`, `contabilizacion`, `usuarios`, `parametros`.
     - Pendiente, con `PantallaPendiente`: `auditoria`.
     - Interna, fuera del menú: `interno/ia` (costos de IA, solo para el equipo Finova; el backend responde 404 al resto). Lógica en `lib/metricas-ia.ts`.
