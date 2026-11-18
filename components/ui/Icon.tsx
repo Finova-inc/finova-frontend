@@ -222,6 +222,29 @@ const ICON_PATHS = {
             <path d="M8 11V7a4 4 0 0 1 8 0v4" />
         </>
     ),
+    /** Abrir el copiloto en pantalla completa: flechas hacia las esquinas. */
+    expand: (
+        <>
+            <path d="M14 4h6v6" />
+            <path d="M20 4l-7 7" />
+            <path d="M10 20H4v-6" />
+            <path d="M4 20l7-7" />
+        </>
+    ),
+    /** Respuesta útil. */
+    thumbUp: (
+        <>
+            <path d="M7 10v11" />
+            <path d="M7 10l4-7a2.5 2.5 0 0 1 2.5 2.5V9h5a2 2 0 0 1 2 2.4l-1.4 7a2 2 0 0 1-2 1.6H4a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z" />
+        </>
+    ),
+    /** Respuesta no útil. */
+    thumbDown: (
+        <>
+            <path d="M17 14V3" />
+            <path d="M17 14l-4 7a2.5 2.5 0 0 1-2.5-2.5V15h-5a2 2 0 0 1-2-2.4l1.4-7a2 2 0 0 1 2-1.6H20a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1z" />
+        </>
+    ),
 } as const;
 
 /** Nombres válidos de icono. Tipar esto da autocompletado y error de compilación ante un typo. */

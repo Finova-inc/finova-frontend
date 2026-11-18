@@ -7,6 +7,7 @@
 
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { ContextoCopiloto } from "@/components/dashboard/copiloto/ContextoCopiloto";
 import { Panel } from "@/components/ui/Panel";
 import { Etiqueta } from "@/components/ui/Etiqueta";
 import { ApiError, asientosApi, type AsientoDetalle } from "@/lib/api";
@@ -60,6 +61,7 @@ export default async function DetalleAsientoPage({ params }: { params: Promise<{
 
     return (
         <div className="flex flex-col gap-4">
+            <ContextoCopiloto detalle={`asiento ${comprobante} del ${formatearFechaContable(asiento.fecha_contable)}`} />
             <Encabezado
                 titulo={`${NOMBRE_TIPO_COMPROBANTE[asiento.tipo_comprobante] ?? "Comprobante"} ${comprobante}`}
                 descripcion={asiento.glosa}

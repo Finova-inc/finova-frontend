@@ -27,6 +27,7 @@
  */
 
 import { conReintentos, esFalloTransitorio } from "./reintentos";
+import type { AvisosCopiloto } from "./copiloto";
 
 /** Se normaliza sin barra final para que unir rutas nunca produzca una doble barra. */
 function normalizeBaseUrl(rawUrl: string): string {
@@ -1537,6 +1538,134 @@ export const periodosApi = {
             { motivo },
             opciones,
         ),
+};
+
+/* ---------------------------------------------------------------------------
+   Copiloto IA (POST /copiloto/chat)
+
+   Responde en streaming (Server-Sent Events), por eso no pasa por apiFetch,
+   que espera JSON y corta a los 15 s. Devuelve la Response cruda para que el
+   route handler app/api/copiloto/chat/route.ts reenvie el cuerpo tal cual.
+   Solo se llama desde el servidor: lleva el token del usuario.
+   --------------------------------------------------------------------------- */
+
+/** `pantalla`: lo que la persona tenía abierto al preguntar; solo en los mensajes del usuario. */
+export type MensajeCopiloto = {
+    readonly rol: "usuario" | "asistente";
+    readonly texto: string;
+    readonly pantalla?: string;
+};
+
+/** GET /copiloto/estado: si hay API key y cuánto del tope diario lleva gastado el usuario. */
+export type EstadoCopiloto = {
+    readonly disponible: boolean;
+    readonly tokens_hoy: number;
+    readonly tope_diario: number;
+};
+
+export type ValorValoracionCopiloto = "util" | "no_util" | null;
+
+export type ResultadoUsoCopiloto =
+    | "completo"
+    | "rechazo"
+    | "respuesta_cortada"
+    | "limite_vueltas"
+    | "cancelado"
+    | "error"
+    | "tope_diario"
+    | "rafaga";
+
+/**
+ * GET /copiloto/metricas (solo equipo Finova). Montos como string: micro-dólares
+ * (`*_micro_usd`) o pesos enteros (`*_clp`). Espejo de MetricasCopiloto del backend.
+ */
+export type MetricasCopiloto = {
+    readonly mes: string;
+    readonly dias_del_mes: number;
+    readonly dias_transcurridos: number;
+    readonly supuestos: {
+        readonly dolar: { readonly valor: string; readonly fecha: string | null; readonly fuente: "mindicador.cl" | "respaldo" };
+        readonly presupuesto_micro_usd: string | null;
+        readonly modelo: string;
+        readonly tope_diario_tokens: number;
+    };
+    readonly totales: {
+        readonly costo_micro_usd: string;
+        readonly costo_clp: string;
+        readonly preguntas: number;
+        readonly usuarios: number;
+        readonly empresas: number;
+        readonly tokens: {
+            readonly entrada: number;
+            readonly salida: number;
+            readonly cache_escrita: number;
+            readonly cache_leida: number;
+        };
+        readonly promedio_por_pregunta: {
+            readonly costo_micro_usd: string;
+            readonly tokens: number;
+            /** Promedio con el criterio del tope diario (la lectura de caché cuenta 10%). */
+            readonly tokens_tope: number;
+        };
+    };
+    readonly proyeccion_micro_usd: string;
+    readonly por_dia: readonly { readonly fecha: string; readonly costo_micro_usd: string; readonly preguntas: number }[];
+    readonly resultados: Readonly<Record<ResultadoUsoCopiloto, number>>;
+    readonly topes: { readonly veces: number; readonly usuarios: number };
+    /** Respuestas marcadas como útiles o no útiles (sin texto). */
+    readonly valoraciones: { readonly utiles: number; readonly no_utiles: number };
+    /** Usos de cada herramienta y la valoracion de las respuestas que la usaron. */
+    readonly herramientas: readonly {
+        readonly nombre: string;
+        readonly usos: number;
+        readonly utiles: number;
+        readonly no_utiles: number;
+    }[];
+    readonly empresas: readonly {
+        readonly razon_social: string;
+        readonly costo_micro_usd: string;
+        readonly costo_clp: string;
+        readonly preguntas: number;
+        readonly usuarios: number;
+    }[];
+    readonly usuarios: readonly {
+        readonly etiqueta: string;
+        readonly razon_social: string;
+        readonly costo_micro_usd: string;
+        readonly preguntas: number;
+        readonly topes: number;
+    }[];
+};
+
+export const copilotoApi = {
+    chat: (
+        cuerpo: {
+            readonly mensaje: string;
+            readonly historial: readonly MensajeCopiloto[];
+            readonly pantalla?: string;
+        },
+        { token, signal }: { readonly token: string; readonly signal: AbortSignal },
+    ): Promise<Response> =>
+        fetch(`${API_BASE_URL}/copiloto/chat`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "text/event-stream",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(cuerpo),
+            signal,
+            cache: "no-store",
+        }),
+    estado: (opciones?: ApiFetchOptions) => api.get<EstadoCopiloto>("/copiloto/estado", opciones),
+    /** Borradores por revisar y estado del mes en curso, para sugerir preguntas. No consume tokens. */
+    avisos: (opciones?: ApiFetchOptions) => api.get<AvisosCopiloto>("/copiloto/avisos", opciones),
+    /** Marca una respuesta propia; el backend responde 404 si la fila no es de quien valora. */
+    valorar: (cuerpo: { readonly id_uso: string; readonly valor: ValorValoracionCopiloto }, opciones?: ApiFetchOptions) =>
+        api.post<{ ok: true }>("/copiloto/valoracion", cuerpo, opciones),
+    /** Solo para el equipo Finova: a cualquier otra persona el backend le responde 404. */
+    metricas: (mes: string | undefined, opciones?: ApiFetchOptions) =>
+        api.get<MetricasCopiloto>(`/copiloto/metricas${consulta({ mes })}`, opciones),
 };
 
 /**

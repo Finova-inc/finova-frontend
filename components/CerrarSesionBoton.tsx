@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Icon } from "@/components/ui/Icon";
+import { olvidarTodo } from "@/lib/copiloto-memoria";
 
 /**
  * Cierra la sesion y vuelve al login.
@@ -18,6 +19,13 @@ export function CerrarSesionBoton() {
 
     async function cerrarSesion() {
         setSaliendo(true);
+        // Las conversaciones del copiloto guardadas en este navegador no deben
+        // quedar para quien entre despues.
+        try {
+            olvidarTodo(window.localStorage);
+        } catch {
+            // Sin acceso al almacenamiento no hay nada guardado.
+        }
         try {
             await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
             router.replace("/login");

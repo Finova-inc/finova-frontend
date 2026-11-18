@@ -3,6 +3,13 @@
 Guía paso a paso para publicar `finova-frontend` en Vercel y dejarlo conversando
 con `finova-backend` (NestJS + PostgreSQL + Docker).
 
+> **Estado (2026-11-12):** todo el despliegue está hecho:
+> - frontend en `https://finova-frontend-livid.vercel.app`;
+> - backend en Render;
+> - base en Neon.
+>
+> Esta guía queda como runbook para rehacerlo (cuenta nueva, entorno de pruebas) o revisar la configuración. Los pasos ya resueltos en el código lo dicen en cada sección.
+
 ---
 
 ## 0. Lo primero: el backend NO va a Vercel
@@ -48,8 +55,9 @@ camino corto para el backend.
 | **D** | Conectar ambos: CORS, CSP, variables de entorno | 45 min |
 | **E** | Endurecer: dominio, ramas, protección de Preview | 1 h |
 
-Las fases A y B se pueden hacer hoy mismo: **el frontend despliega sin backend**,
-porque todo lo que hay hoy es estático.
+Las cinco fases ya están hechas. Si se rehace desde cero, el orden sigue siendo
+este: el frontend puede desplegarse antes que el backend (la landing es
+estática), pero el panel no funciona hasta completar la Fase D.
 
 ---
 
@@ -76,33 +84,23 @@ Solo debería aparecer `.env.example`. Si aparece un `.env` o `.env.local`, sác
 del historial **y rota cualquier credencial que contuviera** — borrarlo del
 último commit no lo borra del historial de GitHub.
 
-### A.3 Limpieza
+### A.3 Pruebas y lint
 
 ```bash
-git rm --cached mk.tmp.py && rm mk.tmp.py
+npm test && npm run lint
 ```
 
-Es un script temporal que quedó versionado por accidente.
+### A.4 Versión de Node
 
-### A.4 Fija la versión de Node
+Ya está fijada en `package.json` (`"engines": { "node": ">=20.0.0" }`), así que
+Vercel y tu máquina usan un runtime compatible. Para correr `npm test` en local
+hace falta Node ≥ 22.18.
 
-Añade a `package.json` para que Vercel y tu máquina usen el mismo runtime:
+### A.5 Integra por PR
 
-```json
-"engines": {
-    "node": ">=20.0.0"
-}
-```
-
-### A.5 Sube todo
-
-```bash
-git add -A
-git commit -m "Preparar despliegue: cliente de API, plantilla de entorno y CSP configurable"
-git push origin main
-```
-
-El repositorio ya apunta a `https://github.com/BrokenPeter16/finova-frontend.git`.
+El repositorio es `https://github.com/Finova-inc/finova-frontend`. El flujo del
+equipo es rama → PR a `development` → PR de `development` a `main`. **Cada merge
+a `main` despliega a producción**, así que no se hace push directo a `main`.
 
 ---
 
@@ -113,8 +111,8 @@ El repositorio ya apunta a `https://github.com/BrokenPeter16/finova-frontend.git
 1. Entra a [vercel.com](https://vercel.com) y crea la cuenta **con GitHub**. Eso
    ahorra el paso de conectar la integración después.
 2. **Add New → Project**.
-3. Importa `BrokenPeter16/finova-frontend`.
-haz 
+3. Importa `Finova-inc/finova-frontend`.
+
 ### B.2 Configuración de build
 
 Vercel detecta Next.js y rellena todo solo. **No cambies nada**:
@@ -141,8 +139,8 @@ En **Settings → Environment Variables**, define para los tres entornos
 | `NEXT_PUBLIC_API_URL` | `http://localhost:3001` |
 | `CSP_CONNECT_SRC` | *(déjala vacía o sin crear)* |
 
-Se corrigen en la Fase D, cuando exista la URL real del backend. Como todavía
-ninguna página llama a la API, no rompen nada.
+Se corrigen en la Fase D, cuando exista la URL real del backend. Hasta entonces
+la landing funciona, pero el login y el panel no pueden llegar a la API.
 
 ### B.4 Deploy
 
@@ -190,55 +188,23 @@ Opciones con plan gratuito razonable: **Neon**, **Supabase**, o el PostgreSQL
 gestionado del propio proveedor donde subas el backend. Todas entregan una
 cadena de conexión del tipo `postgresql://usuario:clave@host/base?sslmode=require`.
 
-### C.2 Corregir el backend antes de subirlo
+### C.2 Requisitos del backend para producción (ya cumplidos)
 
-Cuatro cambios en `finova-backend` que son obligatorios en producción:
+Esta sección pedía cuatro arreglos en `finova-backend`. Hoy están todos hechos, y
+el backend es la referencia: no copies código de esta guía.
 
-**1. Credenciales fuera del código.** Hoy `src/app.module.ts` tiene host, usuario
-y contraseña escritos fijos. Cámbialo a:
+1. **Credenciales fuera del código.** La conexión sale de `DATABASE_URL`, y en
+   producción se verifica el certificado TLS de Neon.
+2. **`synchronize: false` en todos los entornos.** No basta con apagarlo solo
+   en producción: un `.env` de desarrollo que apuntaba a Neon ya borró CHECK
+   reales. El esquema cambia solo con migraciones, que en producción corren al
+   arrancar.
+3. **CORS** con la lista explícita de `CORS_ORIGINS`, nunca `*`, y escucha en
+   `0.0.0.0` (`src/main.ts`).
+4. **Validación global** con `whitelist` y `forbidNonWhitelisted`: un campo
+   extra en el body devuelve 400.
 
-```ts
-TypeOrmModule.forRoot({
-    type: "postgres",
-    url: process.env.DATABASE_URL,
-    autoLoadEntities: true,
-    // NUNCA true en producción: synchronize altera el esquema en cada arranque
-    // y puede borrar columnas con datos. En producción se usan migraciones.
-    synchronize: process.env.NODE_ENV !== "production",
-    ssl: process.env.NODE_ENV === "production"
-        ? { rejectUnauthorized: false }
-        : false,
-})
-```
-
-**2. Habilitar CORS** en `src/main.ts` — sin esto el navegador bloquea toda
-respuesta del backend cuando la pide el dominio de Vercel:
-
-```ts
-const app = await NestFactory.create(AppModule);
-
-app.enableCors({
-    // Lista explícita, nunca "*": con credentials: true el comodín es inválido
-    // y el navegador rechaza la respuesta.
-    origin: (process.env.CORS_ORIGINS ?? "").split(",").filter(Boolean),
-    credentials: true,
-    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-});
-
-await app.listen(process.env.PORT ?? 3000, "0.0.0.0");
-```
-
-El `"0.0.0.0"` importa: dentro de un contenedor, escuchar en `localhost` deja el
-servicio inalcanzable desde fuera.
-
-**3. Validación de entrada global**, ya que `lib/api.ts` envía JSON:
-
-```ts
-app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
-```
-
-**4. Definir la entidad `Empresa`**, que hoy es una clase vacía. Mientras lo
-esté, `/empresas` no puede devolver datos reales.
+Detalle en el `README.md` del backend.
 
 ### C.3 Publicar
 
@@ -259,15 +225,18 @@ esté, `/empresas` no puede devolver datos reales.
 | `PORT` | lo inyecta Render solo (10000); `main.ts` ya lo respeta |
 | `JWT_SECRET` | lo genera Render (`generateValue: true`); no se escribe a mano |
 | `CORS_ORIGINS` | se rellena en la Fase D.1 |
+| `IP_FIRMA_SECRETO` | el mismo valor que en Vercel (Fase D.2); mínimo 32 caracteres |
+| `RESEND_API_KEY`, `MAIL_FROM`, `FRONTEND_URL` | no están en el Blueprint: se agregan en el panel. Sin ellas no sale el correo de recuperación de contraseña |
 
 La URL resultante es `https://finova-backend-qkq0.onrender.com`. Comprobación
 rápida de que quedó sano: `GET /health` responde
 `{"status":"ok","database":"conectada"}`.
 
 > **Plan free de Render:** el servicio se duerme tras ~15 min sin tráfico y la
-> siguiente petición tarda ~50 s. `lib/api.ts` aborta a los 15 s, así que el
-> primer login tras una pausa larga puede fallar por tiempo de espera y hay que
-> reintentar. Para uso real hace falta un plan de pago.
+> siguiente petición tarda ~50 s. `lib/api.ts` aborta cada intento a los 15 s,
+> pero las lecturas y el login se reintentan solos con espera creciente
+> (`lib/reintentos.ts`), y las pantallas lentas avisan que el servicio está
+> despertando. Para uso real hace falta un plan de pago.
 
 > Si prefieres usar el `docker-compose.yml` que ya existe, Fly.io o un VPS con
 > Docker son la vía. Es más control y más trabajo: te haces cargo del
@@ -308,8 +277,11 @@ En **Settings → Environment Variables**, ahora con los valores reales:
 |---|---|---|
 | `NEXT_PUBLIC_API_URL` | `https://finova-backend-qkq0.onrender.com` | igual, o una API de staging |
 | `CSP_CONNECT_SRC` | `https://finova-backend-qkq0.onrender.com` | igual |
+| `IP_FIRMA_SECRETO` | el mismo valor que en Render | igual |
 
-**Sin barra final** en ninguna de las dos.
+**Sin barra final** en las URLs. `IP_FIRMA_SECRETO` es solo de servidor: nunca
+con prefijo `NEXT_PUBLIC_`. Si falta o no coincide con el del backend, todos los
+visitantes comparten el mismo contador de intentos de login.
 
 ### D.3 Redespliega — esto no es opcional
 
@@ -340,7 +312,7 @@ Los tres fallos se parecen en el navegador y tienen causas distintas:
 | `Refused to connect ... violates Content Security Policy` | La CSP no autoriza el origen. La petición **no sale**. | `CSP_CONNECT_SRC` en Vercel + redespliegue |
 | `blocked by CORS policy` | El backend no autoriza el origen. La petición sale y vuelve, el navegador la descarta. | `CORS_ORIGINS` en el backend |
 | `Mixed Content: ... was loaded over HTTPS but requested an insecure resource` | El backend está en HTTP. | Poner HTTPS en el backend |
-| `ApiError: No se pudo contactar al servidor` | Backend caído, DNS mal, o URL con typo. | Comprueba con `verificarBackend()` o `curl` |
+| `ApiError: No se pudo contactar al servidor` | Backend caído o dormido, DNS mal, o URL con typo. | `curl https://<tu-backend>/health` |
 
 La distinción clave: **CSP bloquea antes de salir, CORS bloquea al volver.**
 
@@ -367,10 +339,14 @@ proyecto que va a mostrar datos contables, actívalo:
 | Rama | Entorno |
 |---|---|
 | `main` | Production |
-| cualquier otra | Preview, con su propia URL |
+| `development` y cualquier otra | Preview, con su propia URL |
 
-La disciplina que conviene al equipo: trabajar en ramas por historia de usuario,
-abrir PR, revisar en la URL de Preview, y recién ahí mezclar a `main`.
+El flujo del equipo:
+1. Trabajar en una rama por ticket (`feat/...`, `fix/...`).
+2. Abrir un PR a `development` y revisarlo en su URL de Preview.
+3. Pasar a `main` con un PR de `development` a `main`.
+
+El detalle está en `.claude/rules/pr.md`.
 
 ### E.4 Observabilidad
 
@@ -384,34 +360,34 @@ deployment: es el primer lugar donde mirar cuando algo falla en producción.
 
 **Antes de considerar el despliegue terminado:**
 
-- [ ] `npm run build` pasa localmente sin errores ni advertencias nuevas
+- [ ] `npm run build`, `npm test` y `npm run lint` pasan localmente
 - [ ] No hay archivos `.env` versionados (`git ls-files | grep .env`)
-- [ ] `mk.tmp.py` eliminado
 - [ ] La landing carga en la URL de Vercel
 - [ ] Las 6 cabeceras de seguridad aparecen en la respuesta
 - [ ] El tema persiste y no parpadea al recargar
 - [ ] `/login` se ve correcto en móvil y escritorio
 - [ ] Backend desplegado y respondiendo por HTTPS
-- [ ] `synchronize` desactivado en producción en el backend
-- [ ] Credenciales de PostgreSQL fuera del código
+- [ ] `GET /health` del backend responde `integridad: ok`
 - [ ] `CORS_ORIGINS` incluye el dominio exacto del frontend
 - [ ] `CSP_CONNECT_SRC` incluye el origen exacto del backend
+- [ ] `IP_FIRMA_SECRETO` es igual en Vercel y en Render
+- [ ] El correo de recuperación de contraseña llega (`RESEND_API_KEY`, `MAIL_FROM`, `FRONTEND_URL` en Render)
 - [ ] Redespliegue hecho **sin caché** después de cambiar variables
-- [ ] Los testimonios ficticios reemplazados o etiquetados como ejemplo
+- [ ] Login y panel funcionan contra el backend real
+- [ ] Las opiniones ficticias de la landing reemplazadas o etiquetadas como ejemplo
 
 ---
 
-## Anexo — Qué falta para que esto sea un producto, no una landing
+## Anexo — De landing a producto
 
-El despliegue de esta guía publica una landing y una maqueta de acceso. Para que
-el área privada sirva de algo, en orden:
+Este anexo listaba lo que faltaba para que el área privada sirviera. Hoy está
+todo hecho:
+- módulos dentro de `app/dashboard/`, con su barra lateral;
+- autenticación real con JWT en una cookie `httpOnly`, y `proxy.ts` protegiendo
+  el panel;
+- pantallas conectadas al backend;
+- migraciones de TypeORM en lugar de `synchronize`;
+- pruebas: Jest en el backend y `node --test` en el frontend.
 
-1. **Mover los módulos dentro de `app/dashboard/`** para que hereden el layout
-   con sidebar. Hoy `/empresas` se ve sin navegación (ver README, sección 6).
-2. **Autenticación real**: NestJS emite JWT, el frontend lo guarda en una cookie
-   `httpOnly` `Secure` `SameSite=Lax` —nunca en `localStorage`, que es legible
-   por cualquier script— y `proxy.ts` protege el subárbol privado.
-3. **Conectar la primera pantalla real** usando `empresasApi` de `lib/api.ts`,
-   una vez que la entidad `Empresa` exista en el backend.
-4. **Migraciones de TypeORM** en lugar de `synchronize`.
-5. **Pruebas con Jest**, que es la herramienta que el equipo ya definió para QA.
+Lo que queda pendiente está en la sección "Deuda técnica conocida" del
+`README.md`.

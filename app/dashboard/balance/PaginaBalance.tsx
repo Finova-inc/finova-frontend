@@ -10,6 +10,7 @@
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { BotonExplicar } from "@/components/dashboard/copiloto/BotonExplicar";
 import { Etiqueta } from "@/components/ui/Etiqueta";
 import { BotonCsv } from "@/components/ui/BotonCsv";
 import { Panel, PanelCabecera } from "@/components/ui/Panel";
@@ -194,6 +195,7 @@ function TablaBalance({
                                     <Link href={mayor(f.id_cuenta)} className="underline-offset-4 hover:text-[var(--accent)] hover:underline" title="Ver su libro mayor">
                                         <span className="tabular text-[var(--foreground-muted)]">{f.codigo}</span> {f.nombre}
                                     </Link>
+                                    <BotonExplicar pregunta={`¿Por qué la cuenta ${f.codigo} ${f.nombre} tiene este saldo en el período?`} />
                                 </td>
                                 {columnas.map((c, i) => (
                                     <td key={c.clave} className={`tabular px-3 py-2 text-right whitespace-nowrap ${ocho ? borde(i) : ""}`}>
@@ -243,7 +245,8 @@ function TablaBalance({
                         {!cuadra.sumas ? "El debe no suma lo mismo que el haber. " : ""}
                         {!cuadra.saldos ? "Los saldos deudores no suman lo mismo que los acreedores. " : ""}
                         {ocho && !cuadra.inventario_resultados ? "El resultado de Inventario no coincide con el de Resultados. " : ""}
-                        Revisa el libro diario del período.
+                        Revisa el libro diario del período.{" "}
+                        <BotonExplicar etiqueta="¿Dónde está el error?" pregunta="El balance de este período no cuadra. ¿Dónde está el error?" />
                     </Aviso>
                 </div>
             ) : null}

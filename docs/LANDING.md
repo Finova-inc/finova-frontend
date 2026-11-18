@@ -4,6 +4,13 @@ Este documento describe qué se construyó, cómo está organizado y qué práct
 de seguridad se aplicaron. Está pensado para que alguien que no participó en la
 implementación pueda revisarla o continuarla.
 
+> **Actualizado el 2026-11-12.** La landing se rediseñó el 2 y el 5 de octubre de 2026:
+> - header fijo que se compacta al hacer scroll;
+> - hero con una demo animada del panel;
+> - carrusel de módulos.
+>
+> Las secciones 2.6, 2.7, 3, 5.1, 6 y 8 ya describen ese estado. El resumen de la sección 1 es el de la primera entrega y se conserva como historia.
+
 ---
 
 ## 1. Resumen
@@ -34,12 +41,12 @@ así que se usaron fuentes libres.
 
 | Rol | Fuente | Razón |
 |---|---|---|
-| Titulares | **Space Grotesk** | Comparte con Styrene la construcción de grotesca geométrica, los bowls ligeramente cuadrados y el aire técnico algo irregular en las diagonales. |
+| Titulares y serifa del hero | **Newsreader** (desde 2026-11-16) | Serifa de texto con eje de tamaño óptico: se lee a 15 px en el panel y se ve editorial a 80 px en el hero. Reemplazó a Space Grotesk, que era el reemplazo de Styrene, y a Instrument Serif. |
 | Cuerpo e interfaz | **Inter** | Altura-x alta y cifras tabulares reales, necesarias en una interfaz llena de montos y RUT. |
 
-`lib/fonts.ts` documenta la ruta exacta de migración a Styrene si se compra la
-licencia: se cambian tres líneas y nada más, porque los componentes consumen la
-utilidad `font-display`, nunca el nombre de la familia.
+Si algún día se compra la licencia de Styrene, el cambio está en `lib/fonts.ts` y
+`app/globals.css`: los componentes consumen las utilidades `font-display` y
+`font-serif`, nunca el nombre de la familia.
 
 ### 2.2 Paleta: el naranjo y el amarillo tienen una razón
 
@@ -49,13 +56,20 @@ las acciones y el amarillo resalta la palabra clave del titular.
 
 | Token | Valor | Uso |
 |---|---|---|
-| `--color-ink` | `#0B0B0C` | Texto en claro, fondo en oscuro |
-| `--color-paper` | `#FFFFFF` | Fondo en claro |
-| `--color-bone` | `#F7F6F3` | Superficies elevadas en claro |
+| `--color-ink` | `#14110F` | Tinta café: texto en claro, fondo en oscuro |
+| `--color-paper` | `#FAF7F2` | Papel cálido: fondo en claro |
+| `--color-bone` | `#F1EBE1` | Papel sombreado: superficies elevadas en claro |
+| `--color-cream` | `#F7F4EC` | Barra de navegación |
 | `--color-marker` | `#FF6A1A` | Acento principal, botones |
 | `--color-marker-soft` | `#FF8642` | Igual, en tema oscuro (el naranjo puro vibra sobre negro) |
 | `--color-highlight` | `#FFC53D` | Resaltado de texto |
-| `--color-graphite` | `#6B6B70` | Texto secundario |
+| `--color-graphite` | `#6E6459` | Gris cálido: texto secundario |
+
+Ningún fondo es blanco ni negro puro: los dos temas comparten una temperatura
+cálida, porque sobre un neutro frío el naranjo se veía sucio. La landing suma
+una paleta de destacadores (`--hl-*`: naranjo, amarillo, menta, rosa, celeste,
+lila) y su propio tema oscuro. El titular del hero usa **Newsreader**, la misma
+familia que los titulares del panel.
 
 ### 2.3 Las imágenes de referencia
 
@@ -106,32 +120,44 @@ pantalla, no se traduce y no escala como tipografia real.
 
 ### 2.6 El header
 
-Color plano **blanco crema** (`--color-cream`, `#f7f4ec`), de ancho completo,
-esquinas rectas y sin transparencia ni desenfoque. Es el mismo en tema claro y
-oscuro: la barra funciona como elemento constante de la marca en vez de cambiar
-de identidad al alternar el tema.
+Header fijo, de ancho completo. Al hacer scroll se compacta: baja de alto y el
+nombre "Finova" se pliega hacia el logo.
+- `HeaderScroll` (cliente) solo escribe `data-compact` en el `<header>`. El
+  cambio de alto y el pliegue de las letras los hace CSS (`.wordmark-letter` y
+  las variantes `group-data-[compact=true]` de `SiteHeader`). Escribir un
+  atributo evita un re-render de React.
+- El botón de tema del header usa la variante `switch` de `ThemeToggle`: una
+  pastilla con sol, luna y una perilla deslizante. En el panel y el login se usa
+  la variante `icon`.
+- La acción de entrar vive en el header, no en el hero.
 
-Al ser opaca no necesita `backdrop-filter`, que es un filtro caro de recomponer
-en cada scroll.
+**Trampa de Lightning CSS** (el compilador de Tailwind v4): si
+`-webkit-backdrop-filter` va después de `backdrop-filter`, descarta la versión
+sin prefijo y Chrome queda sin desenfoque. El prefijo se declara siempre primero.
 
 ### 2.7 Elementos distintivos
 
-**La banda ASCII.** Entre el hero y la presentacion del producto hay una franja
-con el logotipo "FINOVA" dibujado en arte ASCII y un carrusel horizontal con los
-modulos contables, tambien en ASCII. Los modulos contables son, en el fondo, las
-columnas de un libro: el arte ASCII cita esa herencia del reporte de ancho fijo.
-El logo se genera a partir de una matriz de glifos, de modo que todas las filas
-miden exactamente lo mismo.
+**Demo animada en el hero (`HeroDemo`).** Bajo un titular centrado, una captura
+ancha del producto cuenta en 16 segundos cómo se contabiliza una factura.
+- Usa recursos de video explicativo: una "cámara" que hace zoom y paneo, un
+  cursor que hace clic y anillos de foco numerados.
+- Cierra con una cortina con la marca y el lema "Tu contabilidad, más fácil que
+  nunca.", detrás de la cual el panel se reinicia.
+- Mide todo en `em`, con un tamaño de fuente igual al ancho del contenedor
+  dividido por 80 (`cqw`), así escala sin JavaScript.
+- No muestra cifras reales a propósito: números concretos en una ilustración de
+  marketing se leen como datos reales.
 
-**Glassmorfismo invertido en el header.** La barra usa fondo translucido,
-`backdrop-filter` y un borde claro. El color se invierte con el tema: **naranjo
-en claro, blanco en oscuro**, de modo que siempre contrasta con la pagina. Se
-gobierna con las variables `--header-*` de `globals.css`.
+**Carrusel de módulos (`ModuleStrip`).** Bajo el hero, en CSS puro. La lista se
+renderiza dos veces y la animación recorre exactamente la mitad, así el bucle
+no tiene costura. Es decorativa (`aria-hidden`): los módulos ya aparecen en el
+pie.
 
-**Secuencia de procesos en el hero.** Reemplaza a la antigua animacion del F29.
-Muestra el flujo completo, de documento a informe, con los pasos encendiendose por
-turnos. No muestra cifras a proposito: numeros concretos en una ilustracion de
-marketing se leen como datos reales.
+**Animaciones solo de propiedades que compone la GPU** (opacity, transform,
+translate, scale). Nunca `clip-path`, `mask` ni `width`, y nunca `transform`
+sobre un `<svg>`, porque Chrome no lo compone; se anima un `span` envoltorio.
+Verificado: cero animaciones no compuestas y 60 fps con la CPU cuatro veces más
+lenta. Las secciones bajo el hero llevan `content-visibility: auto`.
 
 **Ventajas sin tarjetas.** Cada ventaja es una palabra en tipografia grande junto
 a una maqueta animada de la pantalla correspondiente. Sin iconos genericos: un
@@ -144,31 +170,34 @@ personas respondiendo dudas concretas. Ver la advertencia en la seccion 6.5.
 
 ## 3. Archivos
 
-### 3.1 Creados
+### 3.1 Archivos de la landing
 
 | Archivo | Tipo | Propósito |
 |---|---|---|
 | `lib/theme.ts` | módulo | Fuente única de verdad del tema |
 | `lib/fonts.ts` | módulo | Carga de tipografías |
-| `lib/validation.ts` | módulo | Validadores puros del formulario |
+| `lib/validation.ts` | módulo | Validadores puros de los formularios de acceso |
 | `components/ui/InlineScript.tsx` | servidor | Inserta scripts pre-hidratación |
-| `components/ui/Icon.tsx` | servidor | Registro de 16 iconos SVG |
+| `components/ui/Icon.tsx` | servidor | Registro de unos 30 iconos SVG (sprite único) |
 | `components/ui/SectionShell.tsx` | servidor | Contenedor común de secciones |
-| `components/ui/ThemeToggle.tsx` | **cliente** | Botón sol/luna |
+| `components/ui/ThemeToggle.tsx` | **cliente** | Botón de tema (variantes `icon` y `switch`) |
 | `components/ui/Reveal.tsx` | **cliente** | Revelado al hacer scroll |
 | `components/landing/SiteHeader.tsx` | servidor | Barra de navegación |
-| `components/landing/HeroSection.tsx` | servidor | Sección principal |
-| `components/landing/F29Animation.tsx` | servidor | Animación del formulario |
+| `components/landing/HeaderScroll.tsx` | **cliente** | Compacta el header al hacer scroll |
+| `components/landing/HeroSection.tsx` | servidor | Titular del hero |
+| `components/landing/HeroDemo.tsx` | servidor | Demo animada del panel, solo CSS |
+| `components/landing/ModuleStrip.tsx` | servidor | Carrusel de módulos |
 | `components/landing/AboutSection.tsx` | servidor | "Qué es Finova" |
 | `components/landing/FeaturesSection.tsx` | servidor | "Ventajas" |
 | `components/landing/PricingSection.tsx` | servidor | "Precios" |
 | `components/landing/TrustSection.tsx` | servidor | "Confianza" |
-| `components/landing/FaqSection.tsx` | servidor | Preguntas frecuentes |
-| `components/landing/CtaSection.tsx` | servidor | Llamado final |
+| `components/landing/FaqSection.tsx` | servidor | Preguntas frecuentes como testimonios |
 | `components/landing/SiteFooter.tsx` | servidor | Pie de página |
-| `components/login/LoginForm.tsx` | **cliente** | Formulario de acceso |
+| `components/login/*` | mixto | Formularios de acceso y recuperación, carrusel y maquetas del login |
 | `app/login/page.tsx` | servidor | Ruta de acceso |
 | `docs/LANDING.md` | documento | Este archivo |
+
+Ya no existen `F29Animation.tsx` ni `CtaSection.tsx`, de la primera versión.
 
 ### 3.2 Modificados
 
@@ -184,7 +213,9 @@ personas respondiendo dudas concretas. Ver la advertencia en la seccion 6.5.
 - **Componentes**: PascalCase, archivo y función con el mismo nombre
   (`SiteHeader.tsx` → `SiteHeader()`).
 - **Funciones**: verbo + sustantivo en camelCase (`applyTheme`,
-  `resolveStoredTheme`, `validateEmail`, `handleToggle`, `handleSubmit`).
+  `resolveStoredTheme`, `validateRut`, `handleToggle`, `handleSubmit`). El
+  código nuevo del panel usa nombres en español (`validarRazonSocial`,
+  `exigirTokenSesion`).
 - **Constantes de módulo**: `SCREAMING_SNAKE_CASE` (`THEME_STORAGE_KEY`,
   `MAX_ATTEMPTS`, `PRICING_TIERS`).
 - **Tipos**: PascalCase (`Theme`, `IconName`, `ValidationResult`).
@@ -211,8 +242,10 @@ personas respondiendo dudas concretas. Ver la advertencia en la seccion 6.5.
 | Nombre | Firma | Qué hace |
 |---|---|---|
 | `ValidationResult` | unión discriminada | Válido, o inválido con mensaje |
-| `validateEmail` | `(raw: string) => ValidationResult` | Valida largo y formato |
-| `validatePassword` | `(pw: string) => ValidationResult` | Valida largo mínimo y máximo |
+| `validateRut` | `(raw: string) => ValidationResult` | Largo, formato y dígito verificador del RUT (el login es por RUT) |
+| `validatePassword` | `(pw: string) => ValidationResult` | Largo mínimo y máximo, para el login |
+| `validateNuevaPassword` | `(pw: string) => ValidationResult` | Política completa (12+ con mayúscula, número y símbolo), para restablecer |
+| `validarRazonSocial`, `validarNuevaEmpresa` | | Formularios de empresa |
 
 ### Componentes con lógica
 
@@ -227,9 +260,11 @@ personas respondiendo dudas concretas. Ver la advertencia en la seccion 6.5.
 
 ## 5. Decisiones técnicas que importan
 
-### 5.1 Solo tres componentes de cliente
+### 5.1 Solo tres componentes de cliente en la landing
 
-`ThemeToggle`, `Reveal` y `LoginForm`. Todo lo demás se renderiza en el servidor.
+`ThemeToggle`, `Reveal` y `HeaderScroll`, además de los formularios de
+`components/login/` en `/login`. Todo lo demás de la landing se renderiza en el
+servidor, incluida la demo animada del hero, que es CSS puro.
 
 `SiteHeader` **sigue siendo de servidor** aunque contenga el botón de tema:
 `"use client"` marca un módulo, no un subárbol. Convertir todo el header en
@@ -239,7 +274,9 @@ Consecuencias prácticas:
 - El menú desplegable se evitó: en móvil la landing se recorre con scroll.
 - El FAQ usa `<details>/<summary>` nativo, que trae semántica, teclado y lector
   de pantalla gratis. **Funciona con JavaScript desactivado.**
-- El header fijo es CSS (`sticky`), sin escuchar el evento de scroll.
+- El header fijo solo necesita JavaScript para marcar `data-compact` al hacer
+  scroll (`HeaderScroll`, que recibe el contenido como `children` desde el
+  servidor). El resto lo hace CSS.
 
 ### 5.2 El tema no parpadea
 
@@ -330,8 +367,8 @@ framework y su versión.
   de direcciones, el historial y los registros del servidor.
 - **La contraseña solo en estado del componente.** Nunca en `localStorage`,
   `sessionStorage`, cookies ni URL. Se limpia tras un intento fallido.
-- **Mensaje de error genérico.** Nunca "ese correo no existe": distinguir los
-  casos permitiría enumerar usuarios probando correos.
+- **Mensaje de error genérico.** Nunca "ese RUT no existe": distinguir los
+  casos permitiría enumerar usuarios probando RUT.
 - **`spellCheck` desactivado** en la contraseña, porque algunos correctores
   envían el texto a un servicio remoto.
 - **`autoComplete` correcto**, para no empujar a la gente a contraseñas
@@ -340,7 +377,8 @@ framework y su versión.
   regular.
 
 **Sin secretos en el cliente.** Todo lo que está en `components/` viaja al
-navegador. No hay claves, URL de API ni credenciales en ningún archivo.
+navegador. No hay claves ni credenciales en ningún archivo. La URL del backend
+(`NEXT_PUBLIC_API_URL`) sí llega al navegador, y es pública por diseño.
 
 **Sin `dangerouslySetInnerHTML` sobre datos externos.** El único uso está en
 `InlineScript`, y recibe una constante del propio código, sin interpolación.
@@ -365,22 +403,24 @@ peticiones directamente a la API. Sirve para frenar el reintento a ciegas y para
 comunicar que los intentos se cuentan. La defensa real contra fuerza bruta va en
 el servidor.
 
-**Autenticación, sesiones y CSRF** son concerns del backend. El formulario de
-esta entrega es un esquema visual sin lógica de autenticación, tal como se pidió.
+**Autenticación y sesiones** ya no son una maqueta: el login es real (ver la
+sección 9 del `README.md`). La autorización la hace el backend en cada petición.
 
-### 6.3 Pendiente para la fase de backend
+### 6.3 Lo que se pidió al backend, y su estado (2026-11-12)
 
-Corresponde a la épica **06 Auditoría, Trazabilidad y Seguridad** del proyecto:
+Esta lista se escribió como pendiente de la épica **06 Auditoría, Trazabilidad y
+Seguridad**:
 
-- Consultas parametrizadas en todo acceso a datos.
-- Límite de tasa por IP y por cuenta, con retroceso exponencial.
-- Hashing de contraseñas con bcrypt o argon2, nunca almacenamiento reversible.
-- Cookies de sesión `httpOnly`, `Secure` y `SameSite`.
-- Tokens CSRF en operaciones que modifican estado.
-- Aislamiento multi-tenant verificado en cada consulta, no solo en la interfaz.
-- Registro de auditoría de operaciones sensibles.
-- Validación en el servidor de todo lo que valida el cliente, tratando cada campo
-  como entrada hostil.
+| Pedido | Estado |
+|---|---|
+| Consultas parametrizadas en todo acceso a datos | ✅ |
+| Límite de tasa por IP y por cuenta | ✅ Por IP real firmada y por RUT, en memoria. Sin retroceso exponencial. |
+| Contraseñas con bcrypt | ✅ Costo 12 |
+| Cookie de sesión `httpOnly`, `Secure` y `SameSite` | ✅ `SameSite=Lax`; `Secure` en producción |
+| Protección CSRF en operaciones que modifican estado | Parcial: Server Actions con la verificación de origen de Next, más `SameSite=Lax`. Sin tokens CSRF; en revisión en la auditoría de seguridad de noviembre de 2026 |
+| Aislamiento multiempresa verificado en cada consulta | ✅ En el backend, con un test que lo vigila |
+| Registro de auditoría de operaciones sensibles | ✅ Interceptor global en el backend; la pantalla de auditoría sigue pendiente |
+| Validación en el servidor de todo lo que valida el cliente | ✅ |
 
 ### 6.4 Contenido que DEBE reemplazarse antes de publicar
 
@@ -409,10 +449,16 @@ La política incluye `'unsafe-inline'` en `script-src`. Es una concesión
 consciente: el script anti-parpadeo es inline por necesidad, y una política
 estricta lo bloquearía devolviendo el parpadeo.
 
-El riesgo aquí es bajo —la landing no tiene base de datos, no acepta contenido de
-terceros y no renderiza entrada de usuario— pero conviene saberlo. El
-endurecimiento posible es usar el hash SHA-256 del script, a cambio de tener que
-regenerarlo cada vez que cambie, con fallo silencioso si alguien lo olvida.
+En la landing el riesgo es bajo: no tiene base de datos, no acepta contenido de
+terceros y no renderiza entrada de usuario. Pero la misma política cubre el
+panel, que **sí** muestra datos escritos por otros usuarios (glosas, nombres de
+terceros, contenido de archivos del SII). Ahí la defensa es que React escapa todo
+el texto y que no se usa `dangerouslySetInnerHTML` con datos.
+
+El endurecimiento posible es usar el hash SHA-256 del script, a cambio de tener
+que regenerarlo cada vez que cambie, con fallo silencioso si alguien lo olvida.
+Un nonce, en cambio, obligaría a renderizar todo de forma dinámica y perder el
+prerenderizado estático.
 
 **`unsafe-eval`, solo en desarrollo.** React necesita `eval()` en modo desarrollo
 para reconstruir las trazas de error entre servidor y navegador; sin él, la
@@ -434,7 +480,7 @@ Verificado en ambos modos con `curl -sI`.
 ```bash
 npx tsc --noEmit     # tipos, en modo estricto
 npm run lint         # reglas de React y Next
-npm run build        # / y /login deben quedar estáticas (○)
+npm run build        # la landing / debe quedar estática (○)
 npm run dev
 ```
 
@@ -458,9 +504,10 @@ Comprobaciones manuales:
 - **Las rutas tipadas de Next 16** validan `href` contra las rutas que existen.
   Un enlace a una ruta inexistente es error de compilación, no un 404 en
   ejecución. Al agregar una ruta nueva, crear el archivo antes de enlazarla.
-- **`middleware.ts` no existe en Next 16**: se renombró a `proxy.ts`. Aquí no se
-  usa ninguno de los dos, porque las cabeceras estáticas en `next.config.ts` no
-  requieren renderizado dinámico.
+- **`middleware.ts` no existe en Next 16**: se renombró a `proxy.ts`. El repo sí
+  tiene un `proxy.ts`, pero solo actúa sobre `/dashboard/*`: comprueba que exista
+  la cookie de sesión. La landing no pasa por él, y las cabeceras de seguridad
+  siguen saliendo de `next.config.ts`.
 - **Los elementos de un grid tienen `min-width: auto`** y no se encogen bajo el
   ancho de su contenido. Si aparece scroll horizontal, casi siempre falta un
   `min-w-0` en un hijo de grid o flex.

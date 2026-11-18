@@ -11,6 +11,8 @@
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ContextoCopiloto } from "@/components/dashboard/copiloto/ContextoCopiloto";
+import { BotonExplicar } from "@/components/dashboard/copiloto/BotonExplicar";
 import { Etiqueta } from "@/components/ui/Etiqueta";
 import { Panel, PanelCabecera } from "@/components/ui/Panel";
 import { ApiError, asientosApi, cuentasApi, type LibroMayor } from "@/lib/api";
@@ -146,6 +148,7 @@ export default async function LibroMayorPage({ searchParams }: { searchParams: P
                 <Aviso tono="critico">{error}</Aviso>
             ) : mayor.status === "fulfilled" && mayor.value ? (
                 <>
+                    <ContextoCopiloto detalle={`cuenta ${mayor.value.cuenta.codigo} ${mayor.value.cuenta.nombre}`} />
                     <TablaMayor mayor={mayor.value} />
                     {conAnalitico ? <DetalleAnalitico mayor={mayor.value} /> : null}
                 </>
@@ -240,6 +243,9 @@ function TablaMayor({ mayor }: { readonly mayor: LibroMayor }) {
                                     >
                                         {formatearComprobante(m.tipo_comprobante, m.numero, m.anio)}
                                     </Link>
+                                    <BotonExplicar
+                                        pregunta={`Explícame el movimiento ${m.tipo_comprobante}-${m.numero} del ${formatearFechaContable(m.fecha_contable)} en esta cuenta.`}
+                                    />
                                     {m.origen === "reversa" || m.origen === "apertura" ? (
                                         <Etiqueta tono="neutro" className="ml-2">
                                             {m.origen === "reversa" ? "Reversa" : "Apertura"}

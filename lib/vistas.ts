@@ -46,8 +46,10 @@ const VISTAS: readonly (readonly [RegExp, Vista])[] = [
     [/^\/dashboard\/terceros\/[^/]+$/, { nombre: "el tercero", volverA: "/dashboard/terceros" }],
     [/^\/dashboard\/terceros$/, { nombre: "los terceros", volverA: "/dashboard" }],
     [/^\/dashboard\/usuarios$/, { nombre: "los usuarios", volverA: "/dashboard" }],
-    [/^\/dashboard\/copiloto$/, { nombre: "el Copiloto IA", volverA: "/dashboard" }],
     [/^\/dashboard\/auditoria$/, { nombre: "la auditoría", volverA: "/dashboard" }],
+    [/^\/dashboard\/copiloto$/, { nombre: "el copiloto", volverA: "/dashboard" }],
+    // Las pantallas internas del equipo (/dashboard/interno/*) no van en esta
+    // tabla a propósito: su 404 tiene que verse igual al de una ruta inventada.
     [/^\/dashboard$/, { nombre: "el panel de control", volverA: "/dashboard" }],
 ];
 

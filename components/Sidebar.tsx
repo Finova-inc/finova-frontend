@@ -29,11 +29,7 @@ import { Icon, type IconName } from "@/components/ui/Icon";
    olvidar uno para que un enlace quede desalineado sin que nadie lo note.
    ========================================================================== */
 
-type EnlaceNav = {
-    readonly href: string;
-    readonly etiqueta: string;
-    readonly icono: IconName;
-};
+type EnlaceNav = { readonly href: string; readonly etiqueta: string; readonly icono: IconName };
 
 type GrupoNav = {
     readonly titulo: string;
