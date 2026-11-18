@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent, type KeyboardEvent } from "react";
 import { Boton } from "@/components/ui/Boton";
@@ -13,8 +14,12 @@ import {
     MAX_MENSAJE,
     mensajeDeError,
     preguntasRestantes,
+    sugerenciasConAvisos,
     sugerenciasPara,
+    unirEnlaces,
     validarPregunta,
+    type AvisosCopiloto,
+    type PropuestaAsiento,
 } from "@/lib/copiloto";
 import {
     claveDeMemoria,
@@ -27,12 +32,13 @@ import {
 import { describirPantalla } from "@/lib/copiloto-pantalla";
 import { formatearFecha } from "@/lib/formato";
 import { valorarRespuesta } from "./acciones";
+import { preguntasPendientes, propuestasPendientes } from "./buzon";
 import { leerDetalle, suscribir } from "./contexto-pantalla";
-import type { ModoCopiloto } from "./eventos";
 import { BurbujaAsistente, BurbujaUsuario, Sugerencias, type MensajeVista } from "./partes";
 
 /* ============================================================================
-   Chat del copiloto, dentro del panel flotante (CopilotoFlotante).
+   Chat del copiloto. Se usa en el panel flotante (CopilotoFlotante) y en el
+   modulo /dashboard/copiloto, con la misma conversacion guardada.
 
    Le habla a /api/copiloto/chat (mismo sitio; el route handler agrega el
    token) y lee la respuesta a medida que llega. Se monta la primera vez que se
@@ -58,14 +64,16 @@ const MARGEN_PEGADO_PX = 80;
 /** Desde cuantas preguntas restantes el aviso cambia de tono. */
 const POCAS_PREGUNTAS = 3;
 
+export const RUTA_MODULO_COPILOTO = "/dashboard/copiloto";
+const RUTA_NUEVO_ASIENTO = "/dashboard/core-contable/nuevo";
+
 type ChatCopilotoProps = {
     /** Para llevar el foco al cuadro de texto cada vez que se abre el panel. */
     readonly abierto: boolean;
-    readonly modo: ModoCopiloto;
-    readonly alCambiarModo: () => void;
-    readonly alCerrar: () => void;
+    /** Solo en el panel flotante: sin esto, el chat es el modulo de pantalla completa. */
+    readonly alCerrar?: () => void;
     /** Avisa que termino una respuesta (para marcar el boton si el panel esta cerrado). */
-    readonly alResponder: () => void;
+    readonly alResponder?: () => void;
     readonly idUsuario: string | null;
     readonly idEmpresa: string | null;
 };
@@ -82,18 +90,24 @@ function almacen(): Almacen | null {
 function aGuardados(mensajes: readonly MensajeVista[]): MensajeGuardado[] {
     return mensajes
         .filter((m) => m.estado === "listo")
-        .map(({ id, rol, texto, aviso, pantalla, idUso, valoracion }) => ({
-            id,
-            rol,
-            texto,
-            aviso,
-            ...(pantalla ? { pantalla } : {}),
-            ...(idUso ? { idUso } : {}),
-            ...(valoracion ? { valoracion } : {}),
-        }));
+        .map(({ id, rol, texto, aviso, pantalla, idUso, valoracion, enlaces, propuesta }) => {
+            // Los comprobantes ambiguos ("") no se enlazan: no vale la pena guardarlos.
+            const conId = Object.entries(enlaces ?? {}).filter(([, idAsiento]) => idAsiento !== "");
+            return {
+                id,
+                rol,
+                texto,
+                aviso,
+                ...(pantalla ? { pantalla } : {}),
+                ...(idUso ? { idUso } : {}),
+                ...(valoracion ? { valoracion } : {}),
+                ...(conId.length > 0 ? { enlaces: Object.fromEntries(conId) } : {}),
+                ...(propuesta ? { propuesta } : {}),
+            };
+        });
 }
 
-export function ChatCopiloto({ abierto, modo, alCambiarModo, alCerrar, alResponder, idUsuario, idEmpresa }: ChatCopilotoProps) {
+export function ChatCopiloto({ abierto, alCerrar, alResponder, idUsuario, idEmpresa }: ChatCopilotoProps) {
     const router = useRouter();
     const ruta = usePathname();
     const parametros = useSearchParams();
@@ -108,7 +122,7 @@ export function ChatCopiloto({ abierto, modo, alCambiarModo, alCerrar, alRespond
     );
     const [entrada, setEntrada] = useState("");
     const [errorEntrada, setErrorEntrada] = useState<string | null>(null);
-    const [estado, setEstado] = useState<EstadoCopiloto | null>(null);
+    const [estado, setEstado] = useState<(EstadoCopiloto & { avisos?: AvisosCopiloto | null }) | null>(null);
     /** Lo que costaron las preguntas de esta sesion, para estimar cuantas quedan. */
     const [medida, setMedida] = useState({ preguntas: 0, tokens: 0 });
     const controlador = useRef<AbortController | null>(null);
@@ -118,8 +132,9 @@ export function ChatCopiloto({ abierto, modo, alCambiarModo, alCerrar, alRespond
     const recienMontado = useRef(true);
 
     const respondiendo = mensajes.some((m) => m.estado === "respondiendo");
-    const pantalla = describirPantalla(ruta, Object.fromEntries(parametros.entries()), detalle);
-    const ampliado = modo === "ampliado";
+    const enModulo = alCerrar === undefined;
+    // En el modulo la pantalla abierta es el propio chat: no aporta contexto.
+    const pantalla = enModulo ? null : describirPantalla(ruta, Object.fromEntries(parametros.entries()), detalle);
 
     const noDisponible = estado !== null && !estado.disponible;
     const restantes = estado
@@ -132,6 +147,18 @@ export function ChatCopiloto({ abierto, modo, alCambiarModo, alCerrar, alRespond
     const sinPreguntas = restantes === 0;
     const bloqueado = noDisponible || sinPreguntas;
 
+    // "Explicar esto" de otra pantalla: se envia apenas el chat esta abierto y libre.
+    const preguntaPendiente = useSyncExternalStore(preguntasPendientes.suscribir, preguntasPendientes.mirar, () => null);
+    const enviarActual = useRef(enviar);
+    useEffect(() => {
+        enviarActual.current = enviar;
+    });
+    useEffect(() => {
+        if (!preguntaPendiente || !abierto || respondiendo || bloqueado) return;
+        const pregunta = preguntasPendientes.tomar();
+        if (pregunta) void enviarActual.current(pregunta);
+    }, [preguntaPendiente, abierto, respondiendo, bloqueado]);
+
     // Al cambiar de empresa (el componente se remonta) o cerrar sesion, se corta la respuesta en curso.
     useEffect(() => () => controlador.current?.abort(), []);
 
@@ -141,7 +168,7 @@ export function ChatCopiloto({ abierto, modo, alCambiarModo, alCerrar, alRespond
 
     useEffect(() => {
         if (pegadoAbajo.current && lista.current) lista.current.scrollTop = lista.current.scrollHeight;
-    }, [mensajes, abierto, modo]);
+    }, [mensajes, abierto]);
 
     // Cuanto queda del tope diario: se pregunta al abrir y despues lo actualiza cada respuesta.
     useEffect(() => {
@@ -230,6 +257,10 @@ export function ChatCopiloto({ abierto, modo, alCambiarModo, alCerrar, alRespond
                         actualizar((m) => ({ texto: m.texto + evento.texto, consultando: null }));
                     } else if (evento.tipo === "herramienta") {
                         actualizar(() => ({ consultando: etiquetaHerramienta(evento.nombre) }));
+                    } else if (evento.tipo === "enlaces") {
+                        actualizar((m) => ({ enlaces: unirEnlaces(m.enlaces, evento.asientos) }));
+                    } else if (evento.tipo === "propuesta_asiento") {
+                        actualizar(() => ({ propuesta: evento.propuesta }));
                     } else if (evento.tipo === "fin") {
                         termino = true;
                         actualizar(() => ({
@@ -245,7 +276,7 @@ export function ChatCopiloto({ abierto, modo, alCambiarModo, alCerrar, alRespond
                         if (tokensPregunta !== undefined && tokensPregunta > 0) {
                             setMedida((m) => ({ preguntas: m.preguntas + 1, tokens: m.tokens + tokensPregunta }));
                         }
-                    } else {
+                    } else if (evento.tipo === "error") {
                         termino = true;
                         actualizar(() => ({ estado: "error", consultando: null, aviso: evento.mensaje }));
                     }
@@ -266,7 +297,7 @@ export function ChatCopiloto({ abierto, modo, alCambiarModo, alCerrar, alRespond
             );
         } finally {
             if (controlador.current === corte) controlador.current = null;
-            if (!corte.signal.aborted) alResponder();
+            if (!corte.signal.aborted) alResponder?.();
             campo.current?.focus();
         }
     }
@@ -294,6 +325,14 @@ export function ChatCopiloto({ abierto, modo, alCambiarModo, alCerrar, alRespond
         campo.current?.focus();
     }
 
+    /** Deja la propuesta para el formulario de nuevo asiento y lo abre; guardar sigue siendo de la persona. */
+    function llenarFormulario(propuesta: PropuestaAsiento) {
+        propuestasPendientes.dejar(propuesta);
+        if (ruta !== RUTA_NUEVO_ASIENTO) router.push(RUTA_NUEVO_ASIENTO);
+        // En el celular el panel tapa el formulario.
+        if (alCerrar && window.matchMedia("(max-width: 639px)").matches) alCerrar();
+    }
+
     // La marca se pinta de inmediato y se revierte si el servidor no la guardo.
     function valorar(idMensaje: number, valor: Valoracion | null) {
         const mensaje = mensajes.find((m) => m.id === idMensaje);
@@ -316,7 +355,7 @@ export function ChatCopiloto({ abierto, modo, alCambiarModo, alCerrar, alRespond
           : sinPreguntas
             ? "Llegaste al límite de hoy. Vuelve mañana."
             : "Enter envía · Shift + Enter, nueva línea";
-    const ancho = ampliado ? "mx-auto w-full max-w-[720px]" : "";
+    const ancho = enModulo ? "mx-auto w-full max-w-[720px]" : "";
 
     return (
         <div className="flex h-full min-h-0 flex-col">
@@ -341,21 +380,23 @@ export function ChatCopiloto({ abierto, modo, alCambiarModo, alCerrar, alRespond
                         <Icon name="undo" className="size-4" />
                     </Boton>
                 )}
-                {/* En el celular los dos tamaños son pantalla completa: no hay nada que cambiar. */}
-                <span className="max-sm:hidden">
-                    <Boton
-                        variante="fantasma"
-                        soloIcono
-                        onClick={alCambiarModo}
-                        aria-label={ampliado ? "Achicar el copiloto" : "Agrandar el copiloto"}
-                        title={ampliado ? "Achicar" : "Agrandar"}
-                    >
-                        <Icon name={ampliado ? "collapse" : "expand"} className="size-4" />
-                    </Boton>
-                </span>
-                <Boton variante="fantasma" soloIcono onClick={alCerrar} aria-label="Cerrar el copiloto" title="Cerrar">
-                    <Icon name="close" className="size-4" />
-                </Boton>
+                {alCerrar && (
+                    <>
+                        {/* En el celular el panel ya es pantalla completa. */}
+                        <Link
+                            href={RUTA_MODULO_COPILOTO}
+                            onClick={alCerrar}
+                            aria-label="Abrir el copiloto en pantalla completa"
+                            title="Pantalla completa"
+                            className="grid size-8 place-items-center rounded-md text-[var(--foreground-muted)] transition-colors hover:bg-[var(--background-raised)] hover:text-[var(--foreground)] max-sm:hidden"
+                        >
+                            <Icon name="expand" className="size-4" />
+                        </Link>
+                        <Boton variante="fantasma" soloIcono onClick={alCerrar} aria-label="Cerrar el copiloto" title="Cerrar">
+                            <Icon name="close" className="size-4" />
+                        </Boton>
+                    </>
+                )}
             </div>
 
             <div className="relative flex min-h-0 flex-1 flex-col">
@@ -372,7 +413,10 @@ export function ChatCopiloto({ abierto, modo, alCambiarModo, alCerrar, alRespond
                 >
                     <div className={`flex flex-1 flex-col gap-5 ${ancho}`}>
                         {mensajes.length === 0 ? (
-                            <Sugerencias preguntas={sugerenciasPara(ruta)} alElegir={(pregunta) => void enviar(pregunta)} />
+                            <Sugerencias
+                                preguntas={sugerenciasConAvisos(sugerenciasPara(ruta), estado?.avisos)}
+                                alElegir={(pregunta) => void enviar(pregunta)}
+                            />
                         ) : (
                             <>
                                 {restauradaEl && (
@@ -384,7 +428,7 @@ export function ChatCopiloto({ abierto, modo, alCambiarModo, alCerrar, alRespond
                                     m.rol === "usuario" ? (
                                         <BurbujaUsuario key={m.id} texto={m.texto} />
                                     ) : (
-                                        <BurbujaAsistente key={m.id} mensaje={m} alValorar={valorar} />
+                                        <BurbujaAsistente key={m.id} mensaje={m} alValorar={valorar} alLlenarFormulario={llenarFormulario} />
                                     ),
                                 )}
                             </>

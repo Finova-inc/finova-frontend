@@ -27,6 +27,7 @@
  */
 
 import { conReintentos, esFalloTransitorio } from "./reintentos";
+import type { AvisosCopiloto } from "./copiloto";
 
 /** Se normaliza sin barra final para que unir rutas nunca produzca una doble barra. */
 function normalizeBaseUrl(rawUrl: string): string {
@@ -1613,7 +1614,13 @@ export type MetricasCopiloto = {
     readonly topes: { readonly veces: number; readonly usuarios: number };
     /** Respuestas marcadas como útiles o no útiles (sin texto). */
     readonly valoraciones: { readonly utiles: number; readonly no_utiles: number };
-    readonly herramientas: readonly { readonly nombre: string; readonly usos: number }[];
+    /** Usos de cada herramienta y la valoracion de las respuestas que la usaron. */
+    readonly herramientas: readonly {
+        readonly nombre: string;
+        readonly usos: number;
+        readonly utiles: number;
+        readonly no_utiles: number;
+    }[];
     readonly empresas: readonly {
         readonly razon_social: string;
         readonly costo_micro_usd: string;
@@ -1651,6 +1658,8 @@ export const copilotoApi = {
             cache: "no-store",
         }),
     estado: (opciones?: ApiFetchOptions) => api.get<EstadoCopiloto>("/copiloto/estado", opciones),
+    /** Borradores por revisar y estado del mes en curso, para sugerir preguntas. No consume tokens. */
+    avisos: (opciones?: ApiFetchOptions) => api.get<AvisosCopiloto>("/copiloto/avisos", opciones),
     /** Marca una respuesta propia; el backend responde 404 si la fila no es de quien valora. */
     valorar: (cuerpo: { readonly id_uso: string; readonly valor: ValorValoracionCopiloto }, opciones?: ApiFetchOptions) =>
         api.post<{ ok: true }>("/copiloto/valoracion", cuerpo, opciones),

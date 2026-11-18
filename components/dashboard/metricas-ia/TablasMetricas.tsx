@@ -18,6 +18,11 @@ const HERRAMIENTAS: Readonly<Record<string, string>> = {
     libro_mayor_cuenta: "Libro mayor",
     balance_comprobacion: "Balance de comprobación",
     buscar_asientos: "Buscar asientos",
+    estado_periodos: "Estado de los períodos",
+    buscar_borradores: "Buscar borradores",
+    comparar_meses: "Comparar meses",
+    revisar_inconsistencias: "Revisar inconsistencias",
+    proponer_asiento: "Proponer asiento",
 };
 
 const CELDA = "px-4 py-2 text-[13px]";
@@ -80,11 +85,14 @@ export function TablasMetricas({ metricas }: { readonly metricas: MetricasCopilo
 
             <Panel sinRelleno>
                 <PanelCabecera titulo="Consultas que hizo el copiloto" />
-                <Tabla cabeceras={["Herramienta", "Usos"]}>
+                {/* Útil / no útil de las respuestas que usaron cada herramienta: muestra dónde falla sin guardar texto. */}
+                <Tabla cabeceras={["Herramienta", "Usos", "Útiles", "No útiles"]}>
                     {metricas.herramientas.map((h) => (
                         <tr key={h.nombre} className="border-b border-[var(--border-subtle)] last:border-0">
                             <td className={CELDA}>{HERRAMIENTAS[h.nombre] ?? h.nombre}</td>
                             <td className={`${CELDA} text-right`}>{h.usos}</td>
+                            <td className={`${CELDA} text-right`}>{h.utiles ?? 0}</td>
+                            <td className={`${CELDA} text-right`}>{h.no_utiles ?? 0}</td>
                         </tr>
                     ))}
                 </Tabla>

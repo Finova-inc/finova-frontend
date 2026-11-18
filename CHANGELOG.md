@@ -13,21 +13,31 @@ dependen del backend, se anotan en su propio apartado.
 ## [Sin publicar]
 
 ### Agregado
-- Copiloto IA (beta): botón flotante en todas las pantallas del panel que abre un chat (también desde «Copiloto IA» en el menú). Responde en streaming preguntas sobre saldos, libro mayor, balance y asientos de la empresa activa, con preguntas sugeridas, botón Detener y formato simple (negrita y listas). La conversación se mantiene al navegar y empieza de cero al cambiar de empresa. Reemplaza la pantalla «Próximamente» de `/dashboard/copiloto`, que se elimina. El navegador le habla a `/api/copiloto/chat`, que agrega el token desde la cookie y reenvía la respuesta del backend (FIN-xx pendiente).
+- Copiloto IA (beta): botón flotante en todas las pantallas del panel que abre un chat. Responde en streaming preguntas sobre saldos, libro mayor, balance y asientos de la empresa activa, con preguntas sugeridas, botón Detener y formato simple (negrita y listas). La conversación se mantiene al navegar y empieza de cero al cambiar de empresa. Reemplaza la pantalla «Próximamente» de `/dashboard/copiloto`. El navegador le habla a `/api/copiloto/chat`, que agrega el token desde la cookie y reenvía la respuesta del backend (FIN-xx pendiente).
 - `/dashboard/interno/ia`: página interna de costos de IA para el equipo Finova (gasto del mes en dólares y pesos, proyección contra presupuesto, gasto por día, cómo terminan las respuestas, topes, herramientas, empresas y usuarios anónimos que más gastan, y un simulador por usuarios y precio). No está en el menú ni se indexa; a quien no es del equipo le muestra el 404 del panel (FIN-xx pendiente).
 - Copiloto IA: la conversación se guarda en el navegador (hasta 7 días, por usuario y empresa) y vuelve al recargar; se borra con «Nueva conversación» y al cerrar sesión. El chat le cuenta al copiloto qué pantalla está abierta («Viendo: el libro mayor · cuenta 1101 Caja»), sugiere preguntas según la pantalla, avisa cuántas preguntas quedan hoy y permite marcar cada respuesta como útil o no útil (FIN-xx pendiente).
+- Copiloto IA: si se le pide registrar un asiento, muestra la propuesta en el chat con «Llenar el formulario», que abre el nuevo asiento ya llenado y avisa que lo armó el copiloto. Guardar sigue siendo de la persona (FIN-xx pendiente).
+- Copiloto IA: botones «Explicar» en los movimientos del libro mayor, en las cuentas del balance, en el aviso de balance descuadrado y en lo que falta para contabilizar un asiento: abren el chat con la pregunta ya armada (FIN-xx pendiente).
+- Copiloto IA: los comprobantes citados («T-15») llevan al detalle del asiento, y las tablas de las respuestas se ven como tabla, con desplazamiento propio y «Descargar CSV» (FIN-xx pendiente).
+- Copiloto IA: Ctrl+J (Cmd+J en Mac) abre y cierra el chat desde cualquier pantalla (FIN-xx pendiente).
+- Copiloto IA: preguntas sugeridas según el estado de la empresa («Tengo 3 borradores sin cuadrar…», mes en curso sin abrir) (FIN-xx pendiente).
+- Costos de IA: la página interna muestra, por herramienta, cuántas respuestas fueron útiles y cuántas no (FIN-xx pendiente).
 - Costos de IA: la página interna muestra las valoraciones de las respuestas, y el simulador calcula el perfil «Máximo» con los tokens que cuentan para el tope (FIN-xx pendiente).
 
 ### Dependencias del backend
+- `GET /copiloto/avisos` y los eventos `enlaces` y `propuesta_asiento` del chat. Sin ellos el chat sigue funcionando, sin sugerencias por avisos, enlaces ni propuestas.
 - `GET /copiloto/metricas` (responde solo a los RUT de `FINOVA_EQUIPO_RUTS`).
 - `GET /copiloto/estado` y `POST /copiloto/valoracion`. `POST /copiloto/chat` debe aceptar `pantalla` y un historial de 20 mensajes: el backend se despliega primero, porque el anterior rechaza esos campos con 400.
 - `POST /copiloto/chat` (módulo `copiloto` del backend, con `ANTHROPIC_API_KEY` configurada).
 
 ### Cambiado
-- Copiloto IA: «Copiloto IA» en el menú abre el chat en grande, como ventana centrada sobre la pantalla; el botón redondo sigue abriendo el chat chico, y un botón en la cabecera cambia de tamaño sin perder la conversación. El tablero para escribir es de vidrio y flota sobre los mensajes (FIN-xx pendiente).
+- Copiloto IA: «Copiloto IA» en el menú abre el módulo `/dashboard/copiloto`, con el chat a pantalla completa; el botón redondo sigue abriendo el chat chico en las demás pantallas, con un botón para pasar al módulo. Los dos comparten la conversación. El tablero para escribir es de vidrio y flota sobre los mensajes (FIN-xx pendiente).
+- Copiloto IA: muestra «Revisando los períodos…» y «Revisando los borradores…» cuando consulta esos datos, y la página de costos nombra esas herramientas (FIN-xx pendiente).
+- Copiloto IA: el borrador y el detalle de un asiento le dicen al copiloto cuál está abierto («Viendo: el borrador · borrador «Pago luz»»), y el formulario de asiento y los borradores tienen sus propias preguntas sugeridas (FIN-xx pendiente).
 - Copiloto IA: el historial que acompaña a cada pregunta se recorta por bloques de 10 mensajes (viajan entre 10 y 19) y con un presupuesto de 24.000 caracteres, para que el modelo reutilice su caché en conversaciones largas (FIN-xx pendiente).
 - Tipografía: los titulares del panel y de la landing, y la serifa del hero, usan Newsreader (antes Space Grotesk e Instrument Serif). El cuerpo sigue en Inter (FIN-xx pendiente).
 - Documentación para el equipo: `docs/HERRAMIENTAS-CLAUDE.md` (plugins y skills personales con su instalación y uso en Finova) y `.claude/settings.json` declara los plugins `superpowers` y `claude-mem` para que Claude Code los ofrezca al abrir el repo (FIN-xx pendiente).
+- Herramientas de Claude para el equipo: el plugin `ponytail` (cambios mínimos, sin sobreingeniería) pasa a recomendado y queda declarado en `.claude/settings.json` junto a `superpowers` y `claude-mem`. `CLAUDE.md` aclara que las reglas del repo mandan sobre él (FIN-xx pendiente).
 
 ## 2026-11-04 — PR #13
 

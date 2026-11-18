@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { abrirCopiloto } from "@/components/dashboard/copiloto/eventos";
 import { useEffect, useState } from "react";
 
 import { Icon, type IconName } from "@/components/ui/Icon";
@@ -30,10 +29,7 @@ import { Icon, type IconName } from "@/components/ui/Icon";
    olvidar uno para que un enlace quede desalineado sin que nadie lo note.
    ========================================================================== */
 
-/** Un enlace a una pantalla, o una accion (hoy solo abrir el copiloto flotante). */
-type EnlaceNav =
-    | { readonly href: string; readonly etiqueta: string; readonly icono: IconName }
-    | { readonly accion: "abrir-copiloto"; readonly etiqueta: string; readonly icono: IconName };
+type EnlaceNav = { readonly href: string; readonly etiqueta: string; readonly icono: IconName };
 
 type GrupoNav = {
     readonly titulo: string;
@@ -65,7 +61,7 @@ const GRUPOS: readonly GrupoNav[] = [
     {
         titulo: "Inteligencia",
         enlaces: [
-            { accion: "abrir-copiloto", etiqueta: "Copiloto IA", icono: "sparkle" },
+            { href: "/dashboard/copiloto", etiqueta: "Copiloto IA", icono: "sparkle" },
             { href: "/dashboard/auditoria", etiqueta: "Auditoría", icono: "clock" },
         ],
     },
@@ -172,22 +168,6 @@ export default function Sidebar() {
                             </p>
 
                             {grupo.enlaces.map((enlace) => {
-                                if ("accion" in enlace) {
-                                    return (
-                                        <button
-                                            key={enlace.accion}
-                                            type="button"
-                                            onClick={() => {
-                                                setAbierto(false);
-                                                abrirCopiloto("ampliado");
-                                            }}
-                                            className="mx-2.5 flex items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[13.5px] transition-colors hover:bg-[var(--sidebar-hover)]"
-                                        >
-                                            <Icon name={enlace.icono} className="size-4 shrink-0 opacity-85" />
-                                            {enlace.etiqueta}
-                                        </button>
-                                    );
-                                }
                                 const activo = esRutaActiva(pathname, enlace.href);
 
                                 return (

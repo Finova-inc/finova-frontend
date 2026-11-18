@@ -26,10 +26,30 @@ export type RolChat = "usuario" | "asistente";
 /** `pantalla`: lo que la persona tenia abierto al preguntar; solo en mensajes del usuario. */
 export type MensajeHistorial = { rol: RolChat; texto: string; pantalla?: string };
 
+/** Linea de un asiento que arma el copiloto. Montos en pesos, solo digitos ("" en el lado sin monto). */
+export type LineaPropuesta = { id_cuenta: string; cuenta: string; debe: string; haber: string; glosa: string };
+
+/** Asiento propuesto por el copiloto (proponer_asiento en el backend). No esta registrado. */
+export type PropuestaAsiento = {
+    fecha: string;
+    tipo_comprobante: "I" | "E" | "T";
+    glosa: string;
+    lineas: LineaPropuesta[];
+};
+
+/** GET /copiloto/avisos: lo que el chat sugiere revisar al abrirse (consultas, sin tokens). */
+export type AvisosCopiloto = {
+    borradores_por_revisar: number;
+    mes_en_curso: { anio: number; mes: number; estado: "abierto" | "cerrado" | "sin_abrir" };
+};
+
 /** Lo que el backend manda por el stream, un evento por linea `data:`. */
 export type EventoChat =
     | { tipo: "texto"; texto: string }
     | { tipo: "herramienta"; nombre: string }
+    /** Comprobante citado ("T-15") -> id del asiento, para enlazarlo en la respuesta. */
+    | { tipo: "enlaces"; asientos: Record<string, string> }
+    | { tipo: "propuesta_asiento"; propuesta: PropuestaAsiento }
     | {
           tipo: "fin";
           motivo: string;
@@ -54,6 +74,11 @@ const ETIQUETAS_HERRAMIENTA: Record<string, string> = {
     libro_mayor_cuenta: "Revisando el libro mayor…",
     balance_comprobacion: "Calculando el balance de comprobación…",
     buscar_asientos: "Buscando asientos…",
+    estado_periodos: "Revisando los períodos…",
+    buscar_borradores: "Revisando los borradores…",
+    comparar_meses: "Comparando los meses…",
+    revisar_inconsistencias: "Revisando el libro…",
+    proponer_asiento: "Armando el asiento…",
 };
 
 /** Texto para mostrar mientras el copiloto consulta; nunca el nombre tecnico. */
@@ -63,6 +88,75 @@ export function etiquetaHerramienta(nombre: string): string {
 
 const esConteo = (valor: unknown): valor is number =>
     typeof valor === "number" && Number.isFinite(valor) && valor >= 0;
+
+const PATRON_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const PATRON_COMPROBANTE = /^[IET]-\d{1,9}$/;
+const PATRON_FECHA = /^\d{4}-\d{2}-\d{2}$/;
+const PATRON_PESOS = /^\d{0,15}$/;
+const esTextoCorto = (valor: unknown, maximo: number): valor is string =>
+    typeof valor === "string" && valor.length <= maximo;
+
+/**
+ * Solo los pares comprobante -> id validos, o null si no queda ninguno. Lo
+ * leen el stream y la memoria del navegador: los dos son datos ajenos.
+ */
+export function comoEnlaces(valor: unknown): Record<string, string> | null {
+    if (!valor || typeof valor !== "object" || Array.isArray(valor)) return null;
+    const pares = Object.entries(valor).filter(
+        ([clave, id]) => PATRON_COMPROBANTE.test(clave) && typeof id === "string" && PATRON_UUID.test(id),
+    );
+    return pares.length > 0 ? (Object.fromEntries(pares) as Record<string, string>) : null;
+}
+
+/**
+ * Junta los enlaces de varias consultas de una misma respuesta. Si un
+ * comprobante apunta a dos asientos (el numero se repite entre anios), queda
+ * en "" y no se enlaza: mejor sin enlace que llevar al asiento equivocado.
+ */
+export function unirEnlaces(
+    previos: Readonly<Record<string, string>> | undefined,
+    nuevos: Readonly<Record<string, string>>,
+): Record<string, string> {
+    const unidos: Record<string, string> = { ...previos };
+    for (const [clave, id] of Object.entries(nuevos)) {
+        unidos[clave] = unidos[clave] === undefined || unidos[clave] === id ? id : "";
+    }
+    return unidos;
+}
+
+/** La propuesta con solo los campos conocidos y validos, o null. */
+export function comoPropuesta(valor: unknown): PropuestaAsiento | null {
+    if (!valor || typeof valor !== "object") return null;
+    const p = valor as Record<string, unknown>;
+    if (typeof p.fecha !== "string" || !PATRON_FECHA.test(p.fecha)) return null;
+    if (p.tipo_comprobante !== "I" && p.tipo_comprobante !== "E" && p.tipo_comprobante !== "T") return null;
+    if (!esTextoCorto(p.glosa, 120) || !Array.isArray(p.lineas) || p.lineas.length < 2 || p.lineas.length > 20) {
+        return null;
+    }
+    const lineas: LineaPropuesta[] = [];
+    for (const item of p.lineas) {
+        const l = item as Record<string, unknown> | null;
+        const valida =
+            !!l &&
+            typeof l.id_cuenta === "string" &&
+            PATRON_UUID.test(l.id_cuenta) &&
+            esTextoCorto(l.cuenta, 200) &&
+            esTextoCorto(l.debe, 15) &&
+            PATRON_PESOS.test(l.debe) &&
+            esTextoCorto(l.haber, 15) &&
+            PATRON_PESOS.test(l.haber) &&
+            esTextoCorto(l.glosa, 120);
+        if (!valida) return null;
+        lineas.push({
+            id_cuenta: l.id_cuenta as string,
+            cuenta: l.cuenta as string,
+            debe: l.debe as string,
+            haber: l.haber as string,
+            glosa: l.glosa as string,
+        });
+    }
+    return { fecha: p.fecha, tipo_comprobante: p.tipo_comprobante, glosa: p.glosa, lineas };
+}
 
 /**
  * El evento con solo los campos conocidos, o null si no se entiende. Los datos
@@ -77,6 +171,14 @@ function comoEventoChat(valor: unknown): EventoChat | null {
             return typeof e.texto === "string" ? { tipo: "texto", texto: e.texto } : null;
         case "herramienta":
             return typeof e.nombre === "string" ? { tipo: "herramienta", nombre: e.nombre } : null;
+        case "enlaces": {
+            const asientos = comoEnlaces(e.asientos);
+            return asientos ? { tipo: "enlaces", asientos } : null;
+        }
+        case "propuesta_asiento": {
+            const propuesta = comoPropuesta(e.propuesta);
+            return propuesta ? { tipo: "propuesta_asiento", propuesta } : null;
+        }
         case "fin":
             if (typeof e.motivo !== "string" || !(e.aviso === null || typeof e.aviso === "string")) return null;
             return {
@@ -182,6 +284,15 @@ const SUGERENCIAS_POR_PANTALLA: readonly (readonly [RegExp, readonly string[]])[
             "¿Qué cuentas tienen el saldo más alto?",
         ],
     ],
+    // Antes que el libro diario: estas rutas viven dentro de /dashboard/core-contable.
+    [
+        /^\/dashboard\/core-contable\/(nuevo|borradores\/[^/]+)$/,
+        [
+            "¿Qué le falta a este borrador para contabilizarlo?",
+            "¿Qué borradores tengo pendientes?",
+            "¿Está abierto el mes de este asiento?",
+        ],
+    ],
     [
         /^\/dashboard\/core-contable(\/|$)/,
         [
@@ -210,6 +321,23 @@ export function sugerenciasPara(ruta: string): readonly string[] {
 }
 
 /**
+ * Suma a las sugerencias de la pantalla las que salen del estado de la empresa
+ * (borradores pendientes, mes sin abrir). Van primero; como maximo 4 en total.
+ */
+export function sugerenciasConAvisos(
+    base: readonly string[],
+    avisos: AvisosCopiloto | null | undefined,
+): readonly string[] {
+    if (!avisos) return base;
+    const extra: string[] = [];
+    const n = avisos.borradores_por_revisar;
+    if (n === 1) extra.push("Tengo un borrador sin cuadrar o incompleto: ¿qué le falta?");
+    else if (n > 1) extra.push(`Tengo ${n} borradores sin cuadrar o incompletos: ¿qué les falta?`);
+    if (avisos.mes_en_curso.estado === "sin_abrir") extra.push("El mes en curso no está abierto: ¿cómo lo abro?");
+    return [...extra, ...base].slice(0, 4);
+}
+
+/**
  * Cuantas preguntas quedan hoy, aproximadamente: lo que falta del tope diario
  * dividido por lo que cuesta una pregunta (el promedio medido en esta sesion, o
  * una estimacion si aun no hay). El servidor es quien decide: esto solo avisa.
@@ -217,16 +345,6 @@ export function sugerenciasPara(ruta: string): readonly string[] {
 export function preguntasRestantes(tokensHoy: number, tope: number, tokensPorPregunta: number): number {
     const porPregunta = tokensPorPregunta > 0 ? tokensPorPregunta : TOKENS_POR_PREGUNTA_ESTIMADOS;
     return Math.max(0, Math.floor((tope - tokensHoy) / porPregunta));
-}
-
-/**
- * A que elemento pasa el foco con Tab (o Shift+Tab) dentro de un dialogo modal,
- * en circulo. `actual` es -1 si el foco esta fuera. -1 si no hay a donde ir.
- */
-export function indiceDeFoco(actual: number, total: number, haciaAtras: boolean): number {
-    if (total <= 0) return -1;
-    if (actual < 0) return haciaAtras ? total - 1 : 0;
-    return (actual + (haciaAtras ? -1 : 1) + total) % total;
 }
 
 /** null si la pregunta se puede enviar; si no, el motivo para mostrar. */

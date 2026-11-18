@@ -3,6 +3,7 @@
    ========================================================================== */
 
 import { notFound, redirect } from "next/navigation";
+import { ContextoCopiloto } from "@/components/dashboard/copiloto/ContextoCopiloto";
 import { ApiError, borradoresApi, type AsientoBorrador } from "@/lib/api";
 import { formatearFechaLarga, hoyEnChile } from "@/lib/formato";
 import { exigirTokenSesion, obtenerRolDelToken, puedeRegistrar } from "@/lib/session";
@@ -30,11 +31,14 @@ export default async function BorradorPage({ params }: { params: Promise<{ id: s
     }
 
     const encabezado = (
-        <Encabezado
-            titulo="Borrador de asiento"
-            descripcion={`Última modificación: ${formatearFechaLarga(borrador.updated_at)}. Los borradores no forman parte del libro diario ni tienen número hasta contabilizarse.`}
-            volverA="/dashboard/core-contable"
-        />
+        <>
+            <ContextoCopiloto detalle={`borrador «${borrador.glosa || "sin glosa"}»`} />
+            <Encabezado
+                titulo="Borrador de asiento"
+                descripcion={`Última modificación: ${formatearFechaLarga(borrador.updated_at)}. Los borradores no forman parte del libro diario ni tienen número hasta contabilizarse.`}
+                volverA="/dashboard/core-contable"
+            />
+        </>
     );
 
     if (!puedeRegistrar(rol)) {

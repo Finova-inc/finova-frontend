@@ -15,7 +15,7 @@
      version del sitio o la propia persona desde la consola.
    ========================================================================== */
 
-import { esPantallaValida, type RolChat } from "./copiloto.ts";
+import { comoEnlaces, comoPropuesta, esPantallaValida, type PropuestaAsiento, type RolChat } from "./copiloto.ts";
 
 export const PREFIJO_MEMORIA = "finova:copiloto:v1:";
 export const DIAS_DE_MEMORIA = 7;
@@ -40,6 +40,10 @@ export type MensajeGuardado = {
     /** Fila de uso de la respuesta, para valorarla (mensajes del asistente). */
     idUso?: string;
     valoracion?: Valoracion;
+    /** Comprobante citado -> id del asiento (mensajes del asistente). */
+    enlaces?: Record<string, string>;
+    /** Asiento que armo el copiloto, para llenar el formulario (mensajes del asistente). */
+    propuesta?: PropuestaAsiento;
 };
 
 export type ConversacionGuardada = { guardadoEn: string; mensajes: MensajeGuardado[] };
@@ -63,6 +67,8 @@ function comoMensajeGuardado(valor: unknown): MensajeGuardado | null {
         typeof m.texto === "string" &&
         (m.aviso === null || typeof m.aviso === "string");
     if (!formaMinima) return null;
+    const enlaces = m.rol === "asistente" ? comoEnlaces(m.enlaces) : null;
+    const propuesta = m.rol === "asistente" ? comoPropuesta(m.propuesta) : null;
     return {
         id: m.id as number,
         rol: m.rol as RolChat,
@@ -71,6 +77,8 @@ function comoMensajeGuardado(valor: unknown): MensajeGuardado | null {
         ...(m.rol === "usuario" && esPantallaValida(m.pantalla) ? { pantalla: m.pantalla } : {}),
         ...(typeof m.idUso === "string" && m.idUso.length <= 64 ? { idUso: m.idUso } : {}),
         ...(m.valoracion === "util" || m.valoracion === "no_util" ? { valoracion: m.valoracion } : {}),
+        ...(enlaces ? { enlaces } : {}),
+        ...(propuesta ? { propuesta } : {}),
     };
 }
 

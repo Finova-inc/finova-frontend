@@ -8,14 +8,20 @@
    aqui, y las reglas contables las decide el backend. El formulario solo
    impide contabilizar lo que el backend igual rechazaria, para no hacer
    esperar a nadie por un "no cuadra".
+
+   Un asiento nuevo puede llegar llenado por el copiloto (buzon.ts): la
+   persona lo revisa aqui y lo guarda ella. El copiloto nunca registra nada.
    ========================================================================== */
 
 import Link from "next/link";
-import { useId, useState, useTransition } from "react";
+import { useEffect, useId, useState, useTransition } from "react";
+import { BotonExplicar } from "@/components/dashboard/copiloto/BotonExplicar";
+import { propuestasPendientes } from "@/components/dashboard/copiloto/buzon";
 import { Boton } from "@/components/ui/Boton";
 import { Icon } from "@/components/ui/Icon";
 import { Panel } from "@/components/ui/Panel";
 import type { AsientoBorrador, TipoComprobante } from "@/lib/api";
+import type { PropuestaAsiento } from "@/lib/copiloto";
 import { CERO, separarMiles, soloDigitos, sumarPesos, tieneMonto } from "@/lib/decimal";
 import { formatearCLP, nombreMesLargo, nombrePeriodo } from "@/lib/formato";
 import { dejaPorCobrarNegativo, proyectarPorCobrar } from "@/lib/por-cobrar";
@@ -99,6 +105,20 @@ function lineasIniciales(borrador?: AsientoBorrador | null): LineaEnPantalla[] {
     return desdeBorrador;
 }
 
+/** Las lineas que armo el copiloto; una cuenta que no esta entre las activas queda por elegir. */
+function lineasDePropuesta(propuesta: PropuestaAsiento, cuentas: readonly CuentaOpcion[]): LineaEnPantalla[] {
+    const lineas = propuesta.lineas.map((l) =>
+        lineaNueva({
+            id_cuenta: cuentas.some((c) => c.id_cuenta === l.id_cuenta) ? l.id_cuenta : "",
+            debe: l.debe,
+            haber: l.haber,
+            glosa: l.glosa,
+        }),
+    );
+    while (lineas.length < 2) lineas.push(lineaNueva());
+    return lineas;
+}
+
 /**
  * Campo de pesos: muestra "119.000" y edita "119000".
  *
@@ -142,10 +162,33 @@ export function FormularioAsiento({
     borrador = null,
 }: FormularioAsientoProps) {
     const idBase = useId();
-    const [tipo, setTipo] = useState<TipoComprobante | "">(borrador?.tipo_comprobante ?? "T");
-    const [fecha, setFecha] = useState(borrador?.fecha_contable ?? hoy);
-    const [glosa, setGlosa] = useState(borrador?.glosa ?? "");
-    const [lineas, setLineas] = useState<LineaEnPantalla[]>(() => lineasIniciales(borrador));
+    // Solo llega por navegacion en el navegador: en una carga completa el buzon esta vacio y el HTML del servidor coincide.
+    const [propuestaInicial] = useState(() => (borrador ? null : propuestasPendientes.mirar()));
+    const [tipo, setTipo] = useState<TipoComprobante | "">(
+        propuestaInicial?.tipo_comprobante ?? borrador?.tipo_comprobante ?? "T",
+    );
+    const [fecha, setFecha] = useState(propuestaInicial?.fecha ?? borrador?.fecha_contable ?? hoy);
+    const [glosa, setGlosa] = useState(propuestaInicial?.glosa ?? borrador?.glosa ?? "");
+    const [lineas, setLineas] = useState<LineaEnPantalla[]>(() =>
+        propuestaInicial ? lineasDePropuesta(propuestaInicial, cuentas) : lineasIniciales(borrador),
+    );
+    const [desdeCopiloto, setDesdeCopiloto] = useState(propuestaInicial !== null);
+
+    useEffect(() => {
+        if (borrador) return;
+        // La que se uso al montar se saca, para que no vuelva a llenarse al regresar a esta pantalla.
+        if (propuestaInicial && propuestasPendientes.mirar() === propuestaInicial) propuestasPendientes.tomar();
+        // Con el formulario ya abierto, "Llenar el formulario" reemplaza lo escrito: lo pidio la persona.
+        return propuestasPendientes.suscribir(() => {
+            const propuesta = propuestasPendientes.tomar();
+            if (!propuesta) return;
+            setTipo(propuesta.tipo_comprobante);
+            setFecha(propuesta.fecha);
+            setGlosa(propuesta.glosa);
+            setLineas(lineasDePropuesta(propuesta, cuentas));
+            setDesdeCopiloto(true);
+        });
+    }, [borrador, cuentas, propuestaInicial]);
     const [version, setVersion] = useState(borrador?.version ?? 0);
     // Una clave por formulario: si la respuesta se pierde y se reintenta, el
     // backend reconoce el asiento y no lo duplica.
@@ -300,6 +343,14 @@ export function FormularioAsiento({
 
     return (
         <form onSubmit={(evento) => evento.preventDefault()} className="flex flex-col gap-4">
+            {desdeCopiloto ? (
+                <p
+                    role="status"
+                    className="rounded-lg border border-[var(--border-subtle)] bg-[var(--background-raised)] px-3 py-2 text-[12.5px] text-[var(--foreground)]"
+                >
+                    El copiloto llenó este asiento. Revisa la fecha, las cuentas y los montos antes de guardarlo.
+                </p>
+            ) : null}
             <Panel>
                 <div className="grid gap-4 md:grid-cols-[auto_180px] md:items-start xl:grid-cols-[auto_180px_1fr]">
                     <fieldset>
@@ -667,7 +718,11 @@ export function FormularioAsiento({
                     </div>
                     {!listoParaContabilizar ? (
                         <p className="max-w-md text-right text-[12px] text-[var(--foreground-muted)]">
-                            Para contabilizar: {faltantes[0].charAt(0).toLowerCase() + faltantes[0].slice(1)}.
+                            Para contabilizar: {faltantes[0].charAt(0).toLowerCase() + faltantes[0].slice(1)}.{" "}
+                            <BotonExplicar
+                                etiqueta="¿Cómo lo resuelvo?"
+                                pregunta={`No puedo contabilizar este asiento. Me falta: ${faltantes.slice(0, 6).join("; ")}. ¿Cómo lo resuelvo?`}
+                            />
                         </p>
                     ) : null}
                 </div>

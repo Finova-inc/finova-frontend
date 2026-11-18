@@ -1,35 +1,32 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent as TeclaReact } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
-import { indiceDeFoco } from "@/lib/copiloto";
-import { ChatCopiloto } from "./ChatCopiloto";
-import { EVENTO_ABRIR_COPILOTO, type DetalleAbrirCopiloto, type ModoCopiloto } from "./eventos";
+import { preguntasPendientes } from "./buzon";
+import { ChatCopiloto, RUTA_MODULO_COPILOTO } from "./ChatCopiloto";
 
 /* ============================================================================
-   Copiloto IA como chat flotante, en dos tamaños con la misma conversacion.
+   Copiloto IA como chat flotante: un boton circular en la esquina inferior
+   derecha de todo el panel que despliega la conversacion encima de la
+   pantalla actual. La version grande es el modulo /dashboard/copiloto.
 
-   - Compacto: lo abre el boton redondo. Panel chico abajo a la derecha, no
-     modal (se puede seguir usando la pantalla de atras), z-30: por encima del
-     contenido y por debajo del menu lateral del celular (z-40).
-   - Ampliado: lo abre "Copiloto IA" del menu lateral. Dialogo modal centrado
-     (z-50) sobre un velo; el foco queda dentro y un clic en el velo cierra.
-   - En el celular los dos ocupan toda la pantalla.
-
-   Vive en app/dashboard/layout.tsx, que no se remonta al navegar: la
-   conversacion sigue ahi al cambiar de pantalla. El layout le pasa la empresa
-   activa como key, asi que al cambiar de empresa empieza de cero.
-
-   El chat se monta recien la primera vez que se abre: asi lee la conversacion
-   guardada en el navegador sin diferencias con el HTML del servidor.
+   - Vive en app/dashboard/layout.tsx, que no se remonta al navegar. El layout
+     le pasa la empresa activa como key, asi que al cambiar de empresa empieza
+     de cero.
+   - El panel no es modal: se puede seguir usando la pantalla de atras. En el
+     celular ocupa toda la pantalla y el boton se esconde mientras esta abierto
+     (la X de la cabecera lo cierra).
+   - Ctrl+J (Cmd+J en Mac) lo abre y lo cierra desde cualquier pantalla.
+   - Un "Explicar esto" de otra pantalla (buzon.ts) lo abre; el chat envia
+     la pregunta.
+   - z-30: por encima del contenido, por debajo del menu lateral del celular
+     (z-40) y de los dialogos (z-50).
+   - En el modulo no se dibuja: ahi el chat ya ocupa la pantalla. Al salir, el
+     chat se monta de nuevo y lee la conversacion guardada en el navegador.
+   - El chat se monta recien la primera vez que se abre: asi lee la
+     conversacion guardada sin diferencias con el HTML del servidor.
    ========================================================================== */
-
-const ENFOCABLES = 'button:not([disabled]), textarea:not([disabled]), input:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
-
-const CLASES_COMPACTO =
-    "z-30 bg-[var(--surface)] sm:inset-auto sm:bottom-24 sm:right-6 sm:h-[min(640px,calc(100dvh-8rem))] sm:w-[400px] sm:overflow-hidden sm:rounded-2xl sm:border sm:border-[var(--border-subtle)] sm:shadow-[0_16px_48px_rgb(0_0_0/0.22)]";
-const CLASES_AMPLIADO =
-    "copiloto-vidrio z-50 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:h-[min(860px,86dvh)] sm:w-[min(960px,calc(100vw-3rem))] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:overflow-hidden sm:rounded-2xl sm:border sm:border-[var(--border-subtle)] sm:shadow-[0_24px_64px_rgb(0_0_0/0.3)]";
 
 type CopilotoFlotanteProps = {
     /** Para guardar la conversacion en el navegador; null si el token no se pudo leer. */
@@ -38,51 +35,58 @@ type CopilotoFlotanteProps = {
 };
 
 export function CopilotoFlotante({ idUsuario, idEmpresa }: CopilotoFlotanteProps) {
+    const ruta = usePathname();
     const [abierto, setAbierto] = useState(false);
     const [montado, setMontado] = useState(false);
-    const [modo, setModo] = useState<ModoCopiloto>("compacto");
     const [respuestaSinVer, setRespuestaSinVer] = useState(false);
     const boton = useRef<HTMLButtonElement>(null);
-    const panel = useRef<HTMLElement>(null);
-    /** A quien devolverle el foco al cerrar: el boton redondo o la entrada del menu. */
-    const quienAbrio = useRef<HTMLElement | null>(null);
     const abiertoActual = useRef(abierto);
-
-    const ampliado = abierto && modo === "ampliado";
 
     useEffect(() => {
         abiertoActual.current = abierto;
     }, [abierto]);
 
-    // La entrada "Copiloto IA" del menu lateral (y cualquier otro que llame a abrirCopiloto).
+    // En el modulo el chat ya esta en pantalla: ni el atajo ni los pedidos abren el flotante.
+    const enModulo = ruta === RUTA_MODULO_COPILOTO;
+
     useEffect(() => {
-        const abrirDesdeFuera = (evento: Event) => {
-            const pedido = (evento as CustomEvent<DetalleAbrirCopiloto | undefined>).detail?.modo;
-            quienAbrio.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-            setModo(pedido === "ampliado" ? "ampliado" : "compacto");
+        if (enModulo) return;
+        const alTeclear = (e: KeyboardEvent) => {
+            if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.key.toLowerCase() !== "j") return;
+            e.preventDefault();
             setMontado(true);
-            setAbierto(true);
             setRespuestaSinVer(false);
+            setAbierto((actual) => !actual);
         };
-        window.addEventListener(EVENTO_ABRIR_COPILOTO, abrirDesdeFuera);
-        return () => window.removeEventListener(EVENTO_ABRIR_COPILOTO, abrirDesdeFuera);
-    }, []);
+        window.addEventListener("keydown", alTeclear);
+        return () => window.removeEventListener("keydown", alTeclear);
+    }, [enModulo]);
+
+    useEffect(() => {
+        if (enModulo) return;
+        return preguntasPendientes.suscribir(() => {
+            if (!preguntasPendientes.mirar()) return;
+            setMontado(true);
+            setRespuestaSinVer(false);
+            setAbierto(true);
+        });
+    }, [enModulo]);
 
     useEffect(() => {
         if (!abierto) return;
         const alTeclear = (e: KeyboardEvent) => {
             if (e.key !== "Escape") return;
             setAbierto(false);
-            (quienAbrio.current ?? boton.current)?.focus();
+            boton.current?.focus();
         };
         window.addEventListener("keydown", alTeclear);
         return () => window.removeEventListener("keydown", alTeclear);
     }, [abierto]);
 
+    if (enModulo) return null;
+
     function alternar() {
         if (!abierto) {
-            quienAbrio.current = boton.current;
-            setModo("compacto");
             setMontado(true);
             setRespuestaSinVer(false);
         }
@@ -91,44 +95,23 @@ export function CopilotoFlotante({ idUsuario, idEmpresa }: CopilotoFlotanteProps
 
     function cerrar() {
         setAbierto(false);
-        (quienAbrio.current ?? boton.current)?.focus();
-    }
-
-    // En el dialogo modal, Tab y Shift+Tab dan la vuelta sin salir del panel.
-    function atraparFoco(evento: TeclaReact<HTMLElement>) {
-        if (!ampliado || evento.key !== "Tab" || !panel.current) return;
-        const enfocables = Array.from(panel.current.querySelectorAll<HTMLElement>(ENFOCABLES)).filter(
-            (el) => el.offsetParent !== null,
-        );
-        const actual = enfocables.indexOf(document.activeElement as HTMLElement);
-        const destino = indiceDeFoco(actual, enfocables.length, evento.shiftKey);
-        if (destino === -1) return;
-        evento.preventDefault();
-        enfocables[destino].focus();
+        boton.current?.focus();
     }
 
     return (
         <>
-            {ampliado && (
-                <div aria-hidden="true" onClick={cerrar} className="copiloto-velo no-imprimir fixed inset-0 z-50 max-sm:hidden" />
-            )}
-
             <section
-                ref={panel}
                 id="panel-copiloto"
                 role="dialog"
-                aria-modal={ampliado}
+                aria-modal="false"
                 aria-label="Copiloto IA"
-                onKeyDown={atraparFoco}
-                className={`no-imprimir fixed inset-0 flex-col ${modo === "ampliado" ? CLASES_AMPLIADO : CLASES_COMPACTO} ${
+                className={`no-imprimir fixed inset-0 z-30 flex-col bg-[var(--surface)] sm:inset-auto sm:bottom-24 sm:right-6 sm:h-[min(640px,calc(100dvh-8rem))] sm:w-[400px] sm:overflow-hidden sm:rounded-2xl sm:border sm:border-[var(--border-subtle)] sm:shadow-[0_16px_48px_rgb(0_0_0/0.22)] ${
                     abierto ? "flex" : "hidden"
                 }`}
             >
                 {montado && (
                     <ChatCopiloto
                         abierto={abierto}
-                        modo={modo}
-                        alCambiarModo={() => setModo(modo === "ampliado" ? "compacto" : "ampliado")}
                         alCerrar={cerrar}
                         alResponder={() => {
                             if (!abiertoActual.current) setRespuestaSinVer(true);
@@ -146,9 +129,10 @@ export function CopilotoFlotante({ idUsuario, idEmpresa }: CopilotoFlotanteProps
                 aria-label={abierto ? "Cerrar el copiloto" : "Abrir el copiloto IA"}
                 aria-expanded={abierto}
                 aria-controls="panel-copiloto"
-                title={abierto ? "Cerrar el copiloto" : "Copiloto IA"}
-                className={`no-imprimir fixed bottom-5 right-5 z-30 size-14 place-items-center rounded-full bg-[var(--accent)] text-white shadow-[0_8px_24px_rgb(0_0_0/0.25)] transition-[scale] hover:scale-105 motion-reduce:transition-none sm:bottom-6 sm:right-6 ${
-                    ampliado ? "hidden" : abierto ? "grid max-sm:hidden" : "grid"
+                title={abierto ? "Cerrar el copiloto (Ctrl+J)" : "Copiloto IA (Ctrl+J)"}
+                aria-keyshortcuts="Control+J Meta+J"
+                className={`no-imprimir fixed bottom-5 right-5 z-30 grid size-14 place-items-center rounded-full bg-[var(--accent)] text-white shadow-[0_8px_24px_rgb(0_0_0/0.25)] transition-[scale] hover:scale-105 motion-reduce:transition-none sm:bottom-6 sm:right-6 ${
+                    abierto ? "max-sm:hidden" : ""
                 }`}
             >
                 <Icon name={abierto ? "close" : "sparkle"} className="size-6" />

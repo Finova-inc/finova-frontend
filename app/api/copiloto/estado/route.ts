@@ -3,7 +3,8 @@
 
    Le dice al chat si el copiloto esta disponible y cuanto del tope diario lleva
    gastado la persona, para avisar "te quedan unas X preguntas hoy" antes de
-   preguntar. Reenvia GET /copiloto/estado del backend con el token de la
+   preguntar. Suma los avisos de la empresa (borradores pendientes, mes sin
+   abrir) para sugerir preguntas; si fallan, van en null y el chat sigue. Reenvia GET /copiloto/estado del backend con el token de la
    cookie httpOnly, que nunca llega al JavaScript del navegador.
 
    Es una lectura y la pide el chat al abrirse (un componente cliente), por eso
@@ -18,8 +19,11 @@ export async function GET() {
     if (!token) return Response.json({ message: "Tu sesión expiró. Vuelve a iniciar sesión." }, { status: 401 });
 
     try {
-        const estado = await copilotoApi.estado({ token, cache: "no-store" });
-        return Response.json(estado, { headers: { "Cache-Control": "no-store" } });
+        const [estado, avisos] = await Promise.all([
+            copilotoApi.estado({ token, cache: "no-store" }),
+            copilotoApi.avisos({ token, cache: "no-store" }).catch(() => null),
+        ]);
+        return Response.json({ ...estado, avisos }, { headers: { "Cache-Control": "no-store" } });
     } catch (error) {
         // 0 y 408 son red o tiempo agotado (lib/api.ts): hacia afuera, 504.
         const status = error instanceof ApiError && error.status >= 400 ? error.status : 504;

@@ -222,22 +222,13 @@ const ICON_PATHS = {
             <path d="M8 11V7a4 4 0 0 1 8 0v4" />
         </>
     ),
-    /** Agrandar el chat del copiloto: flechas hacia las esquinas. */
+    /** Abrir el copiloto en pantalla completa: flechas hacia las esquinas. */
     expand: (
         <>
             <path d="M14 4h6v6" />
             <path d="M20 4l-7 7" />
             <path d="M10 20H4v-6" />
             <path d="M4 20l7-7" />
-        </>
-    ),
-    /** Achicar el chat del copiloto: flechas hacia el centro. */
-    collapse: (
-        <>
-            <path d="M20 10h-6V4" />
-            <path d="M14 10l7-7" />
-            <path d="M4 14h6v6" />
-            <path d="M10 14l-7 7" />
         </>
     ),
     /** Respuesta útil. */

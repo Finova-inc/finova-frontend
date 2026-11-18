@@ -503,7 +503,7 @@
     }
 
     /* ----------------------------------------------------------------------
-       COPILOTO IA: TABLERO PARA ESCRIBIR Y VISTA AMPLIADA
+       COPILOTO IA: TABLERO PARA ESCRIBIR
        ----------------------------------------------------------------------
        .copiloto-tablero es el tablero donde se escribe la pregunta: flota
        sobre los mensajes con el fondo al 30% de opacidad y un desenfoque
@@ -511,13 +511,7 @@
        texto perdiera contraste, se sube el desenfoque o la saturacion, no la
        opacidad.
 
-       .copiloto-vidrio es el panel de la vista ampliada. Va mas opaco (80%)
-       a proposito: ahi se leen las respuestas. En el celular el chat ocupa
-       toda la pantalla y va solido, por eso el vidrio empieza en 640px.
-
-       .copiloto-velo oscurece y desenfoca apenas la pantalla de atras.
-
-       Prefijo primero en los tres: ver la nota de .site-header-bar.
+       Prefijo primero: ver la nota de .site-header-bar.
        ---------------------------------------------------------------------- */
     .copiloto-tablero {
         background: color-mix(in srgb, var(--surface) 30%, transparent);
@@ -533,42 +527,17 @@
         border-color: var(--accent);
     }
 
-    .copiloto-vidrio {
-        background: var(--surface);
-    }
-
-    @media (min-width: 40rem) {
-        .copiloto-vidrio {
-            background: color-mix(in srgb, var(--surface) 80%, transparent);
-            -webkit-backdrop-filter: blur(20px) saturate(150%);
-            backdrop-filter: blur(20px) saturate(150%);
-        }
-    }
-
-    .copiloto-velo {
-        background: rgb(0 0 0 / 0.3);
-        -webkit-backdrop-filter: blur(3px);
-        backdrop-filter: blur(3px);
-    }
-
     /* Sin desenfoque (navegador antiguo) o con "reducir transparencia", fondo
        solido: un vidrio sin desenfoque deja el texto de atras asomando. */
     @supports not (backdrop-filter: blur(1px)) {
-        .copiloto-tablero,
-        .copiloto-vidrio {
+        .copiloto-tablero {
             background: var(--surface);
         }
     }
 
     @media (prefers-reduced-transparency: reduce) {
-        .copiloto-tablero,
-        .copiloto-vidrio {
+        .copiloto-tablero {
             background: var(--surface);
-            -webkit-backdrop-filter: none;
-            backdrop-filter: none;
-        }
-
-        .copiloto-velo {
             -webkit-backdrop-filter: none;
             backdrop-filter: none;
         }
