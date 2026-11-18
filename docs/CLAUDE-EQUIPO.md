@@ -64,7 +64,7 @@ Los hooks se registran en `.claude/settings.json` con `node -e "require(...)"`. 
 3. Para GitHub, crea un token personal en GitHub (solo los repos de `Finova-inc`) y defínelo como variable de entorno `GITHUB_PERSONAL_ACCESS_TOKEN` en tu sistema. Sin esa variable, el servidor de GitHub no conecta: el resto sigue funcionando.
 4. Copia `CLAUDE.local.md.example` a `CLAUDE.local.md` y completa lo tuyo.
 5. Revisa los hooks con `/hooks` la primera vez, para saber qué corre.
-6. Instala los plugins y skills personales que usa el equipo (superpowers, claude-mem, security-audit y otros): están en `docs/HERRAMIENTAS-CLAUDE.md`, con el comando de cada uno y para qué sirve en Finova.
+6. Instala los plugins y skills personales que usa el equipo (superpowers, claude-mem, ponytail, security-audit y otros): están en `docs/HERRAMIENTAS-CLAUDE.md`, con el comando de cada uno y para qué sirve en Finova.
 
 ## Cómo proponer cambios a esta configuración
 - Las reglas, los comandos y los agentes se cambian por PR, como cualquier código, con un commit `docs(claude): ...` o `chore(claude): ...`.

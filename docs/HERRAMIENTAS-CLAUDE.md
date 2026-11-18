@@ -10,7 +10,7 @@ Si te falta algo de esta lista, instálalo con los comandos de abajo. Si empieza
 |---|---|---|---|
 | `superpowers` | plugin | Recomendado | Proceso: depurar con método, planificar antes de construir, verificar antes de decir "listo". |
 | `claude-mem` | plugin | Recomendado | Memoria entre sesiones: retomar el trabajo sin volver a explicar el contexto. |
-| `ponytail` | plugin | Opcional, en evaluación | Que Claude escriba el mínimo código necesario. |
+| `ponytail` | plugin | Recomendado | Que Claude haga el cambio más chico que resuelve la tarea, sin sobreingeniería. |
 | `security-audit` | skill | Recomendado | Auditoría de seguridad de un repo o módulo completo. |
 | `grill-me` | skill | Opcional | Que Claude interrogue un plan o diseño hasta encontrarle los huecos. |
 | `agent-browser` | skill + CLI | Opcional | Que Claude abra el frontend local en un navegador y lo pruebe. |
@@ -18,15 +18,15 @@ Si te falta algo de esta lista, instálalo con los comandos de abajo. Si empieza
 
 ## Instalación rápida
 
-**Dentro de Claude Code** (uno por línea):
+`superpowers`, `claude-mem` y `ponytail` vienen declarados en `.claude/settings.json`: al abrir el repo, Claude Code ofrece instalarlos. Si no aparece el aviso, instálalos **dentro de Claude Code** (uno por línea):
 
 ```
 /plugin install superpowers@claude-plugins-official
 /plugin marketplace add thedotmack/claude-mem
 /plugin install claude-mem@thedotmack
+/plugin marketplace add DietrichGebert/ponytail
+/plugin install ponytail@ponytail
 ```
-
-Opcional: `/plugin marketplace add DietrichGebert/ponytail` y luego `/plugin install ponytail@ponytail`.
 
 **En una terminal** (necesita Node; `-g` las deja disponibles en todos tus proyectos):
 
@@ -67,13 +67,22 @@ Memoria persistente entre sesiones. Registra lo que pasa en cada sesión en una 
   - Guarda comandos, rutas y fragmentos de código de tus sesiones. No pegues secretos en el chat.
   - Sus notas pueden quedar viejas. Si discrepan del código, manda el código.
 
-### ponytail (opcional, en evaluación)
+### ponytail (recomendado)
 
-Activa al iniciar cada sesión un modo de "desarrollador senior perezoso": Claude prefiere la solución más simple y evita la sobreingeniería. Niveles con `/ponytail lite`, `/ponytail full` o `/ponytail ultra`; se apaga escribiendo "stop ponytail" o "normal mode".
+Activa al iniciar cada sesión un modo de "desarrollador senior perezoso": Claude hace el cambio más chico que resuelve la tarea completa, reutiliza lo que ya existe en el repo y evita abstracciones, opciones y dependencias que nadie pidió.
 
 - **Instalar:** `/plugin marketplace add DietrichGebert/ponytail` y `/plugin install ponytail@ponytail`.
-- **En Finova:** sirve para correcciones puntuales y cambios chicos.
-- **Ojo:** "mínimo" no autoriza saltarse las reglas del repo: entrada en `CHANGELOG.md`, test de regresión, DTOs validados, filtro por `id_empresa`, montos sin `number`. Si chocan, mandan `.claude/rules/`.
+- **Niveles:**
+  - `/ponytail full`: el de siempre;
+  - `/ponytail lite`: construye lo pedido y solo nombra la opción más chica, útil para diseñar una pantalla o un módulo nuevo;
+  - `/ponytail ultra`: además cuestiona el pedido antes de construir.
+
+  Se apaga en la sesión escribiendo "stop ponytail" o "normal mode".
+- **En Finova:** correcciones puntuales, cambios chicos y revisiones (`/ponytail-review` busca código de más en un diff).
+- **Configuración:** al instalar pide cuatro opciones (`/plugin configure ponytail@ponytail`). Deja `webhookUrl` vacío: así nada sale de tu máquina. El tablero de métricas (`ledger`) solo escribe en `~/.config/ponytail/band/`.
+- **Ojo:**
+  - "Mínimo" no autoriza saltarse las reglas del repo: entrada en `CHANGELOG.md`, test de regresión, DTOs validados, filtro por `id_empresa`, montos sin `number`. Si chocan, mandan `CLAUDE.md` y `.claude/rules/`.
+  - Un atajo con un límite conocido queda comentado en el código (`shortcut: <límite>, <cuándo mejorarlo>`). Revísalos en el PR.
 
 ### github (no hace falta)
 
