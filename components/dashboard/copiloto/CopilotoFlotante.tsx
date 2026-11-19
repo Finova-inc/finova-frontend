@@ -2,8 +2,9 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { COOKIE_COPILOTO, COPILOTO_ANCLADO, guardarPreferencia } from "@/components/dashboard/preferencias-panel";
 import { Icon } from "@/components/ui/Icon";
-import { preguntasPendientes } from "./buzon";
+import { preguntasPendientes, seleccionesPendientes } from "./buzon";
 import { ChatCopiloto, RUTA_MODULO_COPILOTO } from "./ChatCopiloto";
 
 /* ============================================================================
@@ -26,17 +27,27 @@ import { ChatCopiloto, RUTA_MODULO_COPILOTO } from "./ChatCopiloto";
      chat se monta de nuevo y lee la conversacion guardada en el navegador.
    - El chat se monta recien la primera vez que se abre: asi lee la
      conversacion guardada sin diferencias con el HTML del servidor.
+   - Anclado (desde 1024 px): en vez de flotar, es una columna a la derecha,
+     bajo la cabecera del panel, que llena todo el espacio que deja el
+     contenido (max 1320 px, 380 px como minimo para el chat): asi no queda
+     un hueco al plegar el menu. Sin cabecera propia ni linea de color, para
+     no cortar la del panel: sus botones quedan en una esquina y uno vuelve
+     a flotante. La eleccion se guarda en una cookie (preferencias-panel.ts).
+     Bajo 1024 px no cabe una columna y se comporta como flotante.
    ========================================================================== */
 
 type CopilotoFlotanteProps = {
     /** Para guardar la conversacion en el navegador; null si el token no se pudo leer. */
     readonly idUsuario: string | null;
     readonly idEmpresa: string | null;
+    /** De la cookie: el layout la lee para dibujarlo en su lugar desde el servidor. */
+    readonly ancladoInicial?: boolean;
 };
 
-export function CopilotoFlotante({ idUsuario, idEmpresa }: CopilotoFlotanteProps) {
+export function CopilotoFlotante({ idUsuario, idEmpresa, ancladoInicial = false }: CopilotoFlotanteProps) {
     const ruta = usePathname();
     const [abierto, setAbierto] = useState(false);
+    const [anclado, setAnclado] = useState(ancladoInicial);
     const [montado, setMontado] = useState(false);
     const [respuestaSinVer, setRespuestaSinVer] = useState(false);
     const boton = useRef<HTMLButtonElement>(null);
@@ -62,15 +73,23 @@ export function CopilotoFlotante({ idUsuario, idEmpresa }: CopilotoFlotanteProps
         return () => window.removeEventListener("keydown", alTeclear);
     }, [enModulo]);
 
+    // "Explicar esto" y el texto seleccionado en una pantalla abren el chat; el chat los toma.
     useEffect(() => {
         if (enModulo) return;
-        return preguntasPendientes.suscribir(() => {
-            if (!preguntasPendientes.mirar()) return;
+        const abrirSiHay = () => {
+            if (!preguntasPendientes.mirar() && !seleccionesPendientes.mirar()) return;
             setMontado(true);
             setRespuestaSinVer(false);
             setAbierto(true);
-        });
+        };
+        const dejarPregunta = preguntasPendientes.suscribir(abrirSiHay);
+        const dejarSeleccion = seleccionesPendientes.suscribir(abrirSiHay);
+        return () => {
+            dejarPregunta();
+            dejarSeleccion();
+        };
     }, [enModulo]);
+
 
     useEffect(() => {
         if (!abierto) return;
@@ -98,6 +117,16 @@ export function CopilotoFlotante({ idUsuario, idEmpresa }: CopilotoFlotanteProps
         boton.current?.focus();
     }
 
+    function cambiarLado() {
+        guardarPreferencia(COOKIE_COPILOTO, anclado ? null : COPILOTO_ANCLADO);
+        setAnclado(!anclado);
+    }
+
+    // Desde lg, anclado: columna fija a la altura de la pantalla, sin sombra ni esquinas.
+    const claseAnclado = anclado
+        ? "copiloto-anclado lg:sticky lg:top-[60px] lg:bottom-auto lg:right-auto lg:z-auto lg:h-[calc(100dvh-60px)] lg:w-auto lg:min-w-[380px] lg:flex-1 lg:rounded-none lg:border-y-0 lg:border-r-0 lg:border-l lg:shadow-none"
+        : "";
+
     return (
         <>
             <section
@@ -105,14 +134,20 @@ export function CopilotoFlotante({ idUsuario, idEmpresa }: CopilotoFlotanteProps
                 role="dialog"
                 aria-modal="false"
                 aria-label="Copiloto IA"
-                className={`no-imprimir fixed inset-0 z-30 flex-col bg-[var(--surface)] sm:inset-auto sm:bottom-24 sm:right-6 sm:h-[min(640px,calc(100dvh-8rem))] sm:w-[400px] sm:overflow-hidden sm:rounded-2xl sm:border sm:border-[var(--border-subtle)] sm:shadow-[0_16px_48px_rgb(0_0_0/0.22)] ${
+                className={`copiloto-tema no-imprimir fixed inset-0 z-30 flex-col bg-[var(--surface)] text-[var(--foreground)] sm:inset-auto sm:bottom-24 sm:right-6 sm:h-[min(640px,calc(100dvh-8rem))] sm:w-[400px] sm:overflow-hidden sm:rounded-2xl sm:border sm:border-[var(--border-subtle)] sm:shadow-[0_16px_48px_rgb(0_0_0/0.22)] ${claseAnclado} ${
                     abierto ? "flex" : "hidden"
                 }`}
             >
+                <div
+                    aria-hidden="true"
+                    className={`h-[3px] shrink-0 bg-[image:var(--copiloto-franja)] ${anclado ? "lg:hidden" : ""}`}
+                />
                 {montado && (
                     <ChatCopiloto
                         abierto={abierto}
                         alCerrar={cerrar}
+                        anclado={anclado}
+                        alCambiarLado={cambiarLado}
                         alResponder={() => {
                             if (!abiertoActual.current) setRespuestaSinVer(true);
                         }}
@@ -132,7 +167,7 @@ export function CopilotoFlotante({ idUsuario, idEmpresa }: CopilotoFlotanteProps
                 title={abierto ? "Cerrar el copiloto (Ctrl+J)" : "Copiloto IA (Ctrl+J)"}
                 aria-keyshortcuts="Control+J Meta+J"
                 className={`no-imprimir fixed bottom-5 right-5 z-30 grid size-14 place-items-center rounded-full bg-[var(--accent)] text-white shadow-[0_8px_24px_rgb(0_0_0/0.25)] transition-[scale] hover:scale-105 motion-reduce:transition-none sm:bottom-6 sm:right-6 ${
-                    abierto ? "max-sm:hidden" : ""
+                    abierto ? `max-sm:hidden ${anclado ? "lg:hidden" : ""}` : ""
                 }`}
             >
                 <Icon name={abierto ? "close" : "sparkle"} className="size-6" />

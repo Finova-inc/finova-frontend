@@ -32,7 +32,7 @@ import {
 import { describirPantalla } from "@/lib/copiloto-pantalla";
 import { formatearFecha } from "@/lib/formato";
 import { valorarRespuesta } from "./acciones";
-import { preguntasPendientes, propuestasPendientes } from "./buzon";
+import { preguntasPendientes, propuestasPendientes, seleccionesPendientes } from "./buzon";
 import { leerDetalle, suscribir } from "./contexto-pantalla";
 import { BurbujaAsistente, BurbujaUsuario, Sugerencias, type MensajeVista } from "./partes";
 
@@ -64,6 +64,9 @@ const MARGEN_PEGADO_PX = 80;
 /** Desde cuantas preguntas restantes el aviso cambia de tono. */
 const POCAS_PREGUNTAS = 3;
 
+/** Con un texto adjunto, se puede preguntar sin escribir nada. */
+const PREGUNTAS_SOBRE_SELECCION = ["Explícame esto", "¿Está bien?", "¿Qué hago con esto?"] as const;
+
 export const RUTA_MODULO_COPILOTO = "/dashboard/copiloto";
 const RUTA_NUEVO_ASIENTO = "/dashboard/core-contable/nuevo";
 
@@ -74,6 +77,9 @@ type ChatCopilotoProps = {
     readonly alCerrar?: () => void;
     /** Avisa que termino una respuesta (para marcar el boton si el panel esta cerrado). */
     readonly alResponder?: () => void;
+    /** Solo en el panel flotante: si esta anclado al costado y como cambiarlo. */
+    readonly anclado?: boolean;
+    readonly alCambiarLado?: () => void;
     readonly idUsuario: string | null;
     readonly idEmpresa: string | null;
 };
@@ -90,7 +96,7 @@ function almacen(): Almacen | null {
 function aGuardados(mensajes: readonly MensajeVista[]): MensajeGuardado[] {
     return mensajes
         .filter((m) => m.estado === "listo")
-        .map(({ id, rol, texto, aviso, pantalla, idUso, valoracion, enlaces, propuesta }) => {
+        .map(({ id, rol, texto, aviso, pantalla, seleccion, idUso, valoracion, enlaces, propuesta }) => {
             // Los comprobantes ambiguos ("") no se enlazan: no vale la pena guardarlos.
             const conId = Object.entries(enlaces ?? {}).filter(([, idAsiento]) => idAsiento !== "");
             return {
@@ -99,6 +105,7 @@ function aGuardados(mensajes: readonly MensajeVista[]): MensajeGuardado[] {
                 texto,
                 aviso,
                 ...(pantalla ? { pantalla } : {}),
+                ...(seleccion ? { seleccion } : {}),
                 ...(idUso ? { idUso } : {}),
                 ...(valoracion ? { valoracion } : {}),
                 ...(conId.length > 0 ? { enlaces: Object.fromEntries(conId) } : {}),
@@ -107,7 +114,15 @@ function aGuardados(mensajes: readonly MensajeVista[]): MensajeGuardado[] {
         });
 }
 
-export function ChatCopiloto({ abierto, alCerrar, alResponder, idUsuario, idEmpresa }: ChatCopilotoProps) {
+export function ChatCopiloto({
+    abierto,
+    alCerrar,
+    alResponder,
+    anclado = false,
+    alCambiarLado,
+    idUsuario,
+    idEmpresa,
+}: ChatCopilotoProps) {
     const router = useRouter();
     const ruta = usePathname();
     const parametros = useSearchParams();
@@ -159,6 +174,13 @@ export function ChatCopiloto({ abierto, alCerrar, alResponder, idUsuario, idEmpr
         if (pregunta) void enviarActual.current(pregunta);
     }, [preguntaPendiente, abierto, respondiendo, bloqueado]);
 
+    // Texto seleccionado en otra pantalla (PreguntarSeleccion): espera en el buzon,
+    // adjunto a la proxima pregunta, hasta enviarla o quitarlo.
+    const seleccion = useSyncExternalStore(seleccionesPendientes.suscribir, seleccionesPendientes.mirar, () => null);
+    useEffect(() => {
+        if (seleccion && abierto) campo.current?.focus();
+    }, [seleccion, abierto]);
+
     // Al cambiar de empresa (el componente se remonta) o cerrar sesion, se corta la respuesta en curso.
     useEffect(() => () => controlador.current?.abort(), []);
 
@@ -208,13 +230,24 @@ export function ChatCopiloto({ abierto, alCerrar, alResponder, idUsuario, idEmpr
         const idPregunta = mensajes.length > 0 ? mensajes[mensajes.length - 1].id + 1 : 0;
         const idRespuesta = idPregunta + 1;
         const conPantalla = pantalla ? { pantalla } : {};
+        const conSeleccion = seleccion ? { seleccion } : {};
         setMensajes((previos) => [
             ...previos,
-            { id: idPregunta, rol: "usuario", texto, estado: "listo", consultando: null, aviso: null, ...conPantalla },
+            {
+                id: idPregunta,
+                rol: "usuario",
+                texto,
+                estado: "listo",
+                consultando: null,
+                aviso: null,
+                ...conPantalla,
+                ...conSeleccion,
+            },
             { id: idRespuesta, rol: "asistente", texto: "", estado: "respondiendo", consultando: null, aviso: null },
         ]);
         setEntrada("");
         setErrorEntrada(null);
+        seleccionesPendientes.tomar();
         pegadoAbajo.current = true;
 
         const actualizar = (cambio: (m: MensajeVista) => Partial<MensajeVista>) =>
@@ -226,7 +259,7 @@ export function ChatCopiloto({ abierto, alCerrar, alResponder, idUsuario, idEmpr
             const respuesta = await fetch("/api/copiloto/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ mensaje: texto, historial, ...conPantalla }),
+                body: JSON.stringify({ mensaje: texto, historial, ...conPantalla, ...conSeleccion }),
                 signal: corte.signal,
             });
             if (respuesta.status === 401) {
@@ -341,7 +374,13 @@ export function ChatCopiloto({ abierto, alCerrar, alResponder, idUsuario, idEmpr
         const marcar = (marca: Valoracion | undefined) =>
             setMensajes((previos) => previos.map((m) => (m.id === idMensaje ? { ...m, valoracion: marca } : m)));
         marcar(valor ?? undefined);
-        valorarRespuesta(mensaje.idUso, valor)
+        // La pregunta que origino esta respuesta: el mensaje del usuario justo antes.
+        const indice = mensajes.findIndex((m) => m.id === idMensaje);
+        const pregunta = mensajes
+            .slice(0, indice)
+            .reverse()
+            .find((m) => m.rol === "usuario")?.texto;
+        valorarRespuesta(mensaje.idUso, valor, valor === "no_util" ? pregunta : undefined)
             .then((resultado) => {
                 if (!resultado.ok) marcar(anterior);
             })
@@ -355,18 +394,32 @@ export function ChatCopiloto({ abierto, alCerrar, alResponder, idUsuario, idEmpr
           : sinPreguntas
             ? "Llegaste al límite de hoy. Vuelve mañana."
             : "Enter envía · Shift + Enter, nueva línea";
-    const ancho = enModulo ? "mx-auto w-full max-w-[720px]" : "";
+    // Anclado, la columna llena el espacio que deja el contenido; la conversacion queda centrada y legible.
+    const ancho = enModulo
+        ? "mx-auto w-full max-w-[720px]"
+        : anclado
+          ? "lg:mx-auto lg:w-full lg:max-w-[720px]"
+          : "";
 
     return (
-        <div className="flex h-full min-h-0 flex-col">
-            <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] px-4 py-3">
+        <div className="relative flex min-h-0 flex-1 flex-col">
+            {/* Anclado (desde lg) no hay cabecera: los botones quedan en la esquina superior. */}
+            <div
+                className={`flex items-center gap-2 border-b border-[var(--border-subtle)] px-4 py-3 ${
+                    anclado
+                        ? "lg:absolute lg:right-2 lg:top-2 lg:z-10 lg:gap-0.5 lg:rounded-lg lg:border lg:bg-[var(--surface)] lg:p-0.5"
+                        : ""
+                }`}
+            >
                 <div
                     aria-hidden="true"
-                    className="grid size-8 shrink-0 place-items-center rounded-lg bg-[var(--background-raised)] text-[var(--accent)]"
+                    className={`grid size-8 shrink-0 place-items-center rounded-lg bg-[var(--background-raised)] text-[var(--accent)] ${
+                        anclado ? "lg:hidden" : ""
+                    }`}
                 >
                     <Icon name="sparkle" className="size-4" />
                 </div>
-                <div className="min-w-0 flex-1">
+                <div className={`min-w-0 flex-1 ${anclado ? "lg:sr-only" : ""}`}>
                     <div className="flex items-center gap-2">
                         <h2 className="font-display text-[15px] font-semibold text-[var(--foreground)]">Copiloto IA</h2>
                         <Etiqueta tono="aviso">Beta</Etiqueta>
@@ -382,6 +435,19 @@ export function ChatCopiloto({ abierto, alCerrar, alResponder, idUsuario, idEmpr
                 )}
                 {alCerrar && (
                     <>
+                        {alCambiarLado && (
+                            // Solo desde 1024 px: bajo eso no cabe una columna al costado.
+                            <button
+                                type="button"
+                                onClick={alCambiarLado}
+                                aria-pressed={anclado}
+                                aria-label="Anclar el copiloto al costado"
+                                title={anclado ? "Volver a flotante" : "Anclar al costado"}
+                                className="grid size-8 place-items-center rounded-md text-[var(--foreground-muted)] transition-colors hover:bg-[var(--background-raised)] hover:text-[var(--foreground)] aria-pressed:text-[var(--accent)] max-lg:hidden"
+                            >
+                                <Icon name="panel" className="size-4" />
+                            </button>
+                        )}
                         {/* En el celular el panel ya es pantalla completa. */}
                         <Link
                             href={RUTA_MODULO_COPILOTO}
@@ -409,7 +475,7 @@ export function ChatCopiloto({ abierto, alCerrar, alResponder, idUsuario, idEmpr
                         const el = evento.currentTarget;
                         pegadoAbajo.current = el.scrollHeight - el.scrollTop - el.clientHeight < MARGEN_PEGADO_PX;
                     }}
-                    className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-40 pt-4"
+                    className={`flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-40 pt-4 ${anclado ? "lg:pt-14" : ""}`}
                 >
                     <div className={`flex flex-1 flex-col gap-5 ${ancho}`}>
                         {mensajes.length === 0 ? (
@@ -426,7 +492,7 @@ export function ChatCopiloto({ abierto, alCerrar, alResponder, idUsuario, idEmpr
                                 )}
                                 {mensajes.map((m) =>
                                     m.rol === "usuario" ? (
-                                        <BurbujaUsuario key={m.id} texto={m.texto} />
+                                        <BurbujaUsuario key={m.id} texto={m.texto} seleccion={m.seleccion} />
                                     ) : (
                                         <BurbujaAsistente key={m.id} mensaje={m} alValorar={valorar} alLlenarFormulario={llenarFormulario} />
                                     ),
@@ -442,6 +508,43 @@ export function ChatCopiloto({ abierto, alCerrar, alResponder, idUsuario, idEmpr
                             <p className="mb-1 truncate px-1.5 text-[11px] text-[var(--foreground-muted)]" title={pantalla}>
                                 Viendo: {pantalla}
                             </p>
+                        )}
+                        {seleccion && (
+                            <div className="mb-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--background-raised)] p-2">
+                                <div className="flex items-start gap-2">
+                                    <Icon name="document" className="mt-0.5 size-3.5 shrink-0 text-[var(--accent)]" />
+                                    <p className="line-clamp-3 min-w-0 flex-1 whitespace-pre-wrap text-[12px] text-[var(--foreground)]">
+                                        <span className="sr-only">Texto adjunto: </span>
+                                        {seleccion}
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            seleccionesPendientes.tomar();
+                                            campo.current?.focus();
+                                        }}
+                                        aria-label="Quitar el texto adjunto"
+                                        title="Quitar"
+                                        className="grid size-6 shrink-0 place-items-center rounded-md text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                                    >
+                                        <Icon name="close" className="size-3.5" />
+                                    </button>
+                                </div>
+                                {entrada.trim() === "" && !respondiendo && !bloqueado && (
+                                    <div className="mt-2 flex flex-wrap gap-1.5">
+                                        {PREGUNTAS_SOBRE_SELECCION.map((pregunta) => (
+                                            <button
+                                                key={pregunta}
+                                                type="button"
+                                                onClick={() => void enviar(pregunta)}
+                                                className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface)] px-2.5 py-1 text-[12px] text-[var(--foreground)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                                            >
+                                                {pregunta}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         )}
                         <label htmlFor="pregunta-copiloto" className="sr-only">
                             Tu pregunta para el copiloto

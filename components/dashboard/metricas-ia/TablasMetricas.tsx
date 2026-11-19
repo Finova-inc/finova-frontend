@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Panel, PanelCabecera } from "@/components/ui/Panel";
-import { formatearCLP } from "@/lib/formato";
+import { formatearCLP, formatearFecha } from "@/lib/formato";
 import type { MetricasCopiloto, ResultadoUsoCopiloto } from "@/lib/api";
 import { formatearUsd, netoSinIva, porcentaje, PRECIO_PLAN_ESTUDIO_CLP } from "@/lib/metricas-ia";
 
@@ -96,6 +96,30 @@ export function TablasMetricas({ metricas }: { readonly metricas: MetricasCopilo
                         </tr>
                     ))}
                 </Tabla>
+            </Panel>
+
+            <Panel sinRelleno className="lg:col-span-2">
+                <PanelCabecera
+                    titulo="Preguntas con respuesta no útil"
+                    nota="Sin RUT ni usuario; se borran a los 90 días. Sirven para armar casos de preguntas-esperadas.json"
+                />
+                {metricas.preguntas_no_utiles.length === 0 ? (
+                    <p className="px-4 py-3 text-[12.5px] text-[var(--foreground-muted)]">Ninguna este mes.</p>
+                ) : (
+                    <Tabla cabeceras={["Fecha", "Pregunta", "Consultó"]}>
+                        {metricas.preguntas_no_utiles.map((p, i) => (
+                            <tr key={`${p.fecha}-${i}`} className="border-b border-[var(--border-subtle)] last:border-0">
+                                <td className={`${CELDA} whitespace-nowrap`}>{formatearFecha(p.fecha)}</td>
+                                <td className={`${CELDA} whitespace-pre-wrap`}>{p.pregunta}</td>
+                                <td className={`${CELDA} text-[12px] text-[var(--foreground-muted)]`}>
+                                    {p.herramientas.length === 0
+                                        ? "Nada"
+                                        : p.herramientas.map((h) => HERRAMIENTAS[h] ?? h).join(", ")}
+                                </td>
+                            </tr>
+                        ))}
+                    </Tabla>
+                )}
             </Panel>
 
             <Panel sinRelleno>

@@ -15,7 +15,14 @@
      version del sitio o la propia persona desde la consola.
    ========================================================================== */
 
-import { comoEnlaces, comoPropuesta, esPantallaValida, type PropuestaAsiento, type RolChat } from "./copiloto.ts";
+import {
+    comoEnlaces,
+    comoPropuesta,
+    esPantallaValida,
+    esSeleccionValida,
+    type PropuestaAsiento,
+    type RolChat,
+} from "./copiloto.ts";
 
 export const PREFIJO_MEMORIA = "finova:copiloto:v1:";
 export const DIAS_DE_MEMORIA = 7;
@@ -37,6 +44,8 @@ export type MensajeGuardado = {
     aviso: string | null;
     /** Pantalla abierta al preguntar (mensajes del usuario). */
     pantalla?: string;
+    /** Texto de la pantalla que la persona adjunto a la pregunta (mensajes del usuario). */
+    seleccion?: string;
     /** Fila de uso de la respuesta, para valorarla (mensajes del asistente). */
     idUso?: string;
     valoracion?: Valoracion;
@@ -75,6 +84,7 @@ function comoMensajeGuardado(valor: unknown): MensajeGuardado | null {
         texto: m.texto as string,
         aviso: m.aviso as string | null,
         ...(m.rol === "usuario" && esPantallaValida(m.pantalla) ? { pantalla: m.pantalla } : {}),
+        ...(m.rol === "usuario" && esSeleccionValida(m.seleccion) ? { seleccion: m.seleccion } : {}),
         ...(typeof m.idUso === "string" && m.idUso.length <= 64 ? { idUso: m.idUso } : {}),
         ...(m.valoracion === "util" || m.valoracion === "no_util" ? { valoracion: m.valoracion } : {}),
         ...(enlaces ? { enlaces } : {}),

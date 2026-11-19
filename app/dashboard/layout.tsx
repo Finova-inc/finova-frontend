@@ -4,7 +4,15 @@ import { SelectorEmpresa } from "@/components/dashboard/SelectorEmpresa";
 import { CopilotoFlotante } from "@/components/dashboard/copiloto/CopilotoFlotante";
 import { Icon } from "@/components/ui/Icon";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import {
+    COOKIE_COPILOTO,
+    COOKIE_MENU,
+    COPILOTO_ANCLADO,
+    MENU_PLEGADO,
+} from "@/components/dashboard/preferencias-panel";
+import { PreguntarSeleccion } from "@/components/dashboard/copiloto/PreguntarSeleccion";
 import { ApiError, authApi, type EmpresaDelUsuario } from "@/lib/api";
 import { exigirTokenSesion, obtenerEmpresaDelToken, obtenerUsuarioDelToken } from "@/lib/session";
 
@@ -34,6 +42,10 @@ export default async function DashboardLayout({
     const idEmpresaActual = await obtenerEmpresaDelToken();
     // Solo para la clave con que el copiloto guarda la conversacion en el navegador.
     const idUsuario = await obtenerUsuarioDelToken();
+    // Como se reparte el espacio (menu plegado, copiloto anclado): ver preferencias-panel.ts.
+    const preferencias = await cookies();
+    const menuPlegado = preferencias.get(COOKIE_MENU)?.value === MENU_PLEGADO;
+    const copilotoAnclado = preferencias.get(COOKIE_COPILOTO)?.value === COPILOTO_ANCLADO;
 
     // Un fallo aquí no debe tumbar el panel: sin empresas el selector
     // simplemente no se dibuja, y el resto de la pantalla sigue funcionando.
@@ -50,7 +62,7 @@ export default async function DashboardLayout({
 
     return (
         <div className="flex min-h-screen flex-col bg-[var(--background)] lg:flex-row">
-            <Sidebar />
+            <Sidebar plegadoInicial={menuPlegado} />
 
             <div className="flex min-w-0 flex-1 flex-col">
                 {/* La cabecera es sticky para que el buscador y la accion rapida
@@ -81,19 +93,27 @@ export default async function DashboardLayout({
                     </div>
                 </header>
 
-                {/* El relleno lateral vive aqui, una sola vez, y el vertical va
-                    con padding-block para no anular los costados. */}
-                <main className="w-full max-w-[1320px] px-4 py-5 sm:px-6">
-                    {children}
-                </main>
+                <div className="flex min-w-0 flex-1">
+                    {/* El relleno lateral vive aqui, una sola vez, y el vertical va
+                        con padding-block para no anular los costados. El id delimita
+                        donde seleccionar texto ofrece preguntarle al copiloto. */}
+                    <main id="contenido-panel" className="w-full min-w-0 max-w-[1320px] px-4 py-5 sm:px-6">
+                        {children}
+                    </main>
+                    {/* Bajo la cabecera y despues del contenido: anclado, el copiloto es la
+                        columna de la derecha y la cabecera del panel sigue de lado a lado;
+                        el orden del DOM coincide con el visual para el teclado. Flotante,
+                        es fixed y su lugar en el DOM no se nota. La empresa como key: al
+                        cambiarla, la conversacion empieza de cero. */}
+                    <CopilotoFlotante
+                        key={idEmpresaActual ?? "sin-empresa"}
+                        idUsuario={idUsuario}
+                        idEmpresa={idEmpresaActual}
+                        ancladoInicial={copilotoAnclado}
+                    />
+                </div>
             </div>
-            {/* En todas las pantallas del panel. La empresa como key: al cambiarla, la
-                conversacion empieza de cero porque hablaba de otros datos. */}
-            <CopilotoFlotante
-                key={idEmpresaActual ?? "sin-empresa"}
-                idUsuario={idUsuario}
-                idEmpresa={idEmpresaActual}
-            />
+            <PreguntarSeleccion />
         </div>
     );
 }
