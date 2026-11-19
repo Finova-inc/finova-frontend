@@ -18,13 +18,18 @@ export const BLOQUE_HISTORIAL = 10;
 export const MAX_CARACTERES_HISTORIAL = 24000;
 /** Largo maximo de la descripcion de la pantalla abierta (src/copiloto/pantalla.ts). */
 export const MAX_PANTALLA = 200;
+/** Largo maximo del texto seleccionado que se adjunta a una pregunta (src/copiloto/pantalla.ts). */
+export const MAX_SELECCION = 1000;
 /** Tokens de una pregunta tipica, para estimar cuantas quedan antes de tener una medida. */
 const TOKENS_POR_PREGUNTA_ESTIMADOS = 13000;
 
 export type RolChat = "usuario" | "asistente";
 
-/** `pantalla`: lo que la persona tenia abierto al preguntar; solo en mensajes del usuario. */
-export type MensajeHistorial = { rol: RolChat; texto: string; pantalla?: string };
+/**
+ * `pantalla`: lo que la persona tenia abierto al preguntar; `seleccion`: el texto
+ * que selecciono y adjunto. Los dos, solo en mensajes del usuario.
+ */
+export type MensajeHistorial = { rol: RolChat; texto: string; pantalla?: string; seleccion?: string };
 
 /** Linea de un asiento que arma el copiloto. Montos en pesos, solo digitos ("" en el lado sin monto). */
 export type LineaPropuesta = { id_cuenta: string; cuenta: string; debe: string; haber: string; glosa: string };
@@ -228,6 +233,25 @@ export function esPantallaValida(valor: unknown): valor is string {
     return typeof valor === "string" && valor.length >= 1 && valor.length <= MAX_PANTALLA && !/[<>\r\n]/.test(valor);
 }
 
+/** Texto de 1 a MAX_SELECCION caracteres que no sea solo espacios. El backend cambia los RUT por [RUT]. */
+export function esSeleccionValida(valor: unknown): valor is string {
+    return typeof valor === "string" && valor.length <= MAX_SELECCION && valor.trim().length > 0;
+}
+
+/**
+ * Lo que la persona selecciono en la pantalla, listo para adjuntar: sin espacios
+ * repetidos (una fila de tabla trae tabulaciones y saltos) y cortado al maximo.
+ * null si no queda nada que valga la pena preguntar.
+ */
+export function recortarSeleccion(texto: string): string | null {
+    const limpio = texto
+        .replace(/[ \t\u00a0]+/g, " ")
+        .replace(/\s*\n\s*/g, "\n")
+        .trim();
+    if (limpio.length < 2) return null;
+    return limpio.length > MAX_SELECCION ? `${limpio.slice(0, MAX_SELECCION - 1)}…` : limpio;
+}
+
 /**
  * Turnos anteriores que viajan con la pregunta, con el texto recortado y
  * empezando por el usuario (la API del modelo lo exige).
@@ -242,10 +266,11 @@ export function esPantallaValida(valor: unknown): valor is string {
  */
 export function armarHistorial(mensajes: readonly MensajeHistorial[]): MensajeHistorial[] {
     const conTexto: MensajeHistorial[] = mensajes
-        .map(({ rol, texto, pantalla }) => ({
+        .map(({ rol, texto, pantalla, seleccion }) => ({
             rol,
             texto: texto.trim().slice(0, MAX_TEXTO_HISTORIAL),
             ...(rol === "usuario" && esPantallaValida(pantalla) ? { pantalla } : {}),
+            ...(rol === "usuario" && esSeleccionValida(seleccion) ? { seleccion } : {}),
         }))
         .filter((m) => m.texto.length > 0);
     const n = conTexto.length;
@@ -355,9 +380,10 @@ export function validarPregunta(texto: string): string | null {
     return null;
 }
 
-type CuerpoChat = { mensaje: string; historial: MensajeHistorial[]; pantalla?: string };
+type CuerpoChat = { mensaje: string; historial: MensajeHistorial[]; pantalla?: string; seleccion?: string };
 
 const ERROR_PANTALLA = "La pantalla actual no tiene el formato esperado.";
+const ERROR_SELECCION = `El texto seleccionado puede tener como máximo ${MAX_SELECCION} caracteres.`;
 
 /**
  * Valida en el servidor lo que manda el navegador antes de reenviarlo. Los
@@ -368,11 +394,12 @@ export function validarCuerpoChat(cuerpo: unknown): { ok: true; valor: CuerpoCha
     if (!cuerpo || typeof cuerpo !== "object" || Array.isArray(cuerpo)) {
         return { ok: false, error: "La pregunta no tiene el formato esperado." };
     }
-    const { mensaje, historial = [], pantalla } = cuerpo as Record<string, unknown>;
+    const { mensaje, historial = [], pantalla, seleccion } = cuerpo as Record<string, unknown>;
     if (typeof mensaje !== "string") return { ok: false, error: "Escribe una pregunta." };
     const errorMensaje = validarPregunta(mensaje);
     if (errorMensaje) return { ok: false, error: errorMensaje };
     if (pantalla !== undefined && !esPantallaValida(pantalla)) return { ok: false, error: ERROR_PANTALLA };
+    if (seleccion !== undefined && !esSeleccionValida(seleccion)) return { ok: false, error: ERROR_SELECCION };
     if (!Array.isArray(historial) || historial.length > MAX_HISTORIAL) {
         return { ok: false, error: "La conversación anterior no tiene el formato esperado." };
     }
@@ -389,15 +416,23 @@ export function validarCuerpoChat(cuerpo: unknown): { ok: true; valor: CuerpoCha
         // La pantalla solo acompaña a los mensajes del usuario; en los del asistente se descarta.
         const conPantalla = m.rol === "usuario" && m.pantalla !== undefined;
         if (conPantalla && !esPantallaValida(m.pantalla)) return { ok: false, error: ERROR_PANTALLA };
+        const conSeleccion = m.rol === "usuario" && m.seleccion !== undefined;
+        if (conSeleccion && !esSeleccionValida(m.seleccion)) return { ok: false, error: ERROR_SELECCION };
         limpio.push({
             rol: m.rol as RolChat,
             texto: m.texto as string,
             ...(conPantalla ? { pantalla: m.pantalla as string } : {}),
+            ...(conSeleccion ? { seleccion: m.seleccion as string } : {}),
         });
     }
     return {
         ok: true,
-        valor: { mensaje: mensaje.trim(), historial: limpio, ...(pantalla !== undefined ? { pantalla } : {}) },
+        valor: {
+            mensaje: mensaje.trim(),
+            historial: limpio,
+            ...(pantalla !== undefined ? { pantalla } : {}),
+            ...(seleccion !== undefined ? { seleccion } : {}),
+        },
     };
 }
 

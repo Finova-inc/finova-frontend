@@ -41,4 +41,6 @@ function crearBuzon<T>() {
 }
 
 export const preguntasPendientes = crearBuzon<string>();
+/** Texto que la persona selecciono en una pantalla para adjuntarlo a su pregunta (PreguntarSeleccion). */
+export const seleccionesPendientes = crearBuzon<string>();
 export const propuestasPendientes = crearBuzon<PropuestaAsiento>();

@@ -13,7 +13,8 @@ export default async function CopilotoPage() {
     const [idUsuario, idEmpresa] = await Promise.all([obtenerUsuarioDelToken(), obtenerEmpresaDelToken()]);
 
     return (
-        <div className="h-[calc(100dvh-60px-2.5rem)] min-h-[480px] overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)]">
+        <div className="copiloto-tema flex h-[calc(100dvh-60px-2.5rem)] min-h-[480px] flex-col overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--foreground)]">
+            <div aria-hidden="true" className="h-[3px] shrink-0 bg-[image:var(--copiloto-franja)]" />
             {/* La empresa como key: al cambiarla, el chat lee la conversacion de esa empresa. */}
             <ModuloCopiloto key={idEmpresa ?? "sin-empresa"} idUsuario={idUsuario} idEmpresa={idEmpresa} />
         </div>

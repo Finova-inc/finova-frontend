@@ -1621,6 +1621,12 @@ export type MetricasCopiloto = {
         readonly utiles: number;
         readonly no_utiles: number;
     }[];
+    /** Preguntas de las respuestas no utiles: sin RUT ni usuario, de los ultimos 90 dias. */
+    readonly preguntas_no_utiles: readonly {
+        readonly fecha: string;
+        readonly pregunta: string;
+        readonly herramientas: readonly string[];
+    }[];
     readonly empresas: readonly {
         readonly razon_social: string;
         readonly costo_micro_usd: string;
@@ -1661,7 +1667,11 @@ export const copilotoApi = {
     /** Borradores por revisar y estado del mes en curso, para sugerir preguntas. No consume tokens. */
     avisos: (opciones?: ApiFetchOptions) => api.get<AvisosCopiloto>("/copiloto/avisos", opciones),
     /** Marca una respuesta propia; el backend responde 404 si la fila no es de quien valora. */
-    valorar: (cuerpo: { readonly id_uso: string; readonly valor: ValorValoracionCopiloto }, opciones?: ApiFetchOptions) =>
+    /** `pregunta` solo se guarda con no_util: sin RUT y por 90 dias. */
+    valorar: (
+        cuerpo: { readonly id_uso: string; readonly valor: ValorValoracionCopiloto; readonly pregunta?: string },
+        opciones?: ApiFetchOptions,
+    ) =>
         api.post<{ ok: true }>("/copiloto/valoracion", cuerpo, opciones),
     /** Solo para el equipo Finova: a cualquier otra persona el backend le responde 404. */
     metricas: (mes: string | undefined, opciones?: ApiFetchOptions) =>

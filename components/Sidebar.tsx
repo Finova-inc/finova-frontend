@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { COOKIE_MENU, guardarPreferencia, MENU_PLEGADO } from "@/components/dashboard/preferencias-panel";
 import { Icon, type IconName } from "@/components/ui/Icon";
 
 /* ============================================================================
@@ -93,10 +94,38 @@ function esRutaActiva(pathname: string, href: string): boolean {
    tablas (720-760 px) escondian columnas enteras (Valor, Estado, Debe, Haber).
    El breakpoint es `lg` a proposito, no `md`: tiene que coincidir con el
    `lg:flex-row` de app/dashboard/layout.tsx.
+
+   Desde 1024 px se puede plegar a una franja de iconos (boton al pie o
+   Ctrl+B) para dar espacio a tablas y formularios en pantallas chicas. La
+   preferencia va en una cookie (preferencias-panel.ts). El ancho cambia sin
+   animacion: la regla del equipo es no animar width.
 */
-export default function Sidebar() {
+export default function Sidebar({ plegadoInicial = false }: { readonly plegadoInicial?: boolean }) {
     const pathname = usePathname();
     const [abierto, setAbierto] = useState(false);
+    const [plegado, setPlegado] = useState(plegadoInicial);
+    // Solo pesa desde lg: bajo eso la barra es el cajon de siempre.
+    const angosto = plegado;
+
+    function alternarPlegado() {
+        setPlegado((actual) => {
+            guardarPreferencia(COOKIE_MENU, actual ? null : MENU_PLEGADO);
+            return !actual;
+        });
+    }
+
+    useEffect(() => {
+        const alTeclear = (e: KeyboardEvent) => {
+            if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.key.toLowerCase() !== "b") return;
+            // En un editor de texto enriquecido Ctrl+B es negrita.
+            if (e.target instanceof HTMLElement && e.target.isContentEditable) return;
+            if (!window.matchMedia("(min-width: 1024px)").matches) return;
+            e.preventDefault();
+            alternarPlegado();
+        };
+        window.addEventListener("keydown", alTeclear);
+        return () => window.removeEventListener("keydown", alTeclear);
+    }, []);
 
     useEffect(() => {
         if (!abierto) return;
@@ -134,14 +163,14 @@ export default function Sidebar() {
             <aside
                 id="menu-lateral"
                 /* Cerrado y chico: invisible, para que tampoco reciba el foco del teclado. */
-                className={`fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col gap-1 overflow-y-auto bg-[var(--sidebar-bg)] py-5 text-[var(--sidebar-ink)] transition-[translate,visibility] duration-200 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:w-[236px] lg:shrink-0 lg:translate-x-0 lg:visible ${
+                className={`fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col gap-1 overflow-y-auto bg-[var(--sidebar-bg)] py-5 text-[var(--sidebar-ink)] transition-[translate,visibility] duration-200 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:shrink-0 lg:translate-x-0 lg:visible ${
                     abierto ? "visible translate-x-0" : "invisible -translate-x-full"
-                }`}
+                } ${angosto ? "lg:w-16" : "lg:w-[236px]"}`}
             >
-                <div className="flex items-center gap-2.5 px-5 pb-5">
+                <div className={`flex items-center gap-2.5 px-5 pb-5 ${angosto ? "lg:justify-center lg:px-0" : ""}`}>
                     <GlifoFinova />
 
-                    <div className="min-w-0 flex-1">
+                    <div className={`min-w-0 flex-1 ${angosto ? "lg:hidden" : ""}`}>
                         <div className="font-display text-[17px] font-bold leading-tight tracking-[-0.01em]">
                             Finova
                         </div>
@@ -163,8 +192,13 @@ export default function Sidebar() {
                 <nav className="flex flex-col gap-0.5">
                     {GRUPOS.map((grupo) => (
                         <div key={grupo.titulo} className="flex flex-col gap-0.5">
-                            <p className="px-5 pb-1.5 pt-4 text-[10px] font-semibold uppercase tracking-[0.09em] text-[var(--sidebar-muted)]">
-                                {grupo.titulo}
+                            {/* Plegada, el titulo queda para el lector de pantalla y una linea separa los grupos. */}
+                            <p
+                                className={`px-5 pb-1.5 pt-4 text-[10px] font-semibold uppercase tracking-[0.09em] text-[var(--sidebar-muted)] ${
+                                    angosto ? "lg:mx-4 lg:mt-2 lg:border-t lg:border-[var(--sidebar-hover)] lg:px-0 lg:pb-0 lg:pt-2" : ""
+                                }`}
+                            >
+                                <span className={angosto ? "lg:sr-only" : ""}>{grupo.titulo}</span>
                             </p>
 
                             {grupo.enlaces.map((enlace) => {
@@ -178,20 +212,38 @@ export default function Sidebar() {
                                         /* aria-current es lo que anuncia "estas aqui" a un
                                            lector de pantalla. El color por si solo no lo dice. */
                                         aria-current={activo ? "page" : undefined}
+                                        title={angosto ? enlace.etiqueta : undefined}
                                         className={`mx-2.5 flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13.5px] transition-colors ${
+                                            angosto ? "lg:justify-center lg:px-0" : ""
+                                        } ${
                                             activo
                                                 ? "bg-[rgb(255_106_26_/_0.16)] font-semibold text-[#ffd9c2]"
                                                 : "hover:bg-[var(--sidebar-hover)]"
                                         }`}
                                     >
                                         <Icon name={enlace.icono} className="size-4 shrink-0 opacity-85" />
-                                        {enlace.etiqueta}
+                                        <span className={angosto ? "lg:sr-only" : ""}>{enlace.etiqueta}</span>
                                     </Link>
                                 );
                             })}
                         </div>
                     ))}
                 </nav>
+
+                <button
+                        type="button"
+                        onClick={alternarPlegado}
+                        aria-expanded={!plegado}
+                        aria-controls="menu-lateral"
+                        aria-keyshortcuts="Control+B Meta+B"
+                        title={plegado ? "Expandir el menú (Ctrl+B)" : "Plegar el menú (Ctrl+B)"}
+                        className={`mx-2.5 mt-auto hidden items-center gap-2.5 rounded-md px-2.5 py-2 text-[12.5px] text-[var(--sidebar-muted)] transition-colors hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-ink)] lg:flex ${
+                            plegado ? "lg:justify-center lg:px-0" : ""
+                        }`}
+                    >
+                        <Icon name="panel" className="size-4 shrink-0" />
+                        <span className={plegado ? "sr-only" : ""}>{plegado ? "Expandir el menú" : "Plegar el menú"}</span>
+                    </button>
             </aside>
         </>
     );

@@ -289,6 +289,58 @@
     --halo: 24%;
 }
 
+/* Paleta del copiloto (panel flotante, anclado y modulo). Parte de los mismos
+   valores del panel en cada tema, para que combine, y les suma un matiz: en
+   claro, el crema de la marca; en oscuro, un leve tono morado sobre el cafe.
+   Solo redefine variables por rol, asi que los componentes del chat no cambian.
+   Los valores base se repiten aqui porque una variable no puede leerse a si
+   misma al redefinirse. --copiloto-franja es la linea de color del flotante. */
+.copiloto-tema {
+    --surface: color-mix(in srgb, #fffdfa 65%, var(--color-cream));
+    --background-raised: var(--color-bone);
+    --accent: var(--color-marker);
+    --copiloto-franja: linear-gradient(90deg, var(--color-marker), var(--color-highlight));
+}
+
+/* Oscuro: el copiloto es negro, para que se lea como una pieza propia de
+   Finova y no como otra tarjeta del panel. Lo firman los colores de la marca
+   en baja intensidad: un resplandor naranjo arriba a la derecha y uno lila
+   (el color de "lo que hace la IA") abajo a la izquierda, y el borde de la
+   columna anclada en naranjo. Las burbujas suben hacia el cafe, no hacia el
+   gris, igual que el resto del tema oscuro. */
+.dark .copiloto-tema {
+    --background: #080708;
+    --surface: #0c0b0c;
+    --background-raised: #1b1613;
+    --border-subtle: rgb(255 255 255 / 0.09);
+    --foreground: #f4f1ec;
+    --foreground-muted: #a39b94;
+    --accent: var(--color-marker-soft);
+    --copiloto-franja: linear-gradient(90deg, var(--color-marker-soft), var(--hl-violet));
+}
+
+/* Solo en los paneles: en el boton de "Preguntar al copiloto" el resplandor no se leeria. */
+.dark .copiloto-tema:not(button) {
+    background-image:
+        radial-gradient(110% 45% at 100% 0%, rgb(255 134 66 / 0.11), transparent 70%),
+        radial-gradient(90% 40% at 0% 100%, rgb(167 139 250 / 0.08), transparent 70%);
+}
+
+.dark .copiloto-tema .copiloto-tablero {
+    border-color: rgb(255 134 66 / 0.22);
+}
+
+/* Sin esto, la regla de arriba (mas especifica) apagaria el borde de foco. */
+.dark .copiloto-tema .copiloto-tablero:focus-within {
+    border-color: var(--accent);
+}
+
+@media (min-width: 1024px) {
+    .dark .copiloto-tema.copiloto-anclado {
+        border-left-color: rgb(255 134 66 / 0.35);
+    }
+}
+
 /* Tema oscuro SOLO de la landing (app/page.tsx envuelve todo en .landing).
    Un negro cálido más profundo que el del panel, para que los halos de color
    tengan contra qué brillar. Va por :has() para que también lo tome el body;

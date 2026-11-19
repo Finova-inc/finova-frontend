@@ -30,6 +30,8 @@ export type MensajeVista = {
     readonly aviso: string | null;
     /** Pantalla abierta al preguntar (mensajes del usuario). */
     readonly pantalla?: string;
+    /** Texto de la pantalla adjunto a la pregunta (mensajes del usuario). */
+    readonly seleccion?: string;
     /** Fila de uso de la respuesta, para valorarla (mensajes del asistente). */
     readonly idUso?: string;
     readonly valoracion?: Valoracion;
@@ -171,9 +173,15 @@ export function TextoEnriquecido({ texto, enlaces }: { readonly texto: string; r
     );
 }
 
-export function BurbujaUsuario({ texto }: { readonly texto: string }) {
+export function BurbujaUsuario({ texto, seleccion }: { readonly texto: string; readonly seleccion?: string }) {
     return (
         <div className="ml-auto max-w-[85%] whitespace-pre-wrap rounded-xl rounded-br-sm bg-[var(--background-raised)] px-3.5 py-2.5 text-[13.5px] leading-relaxed text-[var(--foreground)]">
+            {seleccion && (
+                <blockquote className="mb-1.5 line-clamp-3 border-l-2 border-[var(--accent)] pl-2 text-[12px] text-[var(--foreground-muted)]">
+                    <span className="sr-only">Sobre el texto: </span>
+                    {seleccion}
+                </blockquote>
+            )}
             {texto}
         </div>
     );
