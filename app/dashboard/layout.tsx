@@ -14,7 +14,7 @@ import {
 } from "@/components/dashboard/preferencias-panel";
 import { PreguntarSeleccion } from "@/components/dashboard/copiloto/PreguntarSeleccion";
 import { ApiError, authApi, type EmpresaDelUsuario } from "@/lib/api";
-import { exigirTokenSesion, obtenerEmpresaDelToken, obtenerUsuarioDelToken } from "@/lib/session";
+import { exigirTokenSesion, obtenerEmpresaDelToken, obtenerRolDelToken, obtenerUsuarioDelToken } from "@/lib/session";
 
 /* ============================================================================
    Estructura del panel: barra lateral fija + cabecera pegajosa + lienzo.
@@ -42,6 +42,8 @@ export default async function DashboardLayout({
     const idEmpresaActual = await obtenerEmpresaDelToken();
     // Solo para la clave con que el copiloto guarda la conversacion en el navegador.
     const idUsuario = await obtenerUsuarioDelToken();
+    // Solo para mostrar u ocultar enlaces del menú; el backend autoriza.
+    const rol = await obtenerRolDelToken();
     // Como se reparte el espacio (menu plegado, copiloto anclado): ver preferencias-panel.ts.
     const preferencias = await cookies();
     const menuPlegado = preferencias.get(COOKIE_MENU)?.value === MENU_PLEGADO;
@@ -62,7 +64,7 @@ export default async function DashboardLayout({
 
     return (
         <div className="flex min-h-screen flex-col bg-[var(--background)] lg:flex-row">
-            <Sidebar plegadoInicial={menuPlegado} />
+            <Sidebar plegadoInicial={menuPlegado} rol={rol} />
 
             <div className="flex min-w-0 flex-1 flex-col">
                 {/* La cabecera es sticky para que el buscador y la accion rapida

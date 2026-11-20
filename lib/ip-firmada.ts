@@ -42,6 +42,12 @@ export function ipDelVisitante(leer: (nombre: string) => string | null): string 
     return isIP(candidata) !== 0 ? candidata : null;
 }
 
+/** Pone en `cabeceras` las de la IP firmada, salvo que ya traigan la suya (login y recuperación la mandan por su cuenta). */
+export function agregarCabecerasDeIp(cabeceras: Headers, deIp: Record<string, string>): void {
+    if (cabeceras.has(CABECERA_IP_FIRMADA)) return;
+    for (const [nombre, valor] of Object.entries(deIp)) cabeceras.set(nombre, valor);
+}
+
 /**
  * Las cabeceras a enviar al backend: `{ x-finova-ip: ... }`, o `{}` si no hay
  * secreto (configuración faltante), o no hay IP (desarrollo local). Nunca firma

@@ -130,6 +130,9 @@ async function unaPeticion<T>(
 
     if (token) {
         requestHeaders.set("Authorization", `Bearer ${token}`);
+        // La IP real del visitante, firmada: sin ella la auditoría del backend guardaría la IP de salida de Vercel.
+        // Import dinámico: ip-visitante usa next/headers, que solo existe en el servidor.
+        await (await import("./ip-visitante")).agregarIpFirmada(requestHeaders);
     }
 
     try {
@@ -1538,6 +1541,76 @@ export const periodosApi = {
             { motivo },
             opciones,
         ),
+};
+
+/* ---------------------------------------------------------------------------
+   Auditoría (GET /auditoria): quién hizo qué y cuándo. Solo el administrador;
+   cualquier otro rol recibe 403. Contrato en finova-backend/src/auditoria.
+   --------------------------------------------------------------------------- */
+
+/**
+ * Un evento del listado. `accion` y `entidad` se tipan como texto y no como
+ * unión: si el backend agrega una, la pantalla la muestra tal cual en vez de
+ * romperse (ver lib/auditoria.ts).
+ */
+export interface EventoAuditoria {
+    readonly id_auditoria: string;
+    /** ISO en UTC. */
+    readonly created_at: string;
+    readonly accion: string;
+    readonly entidad: string;
+    readonly id_registro: string | null;
+    readonly ip: string | null;
+    /** null: sin sesión (por ejemplo, un ingreso fallido con un RUT que no existe). */
+    readonly id_usuario: string | null;
+    readonly usuario_nombre: string | null;
+    /** Solo llega al administrador; para los demás roles es null. */
+    readonly usuario_correo: string | null;
+}
+
+export interface CambioAuditado {
+    readonly campo: string;
+    readonly antes: unknown;
+    readonly despues: unknown;
+}
+
+export interface DetalleEventoAuditoria extends EventoAuditoria {
+    readonly user_agent: string | null;
+    readonly datos_antes: Readonly<Record<string, unknown>> | null;
+    readonly datos_despues: Readonly<Record<string, unknown>> | null;
+    /** null en las creaciones y en las filas anteriores a que se guardara el "antes". */
+    readonly cambios: readonly CambioAuditado[] | null;
+}
+
+/** GET /auditoria/personas: quien aparece como autor en la auditoría de la empresa (incluye a quien ya no tiene acceso). Sin correo ni rol. */
+export interface PersonaAuditoria {
+    readonly id_usuario: string;
+    readonly nombre: string | null;
+}
+
+export interface FiltroAuditoria {
+    /** AAAA-MM-DD, hora de Chile. */
+    readonly desde?: string;
+    /** AAAA-MM-DD, hora de Chile, inclusivo. */
+    readonly hasta?: string;
+    readonly id_usuario?: string;
+    readonly accion?: string;
+    readonly entidad?: string;
+    readonly id_registro?: string;
+    readonly pagina?: number;
+    /** 1 a 100; el backend usa 50. */
+    readonly por_pagina?: number;
+}
+
+export const auditoriaApi = {
+    /** Del más reciente al más antiguo. */
+    listar: (filtros: FiltroAuditoria = {}, opciones?: ApiFetchOptions) =>
+        api.get<Paginado<EventoAuditoria>>(`/auditoria${consulta({ ...filtros })}`, opciones),
+    /** Cada vez que se pide, el backend deja registrado que alguien miró el detalle: pedirlo solo cuando la persona lo abre. */
+    detalle: (id: string, opciones?: ApiFetchOptions) =>
+        api.get<DetalleEventoAuditoria>(`/auditoria/${encodeURIComponent(id)}`, opciones),
+    /** Para el filtro «Persona»: administrador y contador (GET /users es solo del administrador). */
+    personas: (opciones?: ApiFetchOptions) => api.get<PersonaAuditoria[]>("/auditoria/personas", opciones),
 };
 
 /* ---------------------------------------------------------------------------

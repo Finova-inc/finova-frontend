@@ -12,7 +12,12 @@ dependen del backend, se anotan en su propio apartado.
 
 ## [Sin publicar]
 
+### Seguridad
+- Auditoría: toda llamada al backend con sesión (`lib/api.ts`) lleva ahora la IP real del visitante firmada (`x-finova-ip`, la misma cabecera y el mismo secreto `IP_FIRMA_SECRETO` que ya usaban el login y la recuperación). Así la auditoría del backend guarda la IP del visitante y no la de salida de Vercel. Sin secreto, o fuera de una petición de Next, la llamada sale sin la cabecera y el backend usa la IP de la conexión. No hay variables de entorno nuevas (FIN-xx pendiente).
+
 ### Agregado
+- Auditoría: `/dashboard/auditoria` deja de ser «Próximamente» y muestra quién hizo qué y cuándo en la empresa: tabla paginada (fecha y hora en horario de Chile, persona, acción, registro afectado e IP) con filtros por rango de fechas, persona, acción y tipo de registro, que quedan en la URL. «Ver detalle» abre el evento (`?evento=`), dibujado en el servidor, con quién, cuándo, IP, navegador y los cambios «campo: antes → después». La ven el administrador y el contador (`ROLES_QUE_AUDITAN` en `lib/roles.ts`); a consulta la página le responde como una ruta que no existe. La columna y el dato «IP» (y el «Navegador» del detalle) solo se dibujan para el administrador (`ROLES_QUE_VEN_IP`); al contador el backend se los manda en `null`. El filtro «Persona» y los nombres del detalle («Creado por», «Cerrado por»…) salen de `GET /auditoria/personas`, así que funcionan igual para administrador y contador (quien ya no tiene acceso también figura; sin nombre se muestra «Persona sin nombre»). El correo bajo el nombre solo se muestra al administrador (`ROLES_QUE_VEN_CORREO`): al contador el backend se lo manda en `null` y no se dibuja. Los enlaces al detalle y a los registros no se precargan, porque el backend deja registrado cada detalle que se abre (FIN-xx pendiente).
+- `formatearFechaHoraChile` en `lib/formato.ts`: fecha y hora de un instante en horario de Chile, sin depender de la zona del servidor (FIN-xx pendiente).
 - Copiloto IA: al marcar una respuesta como no útil se envía también la pregunta; el backend la guarda sin RUT por 90 días. `/dashboard/interno/ia` lista esas preguntas del mes, sin usuario ni empresa, con lo que consultó el copiloto. Requiere el backend con `pregunta` en `POST /copiloto/valoracion` y la migración `CopilotoUsoPregunta` (FIN-xx pendiente).
 - Panel: el menú lateral se pliega a una franja de íconos desde 1024 px (botón al pie del menú o `Ctrl+B`), para dar espacio en pantallas chicas. La preferencia se guarda en una cookie y la pantalla se dibuja ya plegada (FIN-xx pendiente).
 - Copiloto IA: se puede anclar como columna a la derecha que llena el espacio libre junto al contenido (también el que deja el menú plegado) y lo empuja en vez de taparlo. Un botón en la cabecera del chat vuelve a flotante y la elección se guarda en una cookie. Bajo 1024 px sigue flotante (FIN-xx pendiente).
@@ -30,12 +35,15 @@ dependen del backend, se anotan en su propio apartado.
 - Costos de IA: la página interna muestra las valoraciones de las respuestas, y el simulador calcula el perfil «Máximo» con los tokens que cuentan para el tope (FIN-xx pendiente).
 
 ### Dependencias del backend
+- `GET /auditoria` y `GET /auditoria/:id_auditoria` (administrador y contador; consulta recibe 403; la IP y el navegador solo llegan al administrador). Además `GET /auditoria/personas` (administrador y contador; consulta recibe 403) para el filtro «Persona» y los nombres del detalle, y el correo (`usuario_correo`) solo llega al administrador. El backend los despliega primero (FIN-xx pendiente).
 - `GET /copiloto/avisos` y los eventos `enlaces` y `propuesta_asiento` del chat. Sin ellos el chat sigue funcionando, sin sugerencias por avisos, enlaces ni propuestas.
 - `GET /copiloto/metricas` (responde solo a los RUT de `FINOVA_EQUIPO_RUTS`).
 - `GET /copiloto/estado` y `POST /copiloto/valoracion`. `POST /copiloto/chat` debe aceptar `pantalla` y un historial de 20 mensajes: el backend se despliega primero, porque el anterior rechaza esos campos con 400.
 - `POST /copiloto/chat` (módulo `copiloto` del backend, con `ANTHROPIC_API_KEY` configurada).
 
 ### Cambiado
+- Auditoría: el detalle de un evento ya no muestra «vacío → pasó a vacío» (en las eliminaciones), no pone «Sin detalle de cambios» sobre los datos de una creación, cambia el uuid de «Creado por», «Cerrado por» y similares por el nombre del miembro de la empresa, nombra «Empresa nueva» y otras claves que salían crudas, y resume las listas («3 elementos») en vez de cortar su JSON (FIN-xx pendiente).
+- Panel: el enlace «Auditoría» del menú lateral solo se muestra a quien puede verla (administrador y contador); el layout le entrega el rol del token al menú (FIN-xx pendiente).
 - Copiloto IA: paleta derivada de la del panel en cada tema, para que combine: en claro suma el crema de la marca y en oscuro es negro, con un resplandor naranjo y lila de la marca y el borde de la columna anclada en naranjo. El flotante lleva una línea de color arriba; anclado no tiene cabecera propia y queda bajo la del panel (FIN-xx pendiente).
 - Copiloto IA: «Copiloto IA» en el menú abre el módulo `/dashboard/copiloto`, con el chat a pantalla completa; el botón redondo sigue abriendo el chat chico en las demás pantallas, con un botón para pasar al módulo. Los dos comparten la conversación. El tablero para escribir es de vidrio y flota sobre los mensajes (FIN-xx pendiente).
 - Copiloto IA: muestra «Revisando los períodos…» y «Revisando los borradores…» cuando consulta esos datos, y la página de costos nombra esas herramientas (FIN-xx pendiente).
@@ -44,6 +52,9 @@ dependen del backend, se anotan en su propio apartado.
 - Tipografía: los titulares del panel y de la landing, y la serifa del hero, usan Newsreader (antes Space Grotesk e Instrument Serif). El cuerpo sigue en Inter (FIN-xx pendiente).
 - Documentación para el equipo: `docs/HERRAMIENTAS-CLAUDE.md` (plugins y skills personales con su instalación y uso en Finova) y `.claude/settings.json` declara los plugins `superpowers` y `claude-mem` para que Claude Code los ofrezca al abrir el repo (FIN-xx pendiente).
 - Herramientas de Claude para el equipo: el plugin `ponytail` (cambios mínimos, sin sobreingeniería) pasa a recomendado y queda declarado en `.claude/settings.json` junto a `superpowers` y `claude-mem`. `CLAUDE.md` aclara que las reglas del repo mandan sobre él (FIN-xx pendiente).
+
+### Corregido
+- Auditoría: una página más allá de la última (`?pagina=500`) mostraba la tabla vacía con el pie «151–150 de 138»; ahora redirige a la última página con los mismos filtros, sin el detalle abierto. La página que se pide al backend se limita a 1.000.000, su tope (FIN-xx pendiente).
 
 ## 2026-11-04 — PR #13
 
