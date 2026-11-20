@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { COOKIE_MENU, guardarPreferencia, MENU_PLEGADO } from "@/components/dashboard/preferencias-panel";
 import { Icon, type IconName } from "@/components/ui/Icon";
+import { puedeAuditar } from "@/lib/roles";
 
 /* ============================================================================
    Barra lateral del panel.
@@ -30,7 +31,13 @@ import { Icon, type IconName } from "@/components/ui/Icon";
    olvidar uno para que un enlace quede desalineado sin que nadie lo note.
    ========================================================================== */
 
-type EnlaceNav = { readonly href: string; readonly etiqueta: string; readonly icono: IconName };
+type EnlaceNav = {
+    readonly href: string;
+    readonly etiqueta: string;
+    readonly icono: IconName;
+    /** Solo se muestra a quien puede ver la auditoría. Es presentación: el backend es quien autoriza. */
+    readonly soloAuditores?: boolean;
+};
 
 type GrupoNav = {
     readonly titulo: string;
@@ -63,7 +70,7 @@ const GRUPOS: readonly GrupoNav[] = [
         titulo: "Inteligencia",
         enlaces: [
             { href: "/dashboard/copiloto", etiqueta: "Copiloto IA", icono: "sparkle" },
-            { href: "/dashboard/auditoria", etiqueta: "Auditoría", icono: "clock" },
+            { href: "/dashboard/auditoria", etiqueta: "Auditoría", icono: "clock", soloAuditores: true },
         ],
     },
     {
@@ -100,7 +107,14 @@ function esRutaActiva(pathname: string, href: string): boolean {
    preferencia va en una cookie (preferencias-panel.ts). El ancho cambia sin
    animacion: la regla del equipo es no animar width.
 */
-export default function Sidebar({ plegadoInicial = false }: { readonly plegadoInicial?: boolean }) {
+export default function Sidebar({
+    plegadoInicial = false,
+    rol = null,
+}: {
+    readonly plegadoInicial?: boolean;
+    /** El rol del token, para mostrar u ocultar enlaces. Sin rol, solo los que no piden uno. */
+    readonly rol?: number | null;
+}) {
     const pathname = usePathname();
     const [abierto, setAbierto] = useState(false);
     const [plegado, setPlegado] = useState(plegadoInicial);
@@ -201,7 +215,7 @@ export default function Sidebar({ plegadoInicial = false }: { readonly plegadoIn
                                 <span className={angosto ? "lg:sr-only" : ""}>{grupo.titulo}</span>
                             </p>
 
-                            {grupo.enlaces.map((enlace) => {
+                            {grupo.enlaces.filter((enlace) => !enlace.soloAuditores || puedeAuditar(rol)).map((enlace) => {
                                 const activo = esRutaActiva(pathname, enlace.href);
 
                                 return (

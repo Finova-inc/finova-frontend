@@ -101,6 +101,36 @@ export function formatearFecha(iso: string): string {
 }
 
 /**
+ * Fecha y hora de un instante, en horario de Chile: "05-09-2026 21:48:07".
+ *
+ * Vercel ejecuta el servidor en UTC, y formatearFecha usa la zona del
+ * servidor: un evento de las 21:48 de Chile se mostraria como del dia
+ * siguiente. Aqui la zona es siempre America/Santiago, con su horario de
+ * verano. hourCycle h23 evita el "24:00" de medianoche.
+ */
+export function formatearFechaHoraChile(iso: string): string {
+    const fecha = new Date(iso);
+
+    if (Number.isNaN(fecha.getTime())) {
+        return "—";
+    }
+
+    const partes = new Intl.DateTimeFormat("es-CL", {
+        timeZone: "America/Santiago",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hourCycle: "h23",
+    }).formatToParts(fecha);
+    const parte = (tipo: Intl.DateTimeFormatPartTypes) => partes.find((p) => p.type === tipo)?.value ?? "";
+
+    return `${parte("day")}-${parte("month")}-${parte("year")} ${parte("hour")}:${parte("minute")}:${parte("second")}`;
+}
+
+/**
  * Fecha legible: "5 sep 2026". Para textos donde la fecha se lee, no se compara.
  */
 export function formatearFechaLarga(iso: string): string {

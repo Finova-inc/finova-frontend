@@ -86,7 +86,7 @@ export async function obtenerEmpresaDelToken(): Promise<string | null> {
     return typeof payload?.empresaId === "string" ? payload.empresaId : null;
 }
 
-export { ROL, puedeRegistrar } from "./roles";
+export { ROL, puedeAuditar, puedeRegistrar, puedeVerCorreo, puedeVerIp } from "./roles";
 
 /**
  * Lee el rol del JWT, sin verificar la firma. Mismo criterio que
