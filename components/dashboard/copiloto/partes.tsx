@@ -51,7 +51,7 @@ function ConEnlaces({ texto, enlaces }: { readonly texto: string; readonly enlac
                     <Link
                         key={i}
                         href={`/dashboard/core-contable/${t.id}`}
-                        className="tabular font-medium text-[var(--accent)] underline underline-offset-2"
+                        className="tabular font-medium text-[var(--accent-text)] underline underline-offset-2"
                     >
                         {t.texto}
                     </Link>
@@ -175,7 +175,7 @@ export function TextoEnriquecido({ texto, enlaces }: { readonly texto: string; r
 
 export function BurbujaUsuario({ texto, seleccion }: { readonly texto: string; readonly seleccion?: string }) {
     return (
-        <div className="ml-auto max-w-[85%] whitespace-pre-wrap rounded-xl rounded-br-sm bg-[var(--background-raised)] px-3.5 py-2.5 text-[13.5px] leading-relaxed text-[var(--foreground)]">
+        <div className="ml-auto max-w-[85%] animate-aparecer whitespace-pre-wrap rounded-xl rounded-br-sm bg-[var(--background-raised)] px-3.5 py-2.5 text-[13.5px] leading-relaxed text-[var(--foreground)]">
             {seleccion && (
                 <blockquote className="mb-1.5 line-clamp-3 border-l-2 border-[var(--accent)] pl-2 text-[12px] text-[var(--foreground-muted)]">
                     <span className="sr-only">Sobre el texto: </span>
@@ -188,7 +188,7 @@ export function BurbujaUsuario({ texto, seleccion }: { readonly texto: string; r
 }
 
 const BOTON_VALORAR =
-    "grid size-7 place-items-center rounded-md text-[var(--foreground-muted)] transition-colors hover:bg-[var(--background-raised)] hover:text-[var(--foreground)] aria-pressed:bg-[var(--background-raised)] aria-pressed:text-[var(--accent)]";
+    "grid size-7 place-items-center rounded-md text-[var(--foreground-muted)] transition-colors hover:bg-[var(--background-raised)] hover:text-[var(--foreground)] aria-pressed:bg-[var(--background-raised)] aria-pressed:text-[var(--accent-text)]";
 
 const NOMBRE_TIPO: Record<PropuestaAsiento["tipo_comprobante"], string> = { I: "Ingreso", E: "Egreso", T: "Traspaso" };
 
@@ -247,7 +247,7 @@ export function BurbujaAsistente({ mensaje, alValorar, alLlenarFormulario }: Bur
     const valorable = mensaje.estado === "listo" && mensaje.idUso !== undefined;
     const alternar = (valor: Valoracion) => alValorar(mensaje.id, mensaje.valoracion === valor ? null : valor);
     return (
-        <div className="flex max-w-[92%] gap-3">
+        <div className="flex max-w-[92%] animate-aparecer gap-3">
             <div
                 aria-hidden="true"
                 className="grid size-7 shrink-0 place-items-center rounded-md bg-[var(--background-raised)] text-[var(--accent)]"

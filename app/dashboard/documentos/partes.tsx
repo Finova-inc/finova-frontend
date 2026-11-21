@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Cifra } from "@/components/ui/Cifra";
 import { Etiqueta } from "@/components/ui/Etiqueta";
 import type { Cuadratura } from "@/lib/api";
 import { CUADRATURAS, urlLibro, type ParametrosLibro } from "@/lib/sii";
@@ -22,15 +23,9 @@ export function EtiquetaCuadratura({ estado }: { readonly estado: Cuadratura }) 
     );
 }
 
-/** Una cifra grande con su título: el resumen de lo que hay en el filtro. */
+/** Una cifra grande con su título: el resumen de lo que hay en el filtro (la Cifra compacta). */
 export function Indicador({ titulo, valor, nota }: { readonly titulo: string; readonly valor: ReactNode; readonly nota?: string }) {
-    return (
-        <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-4 py-3">
-            <p className="text-[11.5px] font-medium text-[var(--foreground-muted)]">{titulo}</p>
-            <p className="tabular mt-0.5 font-display text-[19px] font-semibold tracking-[-0.01em]">{valor}</p>
-            {nota ? <p className="mt-0.5 text-[11px] text-[var(--foreground-muted)]">{nota}</p> : null}
-        </div>
-    );
+    return <Cifra titulo={titulo} valor={valor} nota={nota} tamano="compacta" />;
 }
 
 /**

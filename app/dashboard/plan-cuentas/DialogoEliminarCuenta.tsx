@@ -17,6 +17,7 @@
 
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { Boton } from "@/components/ui/Boton";
+import { useSalidaDeDialogo } from "@/components/ui/DialogoModal";
 import { Icon } from "@/components/ui/Icon";
 import type { CuentaContable } from "@/lib/api";
 import { eliminarCuenta } from "./actions";
@@ -47,9 +48,8 @@ export function DialogoEliminarCuenta({ cuenta, cuentas, alCerrar }: DialogoElim
         dialogo.current?.showModal();
     }, []);
 
-    function cerrar() {
-        dialogo.current?.close();
-    }
+    // Cierra con la salida animada (fundido) antes del close() nativo.
+    const cerrar = useSalidaDeDialogo(dialogo);
 
     function confirmar() {
         setErrores([]);
@@ -69,7 +69,9 @@ export function DialogoEliminarCuenta({ cuenta, cuentas, alCerrar }: DialogoElim
             aria-labelledby={idTitulo}
             onClose={alCerrar}
             onCancel={(evento) => {
-                if (enCurso) evento.preventDefault();
+                // Escape: pasa por cerrar() para que salga con fundido; mientras guarda no cierra.
+                evento.preventDefault();
+                if (!enCurso) cerrar();
             }}
             onPointerDown={(evento) => {
                 pulsoFuera.current = evento.target === evento.currentTarget;
@@ -77,7 +79,7 @@ export function DialogoEliminarCuenta({ cuenta, cuentas, alCerrar }: DialogoElim
             onClick={(evento) => {
                 if (pulsoFuera.current && evento.target === evento.currentTarget && !enCurso) cerrar();
             }}
-            className="m-auto w-[min(28rem,calc(100vw-2rem))] overflow-hidden whitespace-normal rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-0 text-left text-[13.5px] text-[var(--foreground)] shadow-[0_24px_64px_rgb(20_17_15_/_0.28)] backdrop:bg-[rgb(20_17_15_/_0.45)] open:animate-[soft-in_220ms_cubic-bezier(0.16,1,0.3,1)]"
+            className="m-auto w-[min(28rem,calc(100vw-2rem))] overflow-hidden whitespace-normal rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-0 text-left text-[13.5px] text-[var(--foreground)] shadow-[0_24px_64px_rgb(20_17_15_/_0.28)] backdrop:bg-[rgb(20_17_15_/_0.45)]"
         >
             <div className="flex flex-col gap-3 px-5 pb-4 pt-5">
                 <h2
@@ -129,7 +131,7 @@ export function DialogoEliminarCuenta({ cuenta, cuentas, alCerrar }: DialogoElim
                         <Boton variante="neutro" onClick={cerrar} disabled={enCurso} autoFocus>
                             Cancelar
                         </Boton>
-                        <Boton variante={caso === "eliminar" ? "peligro" : "acento"} onClick={confirmar} disabled={enCurso}>
+                        <Boton variante={caso === "eliminar" ? "peligro" : "acento"} onClick={confirmar} aria-busy={enCurso} disabled={enCurso}>
                             {caso === "eliminar"
                                 ? enCurso
                                     ? "Eliminando…"

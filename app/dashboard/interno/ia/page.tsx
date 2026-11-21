@@ -76,7 +76,7 @@ export default async function CostosIaPage({ searchParams }: { searchParams: Pro
                     codigo="Sin datos"
                     titulo="Todavía no hay preguntas registradas en este mes"
                     acciones={
-                        <Link href="/dashboard" className="text-[13px] text-[var(--accent)] underline">
+                        <Link href="/dashboard" className="text-[13px] text-[var(--accent-text)] underline">
                             Volver al panel
                         </Link>
                     }

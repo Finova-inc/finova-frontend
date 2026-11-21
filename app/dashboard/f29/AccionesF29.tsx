@@ -115,7 +115,7 @@ export function AccionesF29({
                             </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                            <Boton type="submit" variante="acento" disabled={enCurso}>
+                            <Boton type="submit" variante="acento" aria-busy={enCurso} disabled={enCurso}>
                                 {enCurso ? "Guardando…" : "Registrar declaración"}
                             </Boton>
                             <Boton variante="neutro" disabled={enCurso} onClick={() => setDeclarando(false)}>
@@ -129,7 +129,7 @@ export function AccionesF29({
                             <Icon name="check" className="size-4" />
                             Marcar como declarada
                         </Boton>
-                        <Boton variante="fantasma" disabled={enCurso} onClick={() => ejecutar(() => desaprobarF29(periodo))}>
+                        <Boton variante="fantasma" aria-busy={enCurso} disabled={enCurso} onClick={() => ejecutar(() => desaprobarF29(periodo))}>
                             <Icon name="undo" className="size-4" />
                             {enCurso ? "Volviendo…" : "Volver a borrador"}
                         </Boton>
@@ -173,6 +173,7 @@ export function AccionesF29({
             <div className="flex flex-wrap items-center gap-2">
                 <Boton
                     variante="acento"
+                    aria-busy={enCurso}
                     disabled={enCurso || (criticas > 0 && !revisadas)}
                     onClick={() => ejecutar(() => aprobarF29(periodo, criticas > 0 && revisadas, version))}
                 >

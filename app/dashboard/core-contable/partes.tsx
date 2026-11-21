@@ -64,7 +64,7 @@ export function Aviso({
     return (
         <div
             role={tono === "critico" ? "alert" : undefined}
-            className={`rounded-xl p-4 text-[13.5px] ${TONOS_AVISO[tono]}`}
+            className={`animate-aparecer rounded-xl p-4 text-[13.5px] ${TONOS_AVISO[tono]}`}
         >
             {children}
         </div>
@@ -88,7 +88,7 @@ export function Guia({ titulo, children }: { readonly titulo: string; readonly c
                     className="ml-auto size-4 shrink-0 text-[var(--foreground-muted)] transition-transform duration-150 group-open:rotate-90"
                 />
             </summary>
-            <div className="flex flex-col gap-4 border-t border-[var(--border-subtle)] p-4">{children}</div>
+            <div className="al-abrir flex flex-col gap-4 border-t border-[var(--border-subtle)] p-4">{children}</div>
         </details>
     );
 }
@@ -119,7 +119,7 @@ export function EnlaceAccion({
 }) {
     const clases =
         variante === "acento"
-            ? "border-[var(--accent)] bg-[var(--accent)] font-semibold text-white hover:brightness-110"
+            ? "border-[var(--accent)] bg-[var(--accent)] font-semibold text-ink hover:brightness-110"
             : "border-[var(--border-strong)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--background-raised)]";
     return (
         <Link
@@ -136,7 +136,7 @@ export function EnlaceComprobante({ referencia }: { readonly referencia: Referen
     return (
         <Link
             href={`/dashboard/core-contable/${referencia.id_asiento}`}
-            className="tabular font-medium text-[var(--accent)] underline-offset-4 hover:underline"
+            className="tabular font-medium text-[var(--accent-text)] underline-offset-4 hover:underline"
         >
             {formatearComprobante(referencia.tipo_comprobante, referencia.numero, referencia.anio)}
         </Link>

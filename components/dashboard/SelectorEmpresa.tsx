@@ -378,7 +378,7 @@ function FilaEmpresa({
                 </Etiqueta>
             ) : (
                 // En pantallas angostas queda solo la flecha: el ancho es para el nombre.
-                <span className="inline-flex shrink-0 items-center gap-1 text-[12px] font-medium text-[var(--foreground-muted)] transition-colors group-hover:text-[var(--accent)]">
+                <span className="inline-flex shrink-0 items-center gap-1 text-[12px] font-medium text-[var(--foreground-muted)] transition-colors group-hover:text-[var(--accent-text)]">
                     <span className="hidden sm:inline">Entrar</span>
                     <Icon name="arrowRight" className="size-3.5" />
                 </span>
@@ -495,7 +495,7 @@ function PasoAgregar({
                 <Boton variante="neutro" onClick={onVolver} disabled={enCurso}>
                     Cancelar
                 </Boton>
-                <Boton variante="acento" type="submit" disabled={enCurso}>
+                <Boton variante="acento" type="submit" aria-busy={enCurso} disabled={enCurso}>
                     {enCurso ? "Agregando…" : "Agregar empresa"}
                 </Boton>
             </Pie>
@@ -575,7 +575,7 @@ function PasoEditar({
                 <Boton variante="neutro" onClick={onVolver} disabled={enCurso}>
                     Cancelar
                 </Boton>
-                <Boton variante="acento" type="submit" disabled={enCurso || sinCambios}>
+                <Boton variante="acento" type="submit" aria-busy={enCurso} disabled={enCurso || sinCambios}>
                     {enCurso ? "Guardando…" : "Guardar nombre"}
                 </Boton>
             </Pie>

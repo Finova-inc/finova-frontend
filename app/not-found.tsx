@@ -15,7 +15,7 @@ export default function NoEncontrada() {
                     <>
                         <Link
                             href="/"
-                            className={`${enlace} border-[var(--accent)] bg-[var(--accent)] font-semibold text-white hover:brightness-110`}
+                            className={`${enlace} border-[var(--accent)] bg-[var(--accent)] font-semibold text-ink hover:brightness-110`}
                         >
                             Ir al inicio
                         </Link>

@@ -140,7 +140,7 @@ export function VistaPrevia({
             ) : null}
 
             <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-[var(--border-subtle)] pt-4">
-                <Boton variante="acento" onClick={onImportar} disabled={importando || sinNada}>
+                <Boton variante="acento" onClick={onImportar} aria-busy={importando} disabled={importando || sinNada}>
                     {importando
                         ? "Importando…"
                         : sinNada

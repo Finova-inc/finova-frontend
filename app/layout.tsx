@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 import { InlineScript } from "@/components/ui/InlineScript";
 import { fontVariables } from "@/lib/fonts";
@@ -23,6 +23,14 @@ export const metadata: Metadata = {
         description:
             "Importa tus DTE desde el SII, arma la propuesta de F29 y detecta inconsistencias antes de declarar.",
     },
+};
+
+/** Color de la barra del navegador en móvil: el fondo de cada tema (--color-paper / --color-ink). */
+export const viewport: Viewport = {
+    themeColor: [
+        { media: "(prefers-color-scheme: light)", color: "#faf7f2" },
+        { media: "(prefers-color-scheme: dark)", color: "#14110f" },
+    ],
 };
 
 /**

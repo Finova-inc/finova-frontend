@@ -88,7 +88,7 @@ export function CuentasContabilizacion({
             </ul>
             {puedeRegistrar ? (
                 <div className="flex flex-wrap items-center gap-3">
-                    <Boton variante="neutro" disabled={enCurso || cambiadas.length === 0} onClick={guardar}>
+                    <Boton variante="neutro" aria-busy={enCurso} disabled={enCurso || cambiadas.length === 0} onClick={guardar}>
                         {enCurso ? "Guardando…" : `Guardar cambios${cambiadas.length > 0 ? ` (${cambiadas.length})` : ""}`}
                     </Boton>
                     {estado.ok ? <span className="text-[12.5px] text-[var(--positivo)]">{estado.ok}</span> : null}

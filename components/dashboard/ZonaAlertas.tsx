@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { VerMas } from "@/components/dashboard/VerMas";
+import { EstadoVacio } from "@/components/ui/EstadoVacio";
 import { Etiqueta } from "@/components/ui/Etiqueta";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { formatearCLP } from "@/lib/formato";
@@ -18,6 +20,13 @@ import { formatearCLP } from "@/lib/formato";
    La franja hace un trabajo que el color solo no hace: da POSICION y FORMA al
    estado. Quien no distingue bien el rojo del ambar sigue viendo que hay una
    marca, y el texto de la etiqueta la nombra.
+
+   ---------------------------------------------------------------------------
+   ORDEN Y TOPE
+   ---------------------------------------------------------------------------
+   Van de la mas grave a la menos (a igual gravedad, en el orden en que las
+   arma el panel). Se ven las primeras MAXIMO_VISIBLES; el resto queda tras un
+   «Ver N más» (un boton con aria-expanded, VerMas: la altura se anima).
    ========================================================================== */
 
 export type SeveridadAlerta = "critica" | "aviso" | "info";
@@ -37,6 +46,10 @@ export type Alerta = {
     readonly accion?: { readonly texto: string; readonly href: string };
 };
 
+const MAXIMO_VISIBLES = 4;
+
+const GRAVEDAD: Record<SeveridadAlerta, number> = { critica: 0, aviso: 1, info: 2 };
+
 const FRANJA: Record<SeveridadAlerta, string> = {
     critica: "bg-[var(--critico)]",
     aviso: "bg-[var(--aviso)]",
@@ -46,7 +59,7 @@ const FRANJA: Record<SeveridadAlerta, string> = {
 const CAJA_ICONO: Record<SeveridadAlerta, string> = {
     critica: "bg-[var(--critico-bg)] text-[var(--critico)]",
     aviso: "bg-[var(--aviso-bg)] text-[var(--aviso)]",
-    info: "bg-[rgb(255_106_26_/_0.1)] text-[var(--accent)]",
+    info: "bg-[var(--accent-bg)] text-[var(--accent-text)]",
 };
 
 const TONO_INSIGNIA: Record<SeveridadAlerta, "critico" | "aviso" | "neutro"> = {
@@ -64,70 +77,70 @@ export function ZonaAlertas({ alertas }: ZonaAlertasProps) {
     // cargo", no como "esta todo en orden".
     if (alertas.length === 0) {
         return (
-            <p className="flex items-center gap-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-4 py-3 text-[13px]">
-                <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-[var(--positivo-bg)] text-[var(--positivo)]">
-                    <Icon name="check" className="size-4" />
-                </span>
-                <span>
-                    <span className="font-semibold">Todo al día.</span>{" "}
-                    <span className="text-[var(--foreground-muted)]">
-                        No hay meses por cerrar, borradores pendientes ni IVA por declarar.
-                    </span>
-                </span>
-            </p>
+            <EstadoVacio icono="check" tono="positivo" titulo="Todo al día." marco>
+                No hay meses por cerrar, borradores pendientes ni IVA por declarar.
+            </EstadoVacio>
         );
     }
 
+    // sort es estable: a igual gravedad se conserva el orden de llegada.
+    const ordenadas = [...alertas].sort((a, b) => GRAVEDAD[a.severidad] - GRAVEDAD[b.severidad]);
+    const visibles = ordenadas.slice(0, MAXIMO_VISIBLES);
+    const resto = ordenadas.slice(MAXIMO_VISIBLES);
+
     return (
         <div className="flex flex-col gap-px overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--border-subtle)]">
-            {alertas.map((alerta) => (
-                <article
-                    key={alerta.id}
-                    className="flex items-center gap-3 bg-[var(--surface)] py-3 pr-4"
-                >
-                    <div className={`w-[3px] self-stretch ${FRANJA[alerta.severidad]}`} />
-
-                    <div
-                        className={`ml-3 hidden size-8 shrink-0 place-items-center rounded-lg sm:grid ${
-                            CAJA_ICONO[alerta.severidad]
-                        }`}
-                    >
-                        <Icon name={alerta.icono} className="size-4" />
-                    </div>
-
-                    <div className="min-w-0 flex-1 pl-3 sm:pl-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-[13.5px] font-semibold">
-                                {alerta.titulo}
-                            </span>
-                            {alerta.insignia ? (
-                                <Etiqueta tono={TONO_INSIGNIA[alerta.severidad]}>
-                                    {alerta.insignia}
-                                </Etiqueta>
-                            ) : null}
-                        </div>
-
-                        <p className="mt-0.5 text-[12.5px] text-[var(--foreground-muted)]">
-                            {alerta.detalle}
-                        </p>
-                    </div>
-
-                    {alerta.monto ? (
-                        <span className="tabular shrink-0 pl-3 font-display text-[15px] font-semibold">
-                            {formatearCLP(alerta.monto)}
-                        </span>
-                    ) : null}
-
-                    {alerta.accion ? (
-                        <Link
-                            href={alerta.accion.href}
-                            className="shrink-0 pl-3 text-[12.5px] font-semibold text-[var(--accent)] hover:underline"
-                        >
-                            {alerta.accion.texto} →
-                        </Link>
-                    ) : null}
-                </article>
+            {visibles.map((alerta) => (
+                <FilaAlerta key={alerta.id} alerta={alerta} />
             ))}
+
+            {resto.length > 0 ? (
+                <VerMas cantidad={resto.length}>
+                    {resto.map((alerta) => (
+                        <FilaAlerta key={alerta.id} alerta={alerta} />
+                    ))}
+                </VerMas>
+            ) : null}
         </div>
+    );
+}
+
+function FilaAlerta({ alerta }: { readonly alerta: Alerta }) {
+    return (
+        <article className="flex items-center gap-3 bg-[var(--surface)] py-2 pr-4">
+            <div className={`w-[3px] self-stretch ${FRANJA[alerta.severidad]}`} />
+
+            <div
+                className={`ml-3 hidden size-7 shrink-0 place-items-center rounded-md sm:grid ${CAJA_ICONO[alerta.severidad]}`}
+            >
+                <Icon name={alerta.icono} className="size-3.5" />
+            </div>
+
+            <div className="min-w-0 flex-1 pl-3 sm:pl-0">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    <span className="text-sm font-semibold leading-snug">{alerta.titulo}</span>
+                    {alerta.insignia ? (
+                        <Etiqueta tono={TONO_INSIGNIA[alerta.severidad]}>{alerta.insignia}</Etiqueta>
+                    ) : null}
+                </div>
+
+                <p className="line-clamp-2 text-xs leading-snug text-[var(--foreground-muted)]">{alerta.detalle}</p>
+            </div>
+
+            {alerta.monto ? (
+                <span className="tabular shrink-0 pl-2 font-display text-[15px] font-semibold">
+                    {formatearCLP(alerta.monto)}
+                </span>
+            ) : null}
+
+            {alerta.accion ? (
+                <Link
+                    href={alerta.accion.href}
+                    className="shrink-0 pl-2 text-sm font-semibold text-[var(--accent-text)] hover:underline"
+                >
+                    {alerta.accion.texto} →
+                </Link>
+            ) : null}
+        </article>
     );
 }

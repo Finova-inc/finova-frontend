@@ -368,7 +368,7 @@ function TablaComprobantes({
                                 <td className="whitespace-nowrap px-4 py-2.5">
                                     <Link
                                         href={`${RUTA}/${asiento.id_asiento}`}
-                                        className="tabular font-medium text-[var(--accent)] underline-offset-4 hover:underline"
+                                        className="tabular font-medium text-[var(--accent-text)] underline-offset-4 hover:underline"
                                     >
                                         {formatearComprobante(asiento.tipo_comprobante, asiento.numero, asiento.anio)}
                                     </Link>
@@ -517,7 +517,7 @@ function FilasComprobante({
                 <td colSpan={5} className="px-4 pt-3 pb-1 text-[12.5px]">
                     <Link
                         href={`${RUTA}/${comprobante.id_asiento}`}
-                        className="tabular font-semibold text-[var(--accent)] underline-offset-4 hover:underline"
+                        className="tabular font-semibold text-[var(--accent-text)] underline-offset-4 hover:underline"
                     >
                         {citado}
                     </Link>
@@ -589,7 +589,7 @@ function ListaBorradores({ borradores }: { readonly borradores: readonly Asiento
                         </span>
                         <Link
                             href={`${RUTA}/borradores/${borrador.id_borrador}`}
-                            className="font-medium text-[var(--accent)] underline-offset-4 hover:underline"
+                            className="font-medium text-[var(--accent-text)] underline-offset-4 hover:underline"
                         >
                             Continuar
                         </Link>

@@ -193,7 +193,7 @@ function TarjetaMes({
             <div className="flex items-start justify-between gap-2">
                 <div>
                     <h3 className="font-display text-[15px] font-semibold capitalize">{nombreMesLargo(numero)}</h3>
-                    {mes.enCurso ? <p className="text-[11.5px] font-medium text-[var(--accent)]">Mes en curso</p> : null}
+                    {mes.enCurso ? <p className="text-[11.5px] font-medium text-[var(--accent-text)]">Mes en curso</p> : null}
                 </div>
                 <EtiquetaMes mes={mes} esHistoria={esHistoria} />
             </div>
@@ -263,7 +263,7 @@ function TarjetaMes({
                 {periodo && periodo.cantidad_asientos > 0 ? (
                     <Link
                         href={`/dashboard/core-contable?desde=${anio}-${dosDigitos(numero)}-01&hasta=${ultimoDiaDelMes(anio, numero)}`}
-                        className="inline-flex items-center gap-1 py-2 text-[12.5px] font-medium text-[var(--accent)] underline-offset-4 hover:underline"
+                        className="inline-flex items-center gap-1 py-2 text-[12.5px] font-medium text-[var(--accent-text)] underline-offset-4 hover:underline"
                     >
                         Ver asientos
                         <Icon name="arrowRight" className="size-3.5" />
@@ -348,7 +348,7 @@ export default async function PeriodosPage({ searchParams }: { searchParams: Pro
                                     aria-current={opcion === anio ? "page" : undefined}
                                     className={`tabular rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors ${
                                         opcion === anio
-                                            ? "bg-[var(--accent)] text-white"
+                                            ? "bg-[var(--accent)] text-ink"
                                             : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
                                     }`}
                                 >

@@ -54,7 +54,7 @@ export function CuadriculaMeses({
         <div
             role="dialog"
             aria-label="Elegir mes"
-            className="absolute left-0 top-full z-20 mt-2 w-72 rounded-xl border border-[var(--border-strong)] bg-[var(--surface)] p-3 shadow-[0_8px_24px_rgb(20_17_15_/_0.18)]"
+            className="absolute left-0 top-full z-20 mt-2 w-72 animate-aparecer rounded-xl border border-[var(--border-strong)] bg-[var(--surface)] p-3 shadow-[0_8px_24px_rgb(20_17_15_/_0.18)]"
         >
             <div className="mb-2 flex items-center justify-between">
                 <button type="button" aria-label="Año anterior" disabled={anio <= ANIO_MIN} onClick={() => setAnio(anio - 1)} className={`${FLECHA} disabled:opacity-40`}>
@@ -70,7 +70,7 @@ export function CuadriculaMeses({
                     const destino = `${anio}-${String(mes).padStart(2, "0")}`;
                     const elegido = anio === anioActual && mes === mesActual;
                     const clases = `rounded-md px-2 py-2 text-center text-[13px] font-medium capitalize ${
-                        elegido ? "bg-[var(--accent)] text-white" : "hover:bg-[var(--background-raised)]"
+                        elegido ? "bg-[var(--accent)] text-ink" : "hover:bg-[var(--background-raised)]"
                     }`;
                     return hrefDe ? (
                         <Link key={mes} replace href={hrefDe(destino)} aria-current={elegido ? "date" : undefined} onClick={onCerrar} className={clases}>

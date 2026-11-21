@@ -87,7 +87,7 @@ function ChipsDeCuadratura({ conteo, base }: { readonly conteo: ConteoLibroSii; 
     const chip = (activo: boolean) =>
         `inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12.5px] font-medium transition-colors ${
             activo
-                ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                ? "border-[var(--accent)] bg-[var(--accent)] text-ink"
                 : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
         }`;
     return (
@@ -331,7 +331,7 @@ export default async function DocumentosPage({ searchParams }: { searchParams: P
                                 ) : hayFiltros ? (
                                     <>
                                         Ningún documento coincide con esos filtros.{" "}
-                                        <Link className="font-medium text-[var(--accent)] underline-offset-4 hover:underline" href={urlLibro({ libro: libro.id, periodo })}>
+                                        <Link className="font-medium text-[var(--accent-text)] underline-offset-4 hover:underline" href={urlLibro({ libro: libro.id, periodo })}>
                                             Quitar filtros
                                         </Link>
                                     </>

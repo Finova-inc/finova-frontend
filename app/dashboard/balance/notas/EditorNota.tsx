@@ -77,7 +77,7 @@ export function EditorNota({
                 </ul>
             ) : null}
             <div>
-                <Boton variante="neutro" onClick={guardar} disabled={enCurso || !sinGuardar}>
+                <Boton variante="neutro" onClick={guardar} aria-busy={enCurso} disabled={enCurso || !sinGuardar}>
                     {enCurso ? "Guardando…" : "Guardar"}
                 </Boton>
             </div>
@@ -133,7 +133,7 @@ export function EditorGeneral({ ejercicio, datos }: { readonly ejercicio: number
                 </ul>
             ) : null}
             <div className="flex items-center gap-3">
-                <Boton variante="neutro" onClick={guardar} disabled={enCurso}>
+                <Boton variante="neutro" onClick={guardar} aria-busy={enCurso} disabled={enCurso}>
                     {enCurso ? "Guardando…" : "Guardar"}
                 </Boton>
                 {estado.ok ? <Etiqueta tono="positivo">Guardado</Etiqueta> : null}

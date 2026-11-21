@@ -337,7 +337,7 @@ export function LoginForm() {
 
             <Link
                 href="/recuperar"
-                className="-mt-2 w-fit text-sm font-medium text-[var(--accent)] underline-offset-4 hover:underline"
+                className="-mt-2 w-fit text-sm font-medium text-[var(--accent-text)] underline-offset-4 hover:underline"
             >
                 ¿Olvidaste tu contraseña?
             </Link>

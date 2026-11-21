@@ -52,7 +52,7 @@ export default function BalanceHubPage() {
                         {r.href ? (
                             <Link
                                 href={r.href}
-                                className="flex h-full flex-col gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] p-4 transition-colors hover:border-[var(--accent)] hover:bg-[var(--background-raised)]"
+                                className="flex h-full flex-col gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] p-4 transition-[background-color,border-color,box-shadow,transform] hover:-translate-y-px hover:border-[var(--accent)] hover:bg-[var(--background-raised)] hover:shadow-[0_2px_8px_rgb(20_17_15/0.08)] motion-reduce:hover:translate-y-0"
                             >
                                 <span className="font-display text-[14px] font-semibold">{r.titulo}</span>
                                 <span className="text-[12.5px] text-[var(--foreground-muted)]">{r.descripcion}</span>

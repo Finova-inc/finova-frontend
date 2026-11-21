@@ -23,7 +23,7 @@ export function MensajeDeEstado({
     return (
         <div
             role={tono === "critico" ? "alert" : undefined}
-            className="mx-auto w-full max-w-[560px] rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-6 text-[var(--foreground)] sm:p-8"
+            className="mx-auto w-full max-w-[560px] animate-aparecer rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-6 text-[var(--foreground)] sm:p-8"
         >
             <p
                 className={`text-[12px] font-semibold uppercase tracking-wide ${

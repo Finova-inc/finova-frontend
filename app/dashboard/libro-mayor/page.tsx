@@ -239,7 +239,7 @@ function TablaMayor({ mayor }: { readonly mayor: LibroMayor }) {
                                 <td className="px-4 py-2">
                                     <Link
                                         href={`${RUTA_DIARIO}/${m.id_asiento}`}
-                                        className="tabular font-medium text-[var(--accent)] underline-offset-4 hover:underline"
+                                        className="tabular font-medium text-[var(--accent-text)] underline-offset-4 hover:underline"
                                     >
                                         {formatearComprobante(m.tipo_comprobante, m.numero, m.anio)}
                                     </Link>

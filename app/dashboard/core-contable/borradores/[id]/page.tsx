@@ -4,7 +4,7 @@
 
 import { notFound, redirect } from "next/navigation";
 import { ContextoCopiloto } from "@/components/dashboard/copiloto/ContextoCopiloto";
-import { ApiError, borradoresApi, type AsientoBorrador } from "@/lib/api";
+import { ApiError, borradoresApi } from "@/lib/api";
 import { formatearFechaLarga, hoyEnChile } from "@/lib/formato";
 import { exigirTokenSesion, obtenerRolDelToken, puedeRegistrar } from "@/lib/session";
 import { FormularioAsiento } from "../../FormularioAsiento";
@@ -19,16 +19,19 @@ export default async function BorradorPage({ params }: { params: Promise<{ id: s
     const token = await exigirTokenSesion();
     const rol = await obtenerRolDelToken();
 
-    let borrador: AsientoBorrador;
-    try {
-        borrador = await borradoresApi.obtener(id, { token, cache: "no-store" });
-    } catch (error) {
-        if (error instanceof ApiError && error.status === 401) redirect("/login");
-        // 404: no existe o es de otra empresa (el backend no distingue, a
-        // proposito). 400: el id no es un uuid.
-        if (error instanceof ApiError && (error.status === 404 || error.status === 400)) notFound();
-        throw error;
-    }
+    // El borrador y las opciones del formulario no dependen una de la otra: se piden a la vez.
+    // Quien solo consulta no ve el formulario, así que para él no se piden las opciones.
+    const registra = puedeRegistrar(rol);
+    const [borrador, opciones] = await Promise.all([
+        borradoresApi.obtener(id, { token, cache: "no-store" }).catch((error: unknown): never => {
+            if (error instanceof ApiError && error.status === 401) redirect("/login");
+            // 404: no existe o es de otra empresa (el backend no distingue, a
+            // proposito). 400: el id no es un uuid.
+            if (error instanceof ApiError && (error.status === 404 || error.status === 400)) notFound();
+            throw error;
+        }),
+        registra ? cargarOpcionesDelFormulario(token) : null,
+    ]);
 
     const encabezado = (
         <>
@@ -41,7 +44,7 @@ export default async function BorradorPage({ params }: { params: Promise<{ id: s
         </>
     );
 
-    if (!puedeRegistrar(rol)) {
+    if (opciones === null) {
         return (
             <div>
                 {encabezado}
@@ -52,7 +55,7 @@ export default async function BorradorPage({ params }: { params: Promise<{ id: s
         );
     }
 
-    const { cuentas, terceros, periodos, saldoPorCobrar, error } = await cargarOpcionesDelFormulario(token);
+    const { cuentas, terceros, periodos, saldoPorCobrar, error } = opciones;
     if (error?.status === 401) redirect("/login");
     if (error) {
         return (

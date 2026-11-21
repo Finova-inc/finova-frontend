@@ -14,11 +14,11 @@
 
 import Link from "next/link";
 import { SelectorDeMes } from "@/components/dashboard/SelectorDeMes";
+import { Cifra } from "@/components/ui/Cifra";
 import type { CuentaContable, PorContabilizar } from "@/lib/api";
 import { Aviso, Guia, ReglasGuia } from "./core-contable/partes";
 import { CuentasContabilizacion } from "./contabilizacion/CuentasContabilizacion";
 import { TablaPorContabilizar } from "./contabilizacion/TablaPorContabilizar";
-import { Indicador } from "./documentos/partes";
 
 const REGLAS: readonly string[] = [
     "Aquí están las compras y ventas del RCV del mes y las boletas de honorarios recibidas que importaste en Documentos.",
@@ -57,7 +57,10 @@ export function SeccionPorContabilizar({
                 <ReglasGuia reglas={REGLAS} />
             </Guia>
 
-            <SelectorDeMes ruta="/dashboard" periodo={periodo} ancla="por-contabilizar" />
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <span className="text-sm font-medium">Documentos de:</span>
+                <SelectorDeMes ruta="/dashboard" periodo={periodo} ancla="por-contabilizar" />
+            </div>
 
             {!datos ? (
                 <Aviso tono="critico">
@@ -66,11 +69,11 @@ export function SeccionPorContabilizar({
                 </Aviso>
             ) : (
                 <>
-                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                        <Indicador titulo="Por contabilizar" valor={datos.resumen.pendientes} />
-                        <Indicador titulo="En borrador" valor={datos.resumen.borradores} nota="Revisados, falta contabilizar" />
-                        <Indicador titulo="Contabilizados" valor={datos.resumen.contabilizados} />
-                        <Indicador titulo="No se proponen" valor={datos.resumen.no_contabilizables} nota="Cada uno dice por qué" />
+                    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                        <Cifra titulo="Por contabilizar" valor={datos.resumen.pendientes} />
+                        <Cifra titulo="En borrador" valor={datos.resumen.borradores} nota="Revisados, falta contabilizar" />
+                        <Cifra titulo="Contabilizados" valor={datos.resumen.contabilizados} />
+                        <Cifra titulo="No se proponen" valor={datos.resumen.no_contabilizables} nota="Cada uno dice por qué" />
                     </div>
 
                     {!registra ? (
@@ -80,7 +83,7 @@ export function SeccionPorContabilizar({
                     {datos.items.length === 0 ? (
                         <Aviso>
                             No hay documentos del SII en este mes.{" "}
-                            <Link href={`/dashboard/documentos?libro=compras&periodo=${periodo}`} className="font-medium text-[var(--accent)] underline-offset-4 hover:underline">
+                            <Link href={`/dashboard/documentos?libro=compras&periodo=${periodo}`} className="font-medium text-[var(--accent-text)] underline-offset-4 hover:underline">
                                 Impórtalos en Documentos
                             </Link>
                             .
@@ -102,7 +105,7 @@ export function SeccionPorContabilizar({
                     {datos.cuentas.some((c) => !c.cuenta && c.funcion !== "iva_retenido") ? (
                         <Aviso>
                             Hay funciones contables sin cuenta: defínelas abajo, en «Cuentas de la contabilización», o en{" "}
-                            <Link href="/dashboard/parametros" className="font-medium text-[var(--accent)] underline-offset-4 hover:underline">
+                            <Link href="/dashboard/parametros" className="font-medium text-[var(--accent-text)] underline-offset-4 hover:underline">
                                 Parámetros
                             </Link>
                             .

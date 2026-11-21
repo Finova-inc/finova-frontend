@@ -104,6 +104,7 @@ export function SelectorPeriodo({
                                 <Boton
                                     variante="neutro"
                                     className="w-full capitalize"
+                                    aria-busy={enCurso}
                                     disabled={enCurso}
                                     onClick={() => elegir(mes)}
                                 >

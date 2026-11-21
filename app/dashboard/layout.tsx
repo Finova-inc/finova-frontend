@@ -2,7 +2,8 @@ import Sidebar from "@/components/Sidebar";
 import { CerrarSesionBoton } from "@/components/CerrarSesionBoton";
 import { SelectorEmpresa } from "@/components/dashboard/SelectorEmpresa";
 import { CopilotoFlotante } from "@/components/dashboard/copiloto/CopilotoFlotante";
-import { Icon } from "@/components/ui/Icon";
+import { MovimientoProvider } from "@/components/dashboard/MovimientoProvider";
+import { SaltarAlContenido } from "@/components/ui/SaltarAlContenido";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -63,59 +64,53 @@ export default async function DashboardLayout({
     }
 
     return (
-        <div className="flex min-h-screen flex-col bg-[var(--background)] lg:flex-row">
-            <Sidebar plegadoInicial={menuPlegado} rol={rol} />
+        <MovimientoProvider>
+            <div className="flex min-h-screen flex-col bg-[var(--background)] lg:flex-row">
+                <SaltarAlContenido destino="#contenido-panel" />
+                <Sidebar plegadoInicial={menuPlegado} rol={rol} />
 
-            <div className="flex min-w-0 flex-1 flex-col">
-                {/* La cabecera es sticky para que el buscador y la accion rapida
-                    sigan al alcance al recorrer una tabla larga. z-10 la mantiene
-                    sobre el contenido al desplazarse. */}
-                <header className="sticky top-0 z-10 flex h-[60px] items-center gap-4 border-b border-[var(--border-subtle)] bg-[var(--surface)] pl-16 pr-4 sm:pr-6 lg:pl-6">
-                    {empresas.length > 0 ? (
-                        <SelectorEmpresa
-                            empresas={empresas}
-                            idEmpresaActual={idEmpresaActual}
+                <div className="flex min-w-0 flex-1 flex-col">
+                    {/* La cabecera es sticky para que el selector de empresa y el tema
+                        sigan al alcance al recorrer una tabla larga. z-10 la mantiene
+                        sobre el contenido al desplazarse. */}
+                    <header className="sticky top-0 z-10 flex h-[60px] items-center gap-4 border-b border-[var(--border-subtle)] bg-[var(--surface)] pl-16 pr-4 sm:pr-6 lg:pl-6">
+                        {empresas.length > 0 ? (
+                            <SelectorEmpresa
+                                empresas={empresas}
+                                idEmpresaActual={idEmpresaActual}
+                            />
+                        ) : null}
+
+                        <div className="ml-auto flex items-center gap-2">
+                            <ThemeToggle variant="panel" />
+                            <CerrarSesionBoton />
+                        </div>
+                    </header>
+
+                    <div className="flex min-w-0 flex-1">
+                        {/* El relleno lateral vive aqui, una sola vez, y el vertical va
+                            con padding-block para no anular los costados. El pb-24 deja sitio al
+                            boton flotante del copiloto (56px + 24px de margen) para que, al
+                            llegar al final, no tape lo ultimo de la pantalla. El id delimita
+                            donde seleccionar texto ofrece preguntarle al copiloto. */}
+                        <main id="contenido-panel" className="w-full min-w-0 max-w-[1600px] px-4 pb-24 pt-5 sm:px-6">
+                            {children}
+                        </main>
+                        {/* Bajo la cabecera y despues del contenido: anclado, el copiloto es la
+                            columna de la derecha y la cabecera del panel sigue de lado a lado;
+                            el orden del DOM coincide con el visual para el teclado. Flotante,
+                            es fixed y su lugar en el DOM no se nota. La empresa como key: al
+                            cambiarla, la conversacion empieza de cero. */}
+                        <CopilotoFlotante
+                            key={idEmpresaActual ?? "sin-empresa"}
+                            idUsuario={idUsuario}
+                            idEmpresa={idEmpresaActual}
+                            ancladoInicial={copilotoAnclado}
                         />
-                    ) : null}
-
-                    <label className="hidden min-w-0 max-w-[420px] flex-1 items-center gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--background)] px-3 py-1.5 text-[var(--foreground-muted)] lg:flex">
-                        <Icon name="search" className="size-4 shrink-0" />
-                        <input
-                            id="busqueda-panel"
-                            type="search"
-                            placeholder="Buscar documentos, terceros, asientos…"
-                            aria-label="Buscar en el panel"
-                            className="min-w-0 flex-1 bg-transparent text-[13px] text-[var(--foreground)] outline-none placeholder:text-[var(--foreground-muted)]"
-                        />
-                    </label>
-
-                    <div className="ml-auto flex items-center gap-2">
-                        <ThemeToggle />
-                        <CerrarSesionBoton />
                     </div>
-                </header>
-
-                <div className="flex min-w-0 flex-1">
-                    {/* El relleno lateral vive aqui, una sola vez, y el vertical va
-                        con padding-block para no anular los costados. El id delimita
-                        donde seleccionar texto ofrece preguntarle al copiloto. */}
-                    <main id="contenido-panel" className="w-full min-w-0 max-w-[1320px] px-4 py-5 sm:px-6">
-                        {children}
-                    </main>
-                    {/* Bajo la cabecera y despues del contenido: anclado, el copiloto es la
-                        columna de la derecha y la cabecera del panel sigue de lado a lado;
-                        el orden del DOM coincide con el visual para el teclado. Flotante,
-                        es fixed y su lugar en el DOM no se nota. La empresa como key: al
-                        cambiarla, la conversacion empieza de cero. */}
-                    <CopilotoFlotante
-                        key={idEmpresaActual ?? "sin-empresa"}
-                        idUsuario={idUsuario}
-                        idEmpresa={idEmpresaActual}
-                        ancladoInicial={copilotoAnclado}
-                    />
                 </div>
+                <PreguntarSeleccion />
             </div>
-            <PreguntarSeleccion />
-        </div>
+        </MovimientoProvider>
     );
 }

@@ -7,6 +7,7 @@ import { AvisoSesionExpirada } from "@/components/login/AvisoSesionExpirada";
 import { CarruselLogin } from "@/components/login/CarruselLogin";
 import { LoginForm } from "@/components/login/LoginForm";
 import { Icon } from "@/components/ui/Icon";
+import { SaltarAlContenido } from "@/components/ui/SaltarAlContenido";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 export const metadata: Metadata = {
@@ -36,6 +37,7 @@ export const metadata: Metadata = {
 export default function LoginPage() {
     return (
         <main className="flex min-h-dvh bg-[var(--surface)] text-[var(--foreground)]">
+            <SaltarAlContenido destino="#contenido-principal" />
             {/* =========================================================
                 Panel del formulario.
                 ========================================================= */}
@@ -64,7 +66,7 @@ export default function LoginPage() {
                     </div>
                 </header>
 
-                <div className="mx-auto flex w-full max-w-[25rem] flex-1 animate-fade-up flex-col justify-center py-12">
+                <div id="contenido-principal" className="mx-auto flex w-full max-w-[25rem] flex-1 animate-fade-up flex-col justify-center py-12">
                     <h1 className="text-center font-display text-3xl font-bold tracking-tight">
                         Bienvenido a Finova
                     </h1>
