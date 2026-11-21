@@ -40,6 +40,8 @@ type PanelCabeceraProps = {
     /** Texto secundario a la derecha: rango temporal, unidad, origen del dato. */
     readonly nota?: ReactNode;
     readonly className?: string;
+    /** "legible": la nota en 12px, para las pantallas que no admiten letra menor. Sin él, igual que siempre. */
+    readonly escala?: "base" | "legible";
 };
 
 /**
@@ -48,12 +50,12 @@ type PanelCabeceraProps = {
  * Se alinean por la linea base y no por el centro, para que el titulo de 14px y
  * la nota de 11.5px se apoyen sobre el mismo renglon.
  */
-export function PanelCabecera({ titulo, nota, className = "" }: PanelCabeceraProps) {
+export function PanelCabecera({ titulo, nota, className = "", escala = "base" }: PanelCabeceraProps) {
     return (
         <div className={`flex items-baseline justify-between gap-3 ${className}`}>
             <h3 className="font-display text-sm font-semibold">{titulo}</h3>
             {nota ? (
-                <span className="text-[11.5px] text-[var(--foreground-muted)]">{nota}</span>
+                <span className={`${escala === "legible" ? "text-xs" : "text-[11.5px]"} text-[var(--foreground-muted)]`}>{nota}</span>
             ) : null}
         </div>
     );

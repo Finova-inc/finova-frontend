@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { startTransition, useActionState, useEffect, useRef, useState, type FormEvent } from "react";
+import { startTransition, useActionState, useRef, useState, type FormEvent } from "react";
 import { Boton } from "@/components/ui/Boton";
+import { DialogoModal } from "@/components/ui/DialogoModal";
 import type { TipoImportacionSii } from "@/lib/api";
 import { extensionPermitida, mensajeExtensionNoPermitida } from "@/lib/extension-archivo";
 import { nombrePeriodo } from "@/lib/formato";
@@ -54,12 +55,6 @@ export function ImportadorSii({
     const [origen, setOrigen] = useState<OrigenImportacion>("local");
     const [dialogoArchivo, setDialogoArchivo] = useState(false);
     const inputArchivo = useRef<HTMLInputElement>(null);
-    useEffect(() => {
-        if (!dialogoArchivo) return;
-        const cerrarConEscape = (e: KeyboardEvent) => e.key === "Escape" && setDialogoArchivo(false);
-        window.addEventListener("keydown", cerrarConEscape);
-        return () => window.removeEventListener("keydown", cerrarConEscape);
-    }, [dialogoArchivo]);
     const importable = importableDe(tipo);
     const archivoSii = obtenerArchivoDesdeSii(tipo, periodo);
     const vista = vistaDeOrigen(origen, archivoSii);
@@ -204,14 +199,10 @@ export function ImportadorSii({
                 ) : null}
 
                 {dialogoArchivo ? (
-                    <div
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="importador-dialogo-titulo"
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-                        onClick={(e) => {
-                            if (e.target === e.currentTarget) setDialogoArchivo(false);
-                        }}
+                    <DialogoModal
+                        idTitulo="importador-dialogo-titulo"
+                        alCerrar={() => setDialogoArchivo(false)}
+                        className="w-[min(28rem,calc(100vw-2rem))]"
                     >
                         <section className="w-full max-w-md rounded-xl border border-[var(--border-strong)] bg-[var(--surface)] p-5 text-[13px] shadow-xl">
                             <h2 id="importador-dialogo-titulo" className="text-[14px] font-semibold text-[var(--foreground)]">
@@ -252,10 +243,10 @@ export function ImportadorSii({
                                 </Boton>
                             </div>
                         </section>
-                    </div>
+                    </DialogoModal>
                 ) : null}
 
-                <Boton type="submit" variante={paso === "revisar" ? "neutro" : "acento"} disabled={revisando || importando || !vista.puedeRevisar}>
+                <Boton type="submit" variante={paso === "revisar" ? "neutro" : "acento"} aria-busy={revisando} disabled={revisando || importando || !vista.puedeRevisar}>
                     {revisando ? "Revisando…" : paso === "revisar" ? "Revisar de nuevo" : "Revisar archivo"}
                 </Boton>
             </form>
@@ -317,7 +308,7 @@ export function ImportadorSii({
                     {libroImportado ? (
                         <Link
                             href={urlLibro({ libro: resultado.tipo, periodo: resultado.periodo as string })}
-                            className="mt-2 inline-block text-[13px] font-medium text-[var(--accent)] underline-offset-4 hover:underline"
+                            className="mt-2 inline-block text-[13px] font-medium text-[var(--accent-text)] underline-offset-4 hover:underline"
                         >
                             Ver el {resultado.tipo === "compras" ? "libro de compras" : "libro de ventas"} de{" "}
                             {nombrePeriodo(Number((resultado.periodo as string).slice(0, 4)), Number((resultado.periodo as string).slice(5)))} →

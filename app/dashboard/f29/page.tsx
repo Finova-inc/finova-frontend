@@ -155,7 +155,7 @@ export default async function F29Page({ searchParams }: { searchParams: Promise<
             {!hayDocumentos ? (
                 <Aviso>
                     No hay documentos importados de {datos.nombre}.{" "}
-                    <Link href={`/dashboard/documentos?libro=ventas&periodo=${periodo}`} className="font-medium text-[var(--accent)] underline-offset-4 hover:underline">
+                    <Link href={`/dashboard/documentos?libro=ventas&periodo=${periodo}`} className="font-medium text-[var(--accent-text)] underline-offset-4 hover:underline">
                         Importa el RCV y las boletas en Documentos
                     </Link>{" "}
                     para armar la propuesta.

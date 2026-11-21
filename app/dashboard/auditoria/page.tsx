@@ -50,7 +50,7 @@ const RUTA = "/dashboard/auditoria";
 
 const CLASES_CAMPO =
     "rounded-lg border border-[var(--border-strong)] bg-[var(--background)] px-3 py-1.5 text-[13px] text-[var(--foreground)]";
-const ENLACE = "text-[var(--accent)] underline-offset-4 hover:underline";
+const ENLACE = "text-[var(--accent-text)] underline-offset-4 hover:underline";
 
 function texto(parametros: Parametros, clave: string): string | undefined {
     const valor = parametros[clave];

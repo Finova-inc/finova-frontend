@@ -44,7 +44,7 @@ const CELDA = "px-4 py-2.5";
 function chip(activo: boolean): string {
     return `inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12.5px] font-medium transition-colors ${
         activo
-            ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+            ? "border-[var(--accent)] bg-[var(--accent)] text-ink"
             : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
     }`;
 }
@@ -60,7 +60,7 @@ function Filtros({ filtros, todos }: { readonly filtros: FiltroTerceros; readonl
                 {/* Buscar conserva los demás filtros. */}
                 {filtros.rol ? <input type="hidden" name="rol" value={filtros.rol} /> : null}
                 {filtros.estado ? <input type="hidden" name="estado" value={filtros.estado} /> : null}
-                <label className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--border-strong)] bg-[var(--background)] px-3 py-2 text-[var(--foreground-muted)]">
+                <label className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--border-strong)] bg-[var(--background)] px-3 py-2 text-[var(--foreground-muted)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--accent)]">
                     <Icon name="search" className="size-4 shrink-0" />
                     <input
                         type="search"
@@ -133,7 +133,7 @@ function TablaTerceros({ terceros }: { readonly terceros: readonly Tercero[] }) 
                             <td className={`max-w-[340px] ${CELDA}`}>
                                 <Link
                                     href={`/dashboard/terceros/${t.id_tercero}`}
-                                    className="block truncate font-medium text-[var(--accent)] underline-offset-4 hover:underline"
+                                    className="block truncate font-medium text-[var(--accent-text)] underline-offset-4 hover:underline"
                                     title={t.razon_social}
                                 >
                                     {t.razon_social}
@@ -213,7 +213,7 @@ function Sugerencias({ sugerencias, puede }: { readonly sugerencias: readonly Co
                                                     tipo: s.tipo_persona_sugerido,
                                                     motivo: s.motivo_tipo_persona,
                                                 })}
-                                                className="inline-flex items-center gap-1 whitespace-nowrap font-medium text-[var(--accent)] underline-offset-4 hover:underline"
+                                                className="inline-flex items-center gap-1 whitespace-nowrap font-medium text-[var(--accent-text)] underline-offset-4 hover:underline"
                                             >
                                                 Registrar
                                                 <Icon name="arrowRight" className="size-3.5" />
@@ -317,7 +317,7 @@ export default async function TercerosPage({ searchParams }: { searchParams: Pro
                         {visibles.length === 0 ? (
                             <p className="p-5 text-[13px] text-[var(--foreground-muted)]">
                                 Ningún tercero coincide con la búsqueda.{" "}
-                                <Link replace href="/dashboard/terceros" className="text-[var(--accent)] underline-offset-4 hover:underline">
+                                <Link replace href="/dashboard/terceros" className="text-[var(--accent-text)] underline-offset-4 hover:underline">
                                     Ver todos
                                 </Link>
                             </p>

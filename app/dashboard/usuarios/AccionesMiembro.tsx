@@ -57,7 +57,7 @@ export function AccionesMiembro({
                 </select>
                 {esUnoMismo ? null : confirmando ? (
                     <>
-                        <Boton variante="peligro" disabled={enCurso} onClick={() => ejecutar(() => quitarAccesoUsuario(id))}>
+                        <Boton variante="peligro" aria-busy={enCurso} disabled={enCurso} onClick={() => ejecutar(() => quitarAccesoUsuario(id))}>
                             {enCurso ? "Quitando…" : "Sí, quitar acceso"}
                         </Boton>
                         <Boton variante="neutro" disabled={enCurso} onClick={() => setConfirmando(false)}>

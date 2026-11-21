@@ -8,6 +8,7 @@ import { SiteFooter } from "@/components/landing/SiteFooter";
 import { SiteHeader } from "@/components/landing/SiteHeader";
 import { TrustSection } from "@/components/landing/TrustSection";
 import { Reveal } from "@/components/ui/Reveal";
+import { SaltarAlContenido } from "@/components/ui/SaltarAlContenido";
 
 /**
  * Página de inicio de Finova.
@@ -31,9 +32,10 @@ import { Reveal } from "@/components/ui/Reveal";
 export default function LandingPage() {
     return (
         <div className="landing contents">
+            <SaltarAlContenido destino="#contenido-principal" />
             <SiteHeader />
 
-            <main className="flex-1">
+            <main id="contenido-principal" className="flex-1">
                 <HeroSection />
 
                 <ModuleStrip />

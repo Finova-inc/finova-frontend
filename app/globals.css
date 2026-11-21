@@ -78,6 +78,27 @@
     /* Animaciones. Se declaran como tokens para poder usar animate-* en Tailwind. */
     --animate-fade-up: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
 
+    /* Movimiento sutil del panel. Duraciones y curva salen de los tokens de la
+       seccion MOVIMIENTO (mas abajo); aqui solo se componen en animate-*.
+       Solo opacity y transform: no provocan reflujo. Con "reducir movimiento"
+       el bloque global del final las deja en su estado final. */
+    /* Entrada de una zona de pantalla: fundido y subida corta. */
+    --animate-entrada: entrada var(--duracion-entrada) var(--curva-salida) both;
+    /* Fundido corto: tooltip, cruce de cifras, contenido de un desplegable. */
+    --animate-aparecer: aparecer var(--duracion-corta) var(--curva-salida) both;
+    /* Barra de un grafico que crece desde la base. */
+    --animate-barra: barra-crece var(--duracion-entrada) var(--curva-salida) both;
+    /* Entrada de una pantalla del panel (app/dashboard/template.tsx) y apertura
+       del panel del copiloto: los mismos fotogramas de "entrada", mas cortos.
+       Rellena solo hacia atras: al terminar no deja ningun transform puesto. */
+    --animate-pantalla: entrada var(--duracion-larga) var(--curva-salida) backwards;
+
+    /* Las transiciones de Tailwind (transition-colors y demas) heredan la
+       curva de salida de los tokens, en vez de la ease por omision. La
+       duracion por omision de Tailwind ya es 150ms: se fija al token. */
+    --default-transition-duration: var(--duracion-corta);
+    --default-transition-timing-function: var(--curva-salida);
+
     /* Carrusel del login (components/login/CarruselLogin.tsx).
        Van como tokens --animate-*: Tailwind v4 descarta los @keyframes de
        @theme que ningun token referencia. Solo opacity y transform, que los
@@ -123,6 +144,53 @@
             transform: none;
         }
     }
+
+    @keyframes entrada {
+        from {
+            opacity: 0;
+            transform: translateY(0.5rem);
+        }
+        to {
+            opacity: 1;
+            transform: none;
+        }
+    }
+
+    @keyframes aparecer {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    @keyframes barra-crece {
+        from {
+            transform: scaleY(0);
+        }
+        to {
+            transform: none;
+        }
+    }
+}
+
+/* ==========================================================================
+   MOVIMIENTO — duraciones y curva, definidas una sola vez.
+
+   Reglas: 150-250 ms para transiciones; hasta 400 ms solo para la entrada de
+   una pantalla y las barras de un grafico. Curva de salida suave (ease-out).
+   Se anima opacity, transform y color/borde/sombra; nunca `transition: all`
+   ni nada que mueva el layout. Las cifras contables no se animan: aparecen
+   exactas. Con prefers-reduced-motion todo queda sin movimiento (bloque del
+   final de este archivo).
+   ========================================================================== */
+:root {
+    --duracion-corta: 150ms;
+    --duracion-media: 200ms;
+    --duracion-larga: 250ms;
+    --duracion-entrada: 400ms;
+    --curva-salida: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* ==========================================================================
@@ -142,6 +210,10 @@
        el papel. */
     --border-subtle: rgb(20 17 15 / 0.1);
     --accent: var(--color-marker);
+    /* Naranjo para TEXTO sobre fondo claro: el naranjo puro da 2.7:1 y el mínimo
+       es 4.5 (este da 5.3:1 sobre --color-paper). Fondos, bordes y botones siguen
+       con --accent. */
+    --accent-text: #b93c0a;
 
     /* Header: color plano blanco crema, sin transparencia ni desenfoque.
        El mismo color en ambos temas, para que la barra sea un elemento
@@ -189,6 +261,9 @@
     --aviso-bg: rgb(255 197 61 / 0.18);
     --positivo: #2f6b4f;
     --positivo-bg: rgb(47 107 79 / 0.1);
+    /* Fondo suave del naranja de marca (caja del ícono de una alerta informativa).
+       Con alfa, como los otros fondos: sirve en ambos temas. */
+    --accent-bg: rgb(255 106 26 / 0.1);
 
     /* Superficie de tarjeta, un punto por encima del fondo. En claro es casi
        blanco pero no llega a serlo; en oscuro se eleva hacia el cafe. */
@@ -243,6 +318,8 @@
     --border-subtle: rgb(255 255 255 / 0.12);
     /* El naranjo puro vibra sobre negro; en oscuro se usa la versión suave. */
     --accent: var(--color-marker-soft);
+    /* En oscuro el naranjo suave ya cumple (7.8:1 sobre --color-ink): mismo valor. */
+    --accent-text: var(--color-marker-soft);
 
     /* El header conserva el crema tambien en tema oscuro: es un elemento
        constante de la marca. Se ajustan los alfas para que el vidrio siga
@@ -277,7 +354,7 @@
     --vitrina-pasado: rgb(255 255 255 / 0.45);
     --vitrina-brillo: 0.22;
 
-    --placeholder: rgb(244 241 236 / 0.4);
+    --placeholder: rgb(244 241 236 / 0.55);
 
     /* Destacadores aclarados: los saturados de claro vibran sobre tinta. */
     --hl-orange: var(--color-marker-soft);
@@ -410,6 +487,18 @@
         border-radius: 2px;
     }
 
+    /* Hover suave en lo que se pulsa y en las filas de tabla. Solo propiedades
+       de color, borde y sombra (nada de `all`). Esta en @layer base: cualquier
+       utilidad transition-* de un componente la reemplaza. */
+    a,
+    button,
+    summary,
+    tr {
+        transition-property: color, background-color, border-color, text-decoration-color, box-shadow;
+        transition-duration: var(--duracion-corta);
+        transition-timing-function: var(--curva-salida);
+    }
+
     /* Cifras tabulares para que los montos no bailen al cambiar de valor. */
     .tabular {
         font-variant-numeric: tabular-nums;
@@ -440,6 +529,123 @@
    que entra en pantalla.
    ========================================================================== */
 @layer components {
+    /* <dialog> nativo (DialogoModal, popup de empresas, eliminar cuenta): entra
+       con fundido y un leve escalado, y su fondo (::backdrop) con fundido.
+       @starting-style da el estado de partida al abrirse; `display` y `overlay`
+       con allow-discrete mantienen el dialogo en la capa superior mientras
+       dura la salida (solo se ve si el dialogo sigue montado al cerrarse; los
+       que se desmontan al cerrar solo animan la entrada). */
+    dialog {
+        opacity: 0;
+        transform: scale(0.97);
+        transition:
+            opacity var(--duracion-media) var(--curva-salida),
+            transform var(--duracion-media) var(--curva-salida),
+            overlay var(--duracion-media) var(--curva-salida) allow-discrete,
+            display var(--duracion-media) allow-discrete;
+    }
+
+    dialog[open] {
+        opacity: 1;
+        transform: none;
+    }
+
+    @starting-style {
+        dialog[open] {
+            opacity: 0;
+            transform: scale(0.97);
+        }
+    }
+
+    /* Salida iniciada por useSalidaDeDialogo (Escape o clic en el fondo): se
+       funde mientras sigue abierto; el close() llega cuando termina. */
+    dialog[data-saliendo] {
+        opacity: 0;
+        transform: scale(0.97);
+    }
+
+    dialog::backdrop {
+        opacity: 0;
+        transition:
+            opacity var(--duracion-media) var(--curva-salida),
+            overlay var(--duracion-media) var(--curva-salida) allow-discrete,
+            display var(--duracion-media) allow-discrete;
+    }
+
+    dialog[open]::backdrop {
+        opacity: 1;
+    }
+
+    dialog[data-saliendo]::backdrop {
+        opacity: 0;
+    }
+
+    @starting-style {
+        dialog[open]::backdrop {
+            opacity: 0;
+        }
+    }
+
+    /* Esqueleto de carga con brillo que se desplaza. Solo transform (un
+       degradado que viaja por encima de un fondo quieto), no repinta ni mueve
+       nada. Con "reducir movimiento" el bloque global lo deja en el ultimo
+       fotograma, donde el brillo queda fuera de la caja: estatico. */
+    .esqueleto {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .esqueleto::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        transform: translateX(-100%);
+        background: linear-gradient(
+            90deg,
+            transparent,
+            color-mix(in srgb, var(--foreground) 7%, transparent),
+            transparent
+        );
+        animation: brillo-esqueleto 1.8s var(--curva-salida) infinite;
+    }
+
+    /* Contenido de un <details> que aparece con fundido al abrirse. Si el
+       navegador no entiende algo de esto, el desplegable abre igual, sin
+       efecto. No se anima la altura: eso movería el layout. */
+    details[open] > .al-abrir {
+        animation: aparecer var(--duracion-media) var(--curva-salida) both;
+    }
+
+    /* Mensajes de estado (exito, error, aviso, validacion): al aparecer entran
+       con un fundido corto. Solo opacidad: la altura no salta con la animacion.
+       role="alert"/"status" ya los anuncia; los .sr-only no se ven y se omiten. */
+    :where([role="alert"], [role="status"]):not(.sr-only) {
+        animation: aparecer var(--duracion-corta) var(--curva-salida) both;
+    }
+
+    /* Boton con una accion en curso (aria-busy="true", puesto donde el componente
+       ya tiene su estado pendiente): un brillo fino cruza el boton. Es un
+       pseudo-elemento absoluto: no cambia el ancho ni el alto. */
+    button[aria-busy="true"] {
+        position: relative;
+        overflow: hidden;
+        cursor: progress;
+    }
+
+    button[aria-busy="true"]::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        transform: translateX(-100%);
+        background: linear-gradient(
+            90deg,
+            transparent,
+            color-mix(in srgb, currentColor 22%, transparent),
+            transparent
+        );
+        animation: brillo-esqueleto 1.4s var(--curva-salida) infinite;
+    }
     /* ----------------------------------------------------------------------
        BARRA DE NAVEGACION
        ----------------------------------------------------------------------
@@ -995,6 +1201,16 @@
     84.4%,
     100% {
         translate: none;
+    }
+}
+
+/* Brillo del esqueleto de carga (.esqueleto). */
+@keyframes brillo-esqueleto {
+    from {
+        transform: translateX(-100%);
+    }
+    to {
+        transform: translateX(100%);
     }
 }
 

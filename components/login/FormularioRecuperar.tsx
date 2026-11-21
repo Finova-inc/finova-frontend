@@ -22,7 +22,7 @@ export function FormularioRecuperar() {
                     {estado.mensaje}
                 </p>
                 <p className="text-sm text-[var(--foreground-muted)]">El enlace vence en 30 minutos. Revisa también la carpeta de correo no deseado.</p>
-                <Link href="/login" className="text-center text-sm font-medium text-[var(--accent)] underline-offset-4 hover:underline">
+                <Link href="/login" className="text-center text-sm font-medium text-[var(--accent-text)] underline-offset-4 hover:underline">
                     Volver a iniciar sesión
                 </Link>
             </div>
@@ -69,7 +69,7 @@ export function FormularioRecuperar() {
                 {enCurso ? "Enviando…" : "Enviar enlace"}
             </button>
 
-            <Link href="/login" className="text-center text-sm font-medium text-[var(--accent)] underline-offset-4 hover:underline">
+            <Link href="/login" className="text-center text-sm font-medium text-[var(--accent-text)] underline-offset-4 hover:underline">
                 Volver a iniciar sesión
             </Link>
         </form>

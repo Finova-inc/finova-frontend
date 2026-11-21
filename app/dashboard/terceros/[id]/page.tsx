@@ -176,7 +176,7 @@ export default async function TerceroPage({
                         {actividad.documentos.length === 0 ? (
                             <p className="px-5 pb-5 text-[13px] text-[var(--foreground-muted)]">
                                 No hay documentos importados del SII con su RUT.{" "}
-                                <Link href="/dashboard/documentos" className="text-[var(--accent)] underline-offset-4 hover:underline">
+                                <Link href="/dashboard/documentos" className="text-[var(--accent-text)] underline-offset-4 hover:underline">
                                     Ir a Documentos
                                 </Link>
                             </p>
@@ -202,7 +202,7 @@ export default async function TerceroPage({
                                                     <td className={CELDA}>
                                                         <Link
                                                             href={`/dashboard/documentos/${d.id_documento_sii}`}
-                                                            className="font-medium text-[var(--accent)] underline-offset-4 hover:underline"
+                                                            className="font-medium text-[var(--accent-text)] underline-offset-4 hover:underline"
                                                         >
                                                             N° {d.folio}
                                                         </Link>
@@ -302,7 +302,7 @@ export default async function TerceroPage({
                                                 <td className={`max-w-[260px] ${CELDA}`}>
                                                     <Link
                                                         href={`/dashboard/core-contable/${m.id_asiento}`}
-                                                        className="tabular font-medium text-[var(--accent)] underline-offset-4 hover:underline"
+                                                        className="tabular font-medium text-[var(--accent-text)] underline-offset-4 hover:underline"
                                                     >
                                                         {formatearComprobante(m.tipo_comprobante, m.numero, m.anio)}
                                                     </Link>

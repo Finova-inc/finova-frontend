@@ -252,6 +252,7 @@ export function FilaCuenta({
                             <div className="flex items-center gap-2">
                                 <Boton
                                     variante="acento"
+                                    aria-busy={enCurso}
                                     disabled={enCurso}
                                     onClick={() =>
                                         iniciar(async () => {

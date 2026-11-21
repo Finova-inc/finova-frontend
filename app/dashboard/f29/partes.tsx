@@ -13,7 +13,7 @@ import { CLASES_TH } from "../core-contable/partes";
 
 const CELDA = "px-4 py-2";
 const NUMERO = `tabular ${CELDA} text-right whitespace-nowrap`;
-const ENLACE = "underline-offset-4 hover:text-[var(--accent)] hover:underline";
+const ENLACE = "underline-offset-4 hover:text-[var(--accent-text)] hover:underline";
 
 /** Fecha y hora de Chile de un instante del backend: "21-10-2026". */
 export function fechaEnChile(iso: string | null): string {
@@ -179,7 +179,7 @@ export function ListaAlertas({ alertas, periodo }: { readonly alertas: readonly 
                         </span>
                         <span className="flex-1">{alerta.mensaje}</span>
                         {filtro ? (
-                            <Link href={urlLibro(filtro)} className="no-imprimir shrink-0 text-[12.5px] font-medium text-[var(--accent)] underline-offset-4 hover:underline">
+                            <Link href={urlLibro(filtro)} className="no-imprimir shrink-0 text-[12.5px] font-medium text-[var(--accent-text)] underline-offset-4 hover:underline">
                                 Ver documentos
                             </Link>
                         ) : null}
@@ -314,7 +314,7 @@ export function ListaExcluidos({ excluidos }: { readonly excluidos: readonly Doc
                 <li key={d.id_documento_sii} className="flex flex-col gap-0.5 py-2 first:pt-0 last:pb-0 sm:flex-row sm:gap-3">
                     <Link
                         href={`/dashboard/documentos/${d.id_documento_sii}`}
-                        className="shrink-0 font-medium text-[var(--accent)] underline-offset-4 hover:underline sm:w-72"
+                        className="shrink-0 font-medium text-[var(--accent-text)] underline-offset-4 hover:underline sm:w-72"
                     >
                         {d.sentido === "compra" ? "Compra" : "Venta"} · {nombreTipoDte(d.tipo_dte)} N° {d.folio}
                     </Link>

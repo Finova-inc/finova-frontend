@@ -6,7 +6,13 @@
    se muestra tal cual viene, para no romper la pantalla.
    ========================================================================== */
 
-import { formatearFechaHoraChile } from "./formato";
+import {
+    formatearCLP,
+    formatearComprobante,
+    formatearFechaContable,
+    formatearFechaHoraChile,
+    nombrePeriodo,
+} from "./formato.ts";
 
 /** Busca solo en la tabla, no en el prototipo: una acción llamada "constructor" no es una etiqueta. */
 function propio<T>(tabla: Readonly<Record<string, T>>, clave: string): T | undefined {
@@ -156,40 +162,226 @@ const ETIQUETA_CAMPO: Readonly<Record<string, string>> = {
     honorarios_gasto: "Cuenta de gasto en honorarios",
     retencion_honorarios: "Cuenta de retención de honorarios",
     honorarios_por_pagar: "Cuenta de honorarios por pagar",
+    // Asientos y borradores.
+    comprobante: "Comprobante",
+    tipo_comprobante: "Tipo de comprobante",
+    numero: "Número",
+    fecha_contable: "Fecha contable",
+    glosa: "Glosa",
+    valor_comprobante: "Valor del comprobante",
+    revierte_a: "Revierte a",
+    revertido_por: "Revertido por",
+    id_asiento_revertido: "Asiento revertido",
+    movimientos: "Movimientos",
+    lineas: "Líneas",
+    id_borrador: "Borrador",
+    id_documento_sii: "Documento del SII",
+    id_honorario_sii: "Boleta de honorarios",
+    id_movimiento: "Movimiento",
+    orden: "Orden",
+    debe: "Debe",
+    haber: "Haber",
+    cuenta: "Cuenta",
+    tercero: "Tercero",
+    // Documentos.
+    id_impuesto: "Impuesto",
+    id_doc_impuesto: "Impuesto del documento",
+    id_detalle: "Línea",
+    monto_impuesto: "Monto del impuesto",
+    cantidad: "Cantidad",
+    subtotal: "Subtotal",
+    precio_unitario: "Precio unitario",
+    snapshot_nombre: "Descripción",
+    // Contabilización y cuentas.
+    creados: "Asientos creados",
+    contabilizados: "Contabilizados",
+    con_error: "Con error",
+    errores: "Errores",
+    resultados: "Resultados",
+    cuentas_creadas: "Cuentas creadas",
+    cuentas_reubicadas: "Cuentas reubicadas",
+    // Notas de los estados financieros, importaciones del SII y otros.
+    message: "Mensaje",
+    giro: "Giro",
+    domicilio: "Domicilio",
+    ejercicio: "Ejercicio",
+    fecha_autorizacion: "Fecha de autorización",
+    clave: "Clave",
+    texto: "Texto",
+    actualizado_en: "Actualizado el",
+    avisos: "Avisos",
+    muestra: "Muestra del archivo",
+    totales: "Totales",
+    modo: "Modo",
+    periodo_sugerido: "Período sugerido",
 };
 
-export const etiquetaCampo = (campo: string): string => propio(ETIQUETA_CAMPO, campo) ?? campo;
+/**
+ * Un nombre de campo en palabras, para lo que el diccionario no conoce:
+ * "fecha_contable" -> "Fecha contable". Nunca queda en MAYUSCULAS_CON_GUION_BAJO.
+ */
+export function textoLegible(clave: string): string {
+    const texto = clave
+        .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+        .replace(/[_\-.]+/g, " ")
+        .trim()
+        .toLowerCase();
+    return texto ? texto.charAt(0).toUpperCase() + texto.slice(1) : clave;
+}
+
+export const etiquetaCampo = (campo: string): string => propio(ETIQUETA_CAMPO, campo) ?? textoLegible(campo);
 
 const NOMBRE_ROL: Readonly<Record<string, string>> = { "1": "Administrador", "2": "Contador", "3": "Consulta" };
 const NOMBRE_TIPO_PERSONA: Readonly<Record<string, string>> = { N: "Persona natural", J: "Persona jurídica" };
+const NOMBRE_TIPO_COMPROBANTE: Readonly<Record<string, string>> = { I: "Ingreso", E: "Egreso", T: "Traspaso" };
+/** cat_tipo_cuenta: 1 Activo, 2 Pasivo, 3 Patrimonio, 4 Ingreso, 5 Gasto (el mismo orden de lib/planCuentas.ts). */
+const NOMBRE_TIPO_CUENTA: Readonly<Record<string, string>> = {
+    "1": "Activos",
+    "2": "Pasivos",
+    "3": "Patrimonio",
+    "4": "Ingresos",
+    "5": "Costos y gastos",
+};
+const NOMBRE_IMPUESTO: Readonly<Record<string, string>> = { "1": "IVA" };
+
+/** Nombre de un impuesto por su id; sin nombre conocido, "Impuesto 7". */
+export const nombreDeImpuesto = (id: unknown): string => propio(NOMBRE_IMPUESTO, String(id)) ?? `Impuesto ${String(id)}`;
 
 /** Campos que guardan el uuid de una persona: created_by, cerrado_por, id_usuario… */
-const CAMPO_DE_PERSONA = /^id_usuario$|_por$|_by$/;
+export const CAMPO_DE_PERSONA = /^id_usuario$|_por$|_by$/;
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const esUuid = (valor: unknown): valor is string => typeof valor === "string" && UUID.test(valor);
+
+/**
+ * Campos que son un monto en pesos, por entidad. Un monto sale como "$12.000"; el mismo nombre
+ * en otra entidad (una "cantidad", un "numero") no se toca.
+ */
+const CAMPOS_DE_MONTO: Readonly<Record<string, readonly string[]>> = {
+    "asientos-contables": ["valor_comprobante", "debe", "haber"],
+    "asientos-borradores": ["valor_comprobante", "debe", "haber"],
+    documentos: ["monto_neto", "monto_total", "monto_impuesto", "subtotal", "precio_unitario"],
+    f29: ["total_a_pagar", "remanente_anterior", "remanente_siguiente", "utm_actual", "utm_anterior"],
+};
+
+export function esMonto(entidad: string | undefined, campo: string): boolean {
+    const lista = entidad === undefined ? undefined : propio(CAMPOS_DE_MONTO, entidad);
+    return lista?.includes(campo) ?? false;
+}
+
+/** Campos cuyo valor es una palabra clave del sistema ("abierto", "activo_corriente"): se leen como frase. */
+const CAMPOS_CON_PALABRA_CLAVE: ReadonlySet<string> = new Set(["estado", "origen", "origen_transaccion", "modo", "tipo", "rubro_eeff"]);
+
+const capitalizar = (texto: string): string => (texto ? texto.charAt(0).toUpperCase() + texto.slice(1) : texto);
+const FECHA_SOLA = /^\d{4}-\d{2}-\d{2}$/;
+const PERIODO_TEXTO = /^(\d{4})-(\d{2})$/;
+const NUMERO_CON_DECIMALES = /^-?\d+\.\d+$/;
+const NUMERO_CHILE = new Intl.NumberFormat("es-CL", { maximumFractionDigits: 4 });
+
+/** "Noviembre 2026" a partir del año y el mes (1-12). */
+const periodoEnPalabras = (anio: number, mes: number): string => capitalizar(nombrePeriodo(anio, mes));
+const esObjeto = (valor: unknown): valor is Record<string, unknown> =>
+    typeof valor === "object" && valor !== null && !Array.isArray(valor);
 
 const INSTANTE_ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
 const LARGO_MAXIMO = 400;
 
+/** null, "", una lista sin elementos o un objeto sin claves: no hay dato que mostrar. */
+export function sinValor(valor: unknown): boolean {
+    if (valor === null || valor === undefined || valor === "") return true;
+    if (Array.isArray(valor)) return valor.length === 0;
+    return esObjeto(valor) && Object.keys(valor).length === 0;
+}
+
 /**
  * Un valor del antes o del después, legible. Es texto: React lo escapa al
- * mostrarlo. Los objetos salen como JSON compacto (lo muy largo se corta) y las
- * listas como un conteo: el detalle de un documento o las líneas de un asiento
- * no caben en una línea. `personas` (uuid en minúsculas → nombre) cambia el
- * uuid de una persona de la empresa por su nombre; si no está, queda el valor.
+ * mostrarlo.
+ *
+ * - Fechas: DD-MM-AAAA; con hora, la de Chile.
+ * - Montos (según `entidad`): "$12.000". Números sin decimales de más: 12000.0000 -> 12000.
+ * - Objetos conocidos como frase: un período ("Noviembre 2026 · abierto"), un
+ *   comprobante ("T-3 / 2026"), una cuenta ("1101001 · Caja").
+ * - Sí / No para los booleanos; las listas, como un conteo.
+ * - Lo demás, tal cual: un objeto desconocido sale como JSON compacto (lo muy
+ *   largo se corta).
+ *
+ * `personas` (uuid en minúsculas → nombre) cambia el uuid de una persona de la
+ * empresa por su nombre; si no está, queda el valor.
  */
-export function formatearValorAuditado(campo: string, valor: unknown, personas?: ReadonlyMap<string, string>): string {
-    if (valor === null || valor === undefined || valor === "") return "vacío";
-    if (Array.isArray(valor)) return valor.length === 0 ? "vacío" : `${valor.length} ${valor.length === 1 ? "elemento" : "elementos"}`;
+export function formatearValorAuditado(
+    campo: string,
+    valor: unknown,
+    personas?: ReadonlyMap<string, string>,
+    entidad?: string,
+): string {
+    if (sinValor(valor)) return "vacío";
+    if (Array.isArray(valor)) return `${valor.length} ${valor.length === 1 ? "elemento" : "elementos"}`;
     if (typeof valor === "string" && CAMPO_DE_PERSONA.test(campo)) return personas?.get(valor.toLowerCase()) ?? valor;
     if (typeof valor === "boolean") return valor ? "Sí" : "No";
     if (campo === "id_rol" && (typeof valor === "number" || typeof valor === "string")) {
         return propio(NOMBRE_ROL, String(valor)) ?? String(valor);
     }
     if (campo === "tipo_persona" && typeof valor === "string") return propio(NOMBRE_TIPO_PERSONA, valor) ?? valor;
+    if (campo === "tipo_comprobante" && typeof valor === "string") return propio(NOMBRE_TIPO_COMPROBANTE, valor) ?? valor;
+    if (campo === "id_tipo_cuenta" && (typeof valor === "number" || typeof valor === "string")) {
+        return propio(NOMBRE_TIPO_CUENTA, String(valor)) ?? String(valor);
+    }
+    if (campo === "id_impuesto" && (typeof valor === "number" || typeof valor === "string")) return nombreDeImpuesto(valor);
+
+    if (esObjeto(valor)) return formatearObjeto(campo, valor, entidad);
+
     // Un instante llega en UTC; en pantalla va en horario de Chile.
     if (typeof valor === "string" && INSTANTE_ISO.test(valor)) return formatearFechaHoraChile(valor);
+    if (typeof valor === "string" && FECHA_SOLA.test(valor)) return formatearFechaContable(valor);
+    if ((campo === "periodo" || campo === "periodo_sugerido") && typeof valor === "string") {
+        const periodo = PERIODO_TEXTO.exec(valor);
+        if (periodo) return periodoEnPalabras(Number(periodo[1]), Number(periodo[2]));
+    }
+    if (esMonto(entidad, campo) && (typeof valor === "number" || (typeof valor === "string" && /^-?\d+(\.\d+)?$/.test(valor)))) {
+        return formatearCLP(valor);
+    }
+    if (typeof valor === "number") return String(valor);
+    if (typeof valor === "string" && NUMERO_CON_DECIMALES.test(valor)) return NUMERO_CHILE.format(Number(valor));
+    if (typeof valor === "string" && CAMPOS_CON_PALABRA_CLAVE.has(campo)) return capitalizar(valor.replace(/_/g, " "));
 
-    const texto = typeof valor === "string" ? valor : typeof valor === "object" ? JSON.stringify(valor) : String(valor);
+    const texto = String(valor);
     return texto.length > LARGO_MAXIMO ? `${texto.slice(0, LARGO_MAXIMO)}…` : texto;
+}
+
+/** Los objetos que el backend guarda con una forma conocida, dichos en una frase. */
+function formatearObjeto(campo: string, valor: Record<string, unknown>, entidad: string | undefined): string {
+    const { mes, anio, estado, numero, tipo_comprobante: tipo, codigo, nombre } = valor;
+    if (Number.isInteger(mes) && Number.isInteger(anio)) {
+        return `${periodoEnPalabras(anio as number, mes as number)}${typeof estado === "string" && estado ? ` · ${estado}` : ""}`;
+    }
+    if (typeof tipo === "string" && Number.isInteger(numero) && Number.isInteger(anio)) {
+        const fecha = valor.fecha_contable;
+        const cuando = typeof fecha === "string" && FECHA_SOLA.test(fecha) ? ` · ${formatearFechaContable(fecha)}` : "";
+        return `${formatearComprobante(tipo, numero as number, anio as number)}${cuando}`;
+    }
+    if (typeof codigo === "string") return typeof nombre === "string" && nombre ? `${codigo} · ${nombre}` : codigo;
+    if (entidad === "sii" && campo === "resumen") return resumenDeImportacion(valor);
+    if (campo === "foto" && Array.isArray(valor.lineas)) return `${valor.lineas.length} líneas del cálculo`;
+
+    const texto = JSON.stringify(valor);
+    return texto.length > LARGO_MAXIMO ? `${texto.slice(0, LARGO_MAXIMO)}…` : texto;
+}
+
+const CONTEOS_DE_IMPORTACION: readonly (readonly [string, string])[] = [
+    ["leidos", "leídos"],
+    ["nuevos", "nuevos"],
+    ["actualizados", "actualizados"],
+    ["omitidos", "omitidos"],
+    ["con_error", "con error"],
+    ["con_advertencia", "con advertencia"],
+];
+
+/** "7 leídos · 7 nuevos": los conteos de una importación del SII que no son cero. */
+function resumenDeImportacion(resumen: Record<string, unknown>): string {
+    const partes = CONTEOS_DE_IMPORTACION.flatMap(([clave, texto]) =>
+        typeof resumen[clave] === "number" && resumen[clave] !== 0 ? [`${resumen[clave]} ${texto}`] : [],
+    );
+    return partes.length > 0 ? partes.join(" · ") : "Sin documentos";
 }
 
 const esVacio = (campo: string, valor: unknown): boolean => formatearValorAuditado(campo, valor) === "vacío";

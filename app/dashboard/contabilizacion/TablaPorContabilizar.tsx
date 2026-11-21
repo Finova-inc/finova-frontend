@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { Boton } from "@/components/ui/Boton";
 import { Etiqueta } from "@/components/ui/Etiqueta";
+import { Presencia } from "@/components/ui/Presencia";
 import type { EstadoContabilizacion as Estado, ItemPorContabilizar } from "@/lib/api";
 import { formatearCLP, formatearFechaContable } from "@/lib/formato";
 import { nombreTipoDte } from "@/lib/sii";
@@ -93,13 +94,13 @@ export function TablaPorContabilizar({
             {puedeRegistrar ? (
                 <div className="no-imprimir flex flex-col gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] p-4">
                     <div className="flex flex-wrap items-center gap-2">
-                        <Boton variante="acento" disabled={enCurso || marcadosPendientes.length === 0} onClick={proponer}>
+                        <Boton variante="acento" aria-busy={enCurso} disabled={enCurso || marcadosPendientes.length === 0} onClick={proponer}>
                             {enCurso ? "Trabajando…" : `Proponer asientos (${marcadosPendientes.length})`}
                         </Boton>
                         {borradores.length > 0 ? (
                             confirmando ? (
                                 <>
-                                    <Boton variante="acento" disabled={enCurso} onClick={contabilizar}>
+                                    <Boton variante="acento" aria-busy={enCurso} disabled={enCurso} onClick={contabilizar}>
                                         Sí, contabilizar {borradores.length}
                                     </Boton>
                                     <Boton variante="neutro" disabled={enCurso} onClick={() => setConfirmando(false)}>
@@ -118,11 +119,11 @@ export function TablaPorContabilizar({
                             ? "Los asientos entran al libro diario con número correlativo y ya no se modifican: si algo está mal, se corrige con una reversa. Revisa los borradores antes."
                             : "Proponer crea un borrador por documento, que puedes abrir y corregir. Nada entra al libro hasta que contabilizas."}
                     </p>
-                    {estado.ok ? (
+                    <Presencia mostrar={Boolean(estado.ok)}>
                         <p role="status" className="text-[12.5px] text-[var(--positivo)]">
                             {estado.ok}
                         </p>
-                    ) : null}
+                    </Presencia>
                     {estado.detalle && estado.detalle.length > 0 ? (
                         <ul className="list-disc pl-5 text-[12.5px] text-[var(--critico)]">
                             {estado.detalle.map((d) => (
@@ -130,11 +131,11 @@ export function TablaPorContabilizar({
                             ))}
                         </ul>
                     ) : null}
-                    {estado.errores && estado.errores.length > 0 ? (
+                    <Presencia mostrar={Boolean(estado.errores && estado.errores.length > 0)}>
                         <p role="alert" className="text-[12.5px] text-[var(--critico)]">
-                            {estado.errores.join(" ")}
+                            {estado.errores?.join(" ")}
                         </p>
-                    ) : null}
+                    </Presencia>
                 </div>
             ) : null}
 
@@ -197,7 +198,7 @@ export function TablaPorContabilizar({
                                         <td className={`tabular whitespace-nowrap ${CELDA}`}>{formatearFechaContable(i.fecha_emision)}</td>
                                         <td className={`whitespace-nowrap ${CELDA}`}>
                                             {i.tipo === "documento" ? (
-                                                <Link href={`/dashboard/documentos/${i.id}`} className="font-medium text-[var(--accent)] underline-offset-4 hover:underline">
+                                                <Link href={`/dashboard/documentos/${i.id}`} className="font-medium text-[var(--accent-text)] underline-offset-4 hover:underline">
                                                     N° {i.folio}
                                                 </Link>
                                             ) : (
@@ -238,12 +239,12 @@ export function TablaPorContabilizar({
                                         <td className={CELDA}>
                                             <Etiqueta tono={ESTADO[i.estado].tono}>{ESTADO[i.estado].etiqueta}</Etiqueta>
                                             {i.estado === "borrador" && i.id_borrador ? (
-                                                <Link href={`/dashboard/core-contable/borradores/${i.id_borrador}`} className="ml-2 text-[12px] font-medium text-[var(--accent)] underline-offset-4 hover:underline">
+                                                <Link href={`/dashboard/core-contable/borradores/${i.id_borrador}`} className="ml-2 text-[12px] font-medium text-[var(--accent-text)] underline-offset-4 hover:underline">
                                                     Revisar
                                                 </Link>
                                             ) : null}
                                             {i.estado === "contabilizado" && i.asiento ? (
-                                                <Link href={`/dashboard/core-contable/${i.asiento.id_asiento}`} className="tabular ml-2 text-[12px] font-medium text-[var(--accent)] underline-offset-4 hover:underline">
+                                                <Link href={`/dashboard/core-contable/${i.asiento.id_asiento}`} className="tabular ml-2 text-[12px] font-medium text-[var(--accent-text)] underline-offset-4 hover:underline">
                                                     {i.asiento.cita}
                                                 </Link>
                                             ) : null}

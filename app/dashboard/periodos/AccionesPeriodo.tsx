@@ -109,6 +109,7 @@ export function AccionesPeriodo({
                 <div>
                     <Boton
                         variante="neutro"
+                        aria-busy={enCurso}
                         disabled={enCurso}
                         onClick={() => (cerradoPosterior ? setModo("abrir") : ejecutar(() => abrirMes(anio, mes)))}
                     >
@@ -192,6 +193,7 @@ export function AccionesPeriodo({
             <div className="flex flex-wrap gap-2">
                 <Boton
                     variante="acento"
+                    aria-busy={enCurso}
                     disabled={enCurso || motivo.trim().length < 10}
                     onClick={() => ejecutar(() => reabrirPeriodo(idPeriodo, motivo))}
                 >
@@ -241,7 +243,7 @@ export function AvisoMesesCerrados({
                 declararon, puede obligar a rectificar.
             </p>
             <div className="flex flex-wrap gap-2">
-                <Boton variante="acento" disabled={enCurso} onClick={onConfirmar}>
+                <Boton variante="acento" aria-busy={enCurso} disabled={enCurso} onClick={onConfirmar}>
                     {enCurso ? (verbo === "Cargar" ? "Cargando…" : "Abriendo…") : `${verbo} igual`}
                 </Boton>
                 <Boton variante="neutro" disabled={enCurso} onClick={onCancelar}>

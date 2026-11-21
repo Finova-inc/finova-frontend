@@ -364,7 +364,7 @@ export function FormularioAsiento({
                                     title={opcion.ayuda}
                                     className={`cursor-pointer rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[var(--accent)] ${
                                         tipo === opcion.valor
-                                            ? "bg-[var(--accent)] text-white"
+                                            ? "bg-[var(--accent)] text-ink"
                                             : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
                                     }`}
                                 >
@@ -462,7 +462,7 @@ export function FormularioAsiento({
                                     </span>
                                 </span>
                                 {puedeAbrirPeriodo ? (
-                                    <Boton variante="neutro" disabled={abriendoPeriodo} onClick={abrirPeriodoDeLaFecha}>
+                                    <Boton variante="neutro" aria-busy={abriendoPeriodo} disabled={abriendoPeriodo} onClick={abrirPeriodoDeLaFecha}>
                                         {abriendoPeriodo ? "Abriendo…" : `Abrir ${nombreMesLargo(mesFecha)}`}
                                     </Boton>
                                 ) : (
@@ -672,7 +672,7 @@ export function FormularioAsiento({
                         reversión.
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
-                        <Boton variante="acento" disabled={enCurso} onClick={alContabilizar}>
+                        <Boton variante="acento" aria-busy={enCurso} disabled={enCurso} onClick={alContabilizar}>
                             {enCurso ? "Contabilizando…" : "Sí, contabilizar"}
                         </Boton>
                         <Boton variante="neutro" disabled={enCurso} onClick={() => setConfirmando(false)}>
@@ -691,7 +691,7 @@ export function FormularioAsiento({
                         Volver al libro diario
                     </Link>
                     {borrador ? (
-                        <Boton variante="fantasma" disabled={enCurso} onClick={alDescartar}>
+                        <Boton variante="fantasma" aria-busy={enCurso} disabled={enCurso} onClick={alDescartar}>
                             <Icon name="trash" className="size-4" />
                             Descartar borrador
                         </Boton>
@@ -705,11 +705,12 @@ export function FormularioAsiento({
 
                 <div className="flex flex-col items-stretch gap-2 sm:items-end">
                     <div className="flex flex-wrap gap-2">
-                        <Boton variante="neutro" disabled={enCurso} onClick={alGuardar}>
+                        <Boton variante="neutro" aria-busy={enCurso} disabled={enCurso} onClick={alGuardar}>
                             {enCurso && !confirmando ? "Guardando…" : "Guardar borrador"}
                         </Boton>
                         <Boton
                             variante="acento"
+                            aria-busy={enCurso}
                             disabled={enCurso || !listoParaContabilizar || confirmando}
                             onClick={() => setConfirmando(true)}
                         >

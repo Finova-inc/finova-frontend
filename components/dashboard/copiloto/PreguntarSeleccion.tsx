@@ -93,7 +93,7 @@ export function PreguntarSeleccion() {
                 setPosicion(null);
             }}
             style={{ top: posicion.arriba, left: posicion.izquierda, width: ANCHO_BOTON, height: ALTO_BOTON }}
-            className="copiloto-tema no-imprimir fixed z-[35] inline-flex items-center justify-center gap-1.5 rounded-full border border-[var(--border-subtle)] bg-[var(--surface)] text-[12.5px] font-medium text-[var(--foreground)] shadow-[0_8px_24px_rgb(0_0_0/0.18)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            className="copiloto-tema no-imprimir fixed z-[35] inline-flex items-center justify-center gap-1.5 rounded-full border border-[var(--border-subtle)] bg-[var(--surface)] text-[12.5px] font-medium text-[var(--foreground)] shadow-[0_8px_24px_rgb(0_0_0/0.18)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent-text)]"
         >
             <Icon name="sparkle" className="size-3.5 text-[var(--accent)]" />
             Preguntar al copiloto

@@ -60,7 +60,7 @@ export default async function ParametrosPage() {
                     />
                     <p className="text-[12.5px] text-[var(--foreground-muted)]">
                         Los documentos pendientes se contabilizan en{" "}
-                        <Link href="/dashboard#por-contabilizar" className="font-medium text-[var(--accent)] underline-offset-4 hover:underline">
+                        <Link href="/dashboard#por-contabilizar" className="font-medium text-[var(--accent-text)] underline-offset-4 hover:underline">
                             Por contabilizar
                         </Link>
                         .

@@ -23,6 +23,8 @@ const PRICING_TIERS: ReadonlyArray<{
     /** El plan sugerido se destaca visualmente. */
     isFeatured: boolean;
     ctaLabel: string;
+    /** Destino del botón; sin él, el login. */
+    ctaHref?: string;
     /** Destacador del plan: checks y acento. */
     color: string;
 }> = [
@@ -73,6 +75,7 @@ const PRICING_TIERS: ReadonlyArray<{
         ],
         isFeatured: false,
         ctaLabel: "Hablemos",
+        ctaHref: "mailto:contacto@finova.cl",
         color: "var(--hl-violet)",
     },
 ];
@@ -149,7 +152,7 @@ function PriceTier({
             </ul>
 
             <Link
-                href="/login"
+                href={tier.ctaHref ?? "/login"}
                 className={`mt-8 rounded-xl px-5 py-3 text-center font-display text-[15px] font-medium transition-opacity hover:opacity-90 ${
                     tier.isFeatured
                         ? "bg-[var(--foreground)] text-[var(--background)]"

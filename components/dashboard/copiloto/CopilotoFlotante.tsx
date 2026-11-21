@@ -135,7 +135,7 @@ export function CopilotoFlotante({ idUsuario, idEmpresa, ancladoInicial = false 
                 aria-modal="false"
                 aria-label="Copiloto IA"
                 className={`copiloto-tema no-imprimir fixed inset-0 z-30 flex-col bg-[var(--surface)] text-[var(--foreground)] sm:inset-auto sm:bottom-24 sm:right-6 sm:h-[min(640px,calc(100dvh-8rem))] sm:w-[400px] sm:overflow-hidden sm:rounded-2xl sm:border sm:border-[var(--border-subtle)] sm:shadow-[0_16px_48px_rgb(0_0_0/0.22)] ${claseAnclado} ${
-                    abierto ? "flex" : "hidden"
+                    abierto ? "flex animate-pantalla" : "hidden"
                 }`}
             >
                 <div
@@ -166,7 +166,7 @@ export function CopilotoFlotante({ idUsuario, idEmpresa, ancladoInicial = false 
                 aria-controls="panel-copiloto"
                 title={abierto ? "Cerrar el copiloto (Ctrl+J)" : "Copiloto IA (Ctrl+J)"}
                 aria-keyshortcuts="Control+J Meta+J"
-                className={`no-imprimir fixed bottom-5 right-5 z-30 grid size-14 place-items-center rounded-full bg-[var(--accent)] text-white shadow-[0_8px_24px_rgb(0_0_0/0.25)] transition-[scale] hover:scale-105 motion-reduce:transition-none sm:bottom-6 sm:right-6 ${
+                className={`no-imprimir fixed bottom-5 right-5 z-30 grid size-14 place-items-center rounded-full bg-[var(--accent)] text-ink shadow-[0_8px_24px_rgb(0_0_0/0.25)] transition-[scale,box-shadow] hover:scale-105 hover:shadow-[0_10px_28px_rgb(0_0_0/0.3)] active:scale-95 motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:active:scale-100 sm:bottom-6 sm:right-6 ${
                     abierto ? `max-sm:hidden ${anclado ? "lg:hidden" : ""}` : ""
                 }`}
             >

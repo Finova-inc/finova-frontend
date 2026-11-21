@@ -74,9 +74,13 @@ function getServerTheme(): Theme {
  * `icon` (por omisión): un solo ícono que cambia, el del panel y el login.
  * `switch`: pastilla con sol y luna siempre visibles y una perilla que se
  * desliza bajo el activo (header de la landing, según images/image.png).
+ * `panel`: botón con borde que toma los colores del tema (--foreground,
+ * --border-strong), para la cabecera del panel, que sí cambia con el tema. La
+ * variante `icon` usa las variables del header crema (tinta oscura fija) y sobre
+ * una cabecera oscura no se ve.
  */
 type ThemeToggleProps = {
-    readonly variant?: "icon" | "switch";
+    readonly variant?: "icon" | "switch" | "panel";
 };
 
 export function ThemeToggle({ variant = "icon" }: ThemeToggleProps) {
@@ -163,6 +167,23 @@ export function ThemeToggle({ variant = "icon" }: ThemeToggleProps) {
                 <span className="relative grid size-7 place-items-center text-[var(--header-ink-muted)] transition-colors duration-300 dark:text-[var(--color-violet)]">
                     <Icon name="moon" className="size-[15px] fill-current" />
                 </span>
+            </button>
+        );
+    }
+
+    if (variant === "panel") {
+        return (
+            <button
+                type="button"
+                onClick={handleToggle}
+                aria-pressed={theme === "dark"}
+                aria-label="Cambiar entre tema claro y oscuro"
+                title="Cambiar tema"
+                className="grid size-9 shrink-0 place-items-center rounded-lg border border-[var(--border-strong)] text-[var(--foreground)] transition-colors hover:bg-[var(--background-raised)]"
+            >
+                {/* Ambos íconos y CSS elige (clase .dark): el correcto aparece desde el primer paint. */}
+                <Icon name="sun" className="size-[18px] dark:hidden" />
+                <Icon name="moon" className="hidden size-[18px] dark:block" />
             </button>
         );
     }

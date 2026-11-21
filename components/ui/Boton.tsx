@@ -18,7 +18,7 @@ const VARIANTES: Record<Variante, string> = {
     /* Accion principal. El naranjo es el color de accion de la marca; se usa
        una sola vez por grupo, si no deja de significar "esto primero". */
     acento:
-        "bg-[var(--accent)] border-[var(--accent)] text-white font-semibold hover:brightness-110",
+        "bg-[var(--accent)] border-[var(--accent)] text-ink font-semibold hover:brightness-110",
     /* Accion secundaria: mismo peso visual que el fondo, contorno definido. */
     neutro:
         "bg-[var(--surface)] border-[var(--border-strong)] text-[var(--foreground)] hover:bg-[var(--background-raised)]",
@@ -52,7 +52,7 @@ export function Boton({
             /* El type explicito no es cosmetico: sin el, un boton dentro de un
                <form> es submit por defecto y envia el formulario al pulsarlo. */
             type={type}
-            className={`inline-flex items-center justify-center gap-2 rounded-lg border text-[13px] font-medium transition-[background-color,filter] disabled:cursor-not-allowed disabled:opacity-60 ${
+            className={`inline-flex items-center justify-center gap-2 rounded-lg border text-[13px] font-medium transition-[background-color,border-color,color,filter,transform] duration-(--duracion-corta) ease-(--curva-salida) active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100 motion-reduce:active:scale-100 ${
                 soloIcono ? "size-9" : "px-3.5 py-2"
             } ${VARIANTES[variante]} ${className}`}
             {...props}

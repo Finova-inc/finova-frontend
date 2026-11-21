@@ -124,7 +124,7 @@ function Indice({ notas }: { readonly notas: readonly NotaEeff[] }) {
             <ol className="mt-2 flex flex-col gap-1 text-[13px]">
                 {notas.map((n) => (
                     <li key={n.clave}>
-                        <a href={`#nota-${n.clave}`} className="underline-offset-4 hover:text-[var(--accent)] hover:underline">
+                        <a href={`#nota-${n.clave}`} className="underline-offset-4 hover:text-[var(--accent-text)] hover:underline">
                             Nota {n.numero} · {n.titulo}
                         </a>
                         {n.tipo === "partida" ? <span className="text-[var(--foreground-muted)]"> · automática, del libro</span> : null}
@@ -180,7 +180,7 @@ function Vista({ datos }: { readonly datos: NotasDelEjercicio }) {
                                         <td className="py-1 pr-4">
                                             <Link
                                                 href={`/dashboard/libro-mayor?cuenta=${c.id_cuenta}&desde=${datos.desde}&hasta=${datos.hasta}`}
-                                                className="underline-offset-4 hover:text-[var(--accent)] hover:underline"
+                                                className="underline-offset-4 hover:text-[var(--accent-text)] hover:underline"
                                                 title="Ver su libro mayor"
                                             >
                                                 <span className="tabular text-[var(--foreground-muted)]">{c.codigo}</span> {c.nombre}

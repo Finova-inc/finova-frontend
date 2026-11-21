@@ -2,6 +2,7 @@
 
 import { useId, useState, useTransition, type FormEvent } from "react";
 import { Boton } from "@/components/ui/Boton";
+import { Presencia } from "@/components/ui/Presencia";
 import { formatearRutAlEscribir } from "@/lib/formato";
 import { ROLES } from "@/lib/usuarios";
 import { agregarUsuario, type EstadoUsuarios } from "./actions";
@@ -109,11 +110,11 @@ export function FormularioUsuario() {
                     </span>
                 ) : null}
             </div>
-            {estado.errores && estado.errores.length > 0 ? (
+            <Presencia mostrar={Boolean(estado.errores && estado.errores.length > 0)}>
                 <p role="alert" className="text-[12.5px] text-[var(--critico)]">
-                    {estado.errores.join(" ")}
+                    {estado.errores?.join(" ")}
                 </p>
-            ) : null}
+            </Presencia>
         </form>
     );
 }

@@ -413,7 +413,7 @@ export function FormularioCuenta({
             ) : null}
 
             <div className="flex flex-wrap items-center gap-2">
-                <Boton type="submit" variante="acento" disabled={enCurso}>
+                <Boton type="submit" variante="acento" aria-busy={enCurso} disabled={enCurso}>
                     {enCurso ? "Guardando…" : cuenta ? "Guardar cambios" : "Crear cuenta"}
                 </Boton>
                 <Boton variante="neutro" disabled={enCurso} onClick={alTerminar}>

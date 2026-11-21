@@ -2,6 +2,7 @@
 
 import { useId, useState, useTransition, type FormEvent } from "react";
 import { Boton } from "@/components/ui/Boton";
+import { Presencia } from "@/components/ui/Presencia";
 import { formatearCLP } from "@/lib/formato";
 import { aPesosEnteros, nombreDelMes, reajustar } from "@/lib/f29";
 import { marcaUtm, valorInicialUtm } from "@/lib/utm-sugerida";
@@ -139,16 +140,16 @@ export function FormularioRemanente({
             </p>
 
             <div className="flex flex-wrap items-center gap-2">
-                <Boton type="submit" variante="neutro" disabled={enCurso}>
+                <Boton type="submit" variante="neutro" aria-busy={enCurso} disabled={enCurso}>
                     {enCurso ? "Guardando…" : "Guardar remanente"}
                 </Boton>
                 {estado.ok ? <span className="text-[12.5px] text-[var(--positivo)]">Guardado. La propuesta se recalculó.</span> : null}
             </div>
-            {estado.errores && estado.errores.length > 0 ? (
+            <Presencia mostrar={Boolean(estado.errores && estado.errores.length > 0)}>
                 <p role="alert" className="text-[12.5px] text-[var(--critico)]">
-                    {estado.errores.join(" ")}
+                    {estado.errores?.join(" ")}
                 </p>
-            ) : null}
+            </Presencia>
         </form>
     );
 }

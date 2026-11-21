@@ -14,7 +14,7 @@ export function BotonExplicar({ pregunta, etiqueta }: { readonly pregunta: strin
             onClick={() => preguntasPendientes.dejar(pregunta)}
             aria-label={`Preguntar al copiloto: ${pregunta}`}
             title="Preguntar al copiloto"
-            className="no-imprimir inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 align-middle text-[12px] text-[var(--foreground-muted)] transition-colors hover:bg-[var(--background-raised)] hover:text-[var(--accent)]"
+            className="no-imprimir inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 align-middle text-[12px] text-[var(--foreground-muted)] transition-colors hover:bg-[var(--background-raised)] hover:text-[var(--accent-text)]"
         >
             <Icon name="sparkle" className="size-3.5" />
             {etiqueta && <span>{etiqueta}</span>}

@@ -77,6 +77,7 @@ export function AccionesTercero({
                         </Boton>
                         <Boton
                             variante="neutro"
+                            aria-busy={enCurso}
                             disabled={enCurso}
                             onClick={() => ejecutar(() => cambiarEstadoTercero(tercero.id_tercero, !tercero.is_active))}
                         >
@@ -126,7 +127,7 @@ export function AccionesTercero({
                         <li>Si solo quieres dejar de usarlo por un tiempo, es mejor desactivarlo.</li>
                     </ul>
                     <div className="flex flex-wrap gap-2">
-                        <Boton variante="peligro" disabled={enCurso} onClick={() => ejecutar(() => darDeBajaTercero(tercero.id_tercero))}>
+                        <Boton variante="peligro" aria-busy={enCurso} disabled={enCurso} onClick={() => ejecutar(() => darDeBajaTercero(tercero.id_tercero))}>
                             {enCurso ? "Dando de baja…" : "Sí, dar de baja"}
                         </Boton>
                         <Boton variante="neutro" disabled={enCurso} onClick={() => setModo("nada")}>

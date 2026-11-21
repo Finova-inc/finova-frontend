@@ -121,7 +121,7 @@ export function Filtros({ base, esRcv }: { readonly base: ParametrosLibro; reado
             )}
 
             <div className="flex items-center gap-2">
-                <button type="submit" className="rounded-lg border border-[var(--accent)] bg-[var(--accent)] px-3.5 py-1.5 text-[13px] font-semibold text-white hover:brightness-110">
+                <button type="submit" className="rounded-lg border border-[var(--accent)] bg-[var(--accent)] px-3.5 py-1.5 text-[13px] font-semibold text-ink hover:brightness-110">
                     Filtrar
                 </button>
                 {hayFiltros ? (

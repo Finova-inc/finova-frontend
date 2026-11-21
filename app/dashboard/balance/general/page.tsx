@@ -159,7 +159,7 @@ function Seccion({ seccion, mayor, notas }: { readonly seccion: BalanceGeneral["
             {seccion.cuentas.map((c) => (
                 <tr key={c.id_cuenta}>
                     <td className="py-1 pl-8 pr-4">
-                        <Link href={mayor(c.id_cuenta)} className="underline-offset-4 hover:text-[var(--accent)] hover:underline" title="Ver su libro mayor">
+                        <Link href={mayor(c.id_cuenta)} className="underline-offset-4 hover:text-[var(--accent-text)] hover:underline" title="Ver su libro mayor">
                             <span className="tabular text-[var(--foreground-muted)]">{c.codigo}</span> {c.nombre}
                         </Link>
                     </td>

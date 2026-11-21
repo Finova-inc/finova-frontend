@@ -65,7 +65,7 @@ function Contraparte({
                         {" · "}
                         <Link
                             href={urlRegistrar({ rut, nombre, comoProveedor, comoCliente: !comoProveedor })}
-                            className="font-medium text-[var(--accent)] underline-offset-4 hover:underline"
+                            className="font-medium text-[var(--accent-text)] underline-offset-4 hover:underline"
                         >
                             Registrar
                         </Link>
@@ -108,7 +108,7 @@ export function TablaDocumentos({
                         <td className={CELDA}>
                             <Link
                                 href={`/dashboard/documentos/${d.id_documento_sii}`}
-                                className="font-medium text-[var(--accent)] underline-offset-4 hover:underline"
+                                className="font-medium text-[var(--accent-text)] underline-offset-4 hover:underline"
                             >
                                 N° {d.folio}
                             </Link>

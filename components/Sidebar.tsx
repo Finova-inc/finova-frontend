@@ -1,5 +1,6 @@
 "use client";
 
+import * as m from "motion/react-m";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -104,8 +105,11 @@ function esRutaActiva(pathname: string, href: string): boolean {
 
    Desde 1024 px se puede plegar a una franja de iconos (boton al pie o
    Ctrl+B) para dar espacio a tablas y formularios en pantallas chicas. La
-   preferencia va en una cookie (preferencias-panel.ts). El ancho cambia sin
-   animacion: la regla del equipo es no animar width.
+   preferencia va en una cookie (preferencias-panel.ts). Al plegar o expandir,
+   el ancho del menu SI se anima (250 ms, curva de salida): es la excepcion a
+   "no animar width" que se pidio a proposito, porque el cambio de golpe se
+   veia tosco. Es un solo elemento, y el relleno y las etiquetas cambian junto
+   con el ancho para que el icono no salte (ver el comentario dentro del aside).
 */
 export default function Sidebar({
     plegadoInicial = false,
@@ -177,14 +181,18 @@ export default function Sidebar({
             <aside
                 id="menu-lateral"
                 /* Cerrado y chico: invisible, para que tampoco reciba el foco del teclado. */
-                className={`fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col gap-1 overflow-y-auto bg-[var(--sidebar-bg)] py-5 text-[var(--sidebar-ink)] transition-[translate,visibility] duration-200 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:shrink-0 lg:translate-x-0 lg:visible ${
+                className={`fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col gap-1 overflow-y-auto overflow-x-hidden bg-[var(--sidebar-bg)] py-5 text-[var(--sidebar-ink)] transition-[translate,visibility,width] duration-(--duracion-larga) ease-(--curva-salida) lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:shrink-0 lg:translate-x-0 lg:visible ${
                     abierto ? "visible translate-x-0" : "invisible -translate-x-full"
                 } ${angosto ? "lg:w-16" : "lg:w-[236px]"}`}
             >
-                <div className={`flex items-center gap-2.5 px-5 pb-5 ${angosto ? "lg:justify-center lg:px-0" : ""}`}>
+                {/* Plegar anima el ancho del menu (aside) y, a la vez, el relleno y el texto de cada
+                    pieza: el icono queda siempre en su sitio y las etiquetas se funden y se cierran
+                    en vez de aparecer y desaparecer de golpe. Las etiquetas siguen en el DOM
+                    (opacity 0, ancho 0): el lector de pantalla las lee igual. */}
+                <div className={`flex items-center pb-5 pl-5 pr-5 transition-[padding] duration-(--duracion-larga) ease-(--curva-salida) ${angosto ? "lg:pl-[19px] lg:pr-0" : ""}`}>
                     <GlifoFinova />
 
-                    <div className={`min-w-0 flex-1 ${angosto ? "lg:hidden" : ""}`}>
+                    <div className={`ml-2.5 max-w-[200px] min-w-0 flex-1 overflow-hidden whitespace-nowrap transition-[max-width,margin,opacity] duration-(--duracion-larga) ease-(--curva-salida) ${angosto ? "lg:ml-0 lg:max-w-0 lg:opacity-0" : ""}`}>
                         <div className="font-display text-[17px] font-bold leading-tight tracking-[-0.01em]">
                             Finova
                         </div>
@@ -208,11 +216,11 @@ export default function Sidebar({
                         <div key={grupo.titulo} className="flex flex-col gap-0.5">
                             {/* Plegada, el titulo queda para el lector de pantalla y una linea separa los grupos. */}
                             <p
-                                className={`px-5 pb-1.5 pt-4 text-[10px] font-semibold uppercase tracking-[0.09em] text-[var(--sidebar-muted)] ${
-                                    angosto ? "lg:mx-4 lg:mt-2 lg:border-t lg:border-[var(--sidebar-hover)] lg:px-0 lg:pb-0 lg:pt-2" : ""
+                                className={`border-t border-transparent px-5 pb-1.5 pt-4 text-[10px] font-semibold uppercase tracking-[0.09em] text-[var(--sidebar-muted)] transition-[margin,padding,border-color] duration-(--duracion-larga) ease-(--curva-salida) ${
+                                    angosto ? "lg:mx-4 lg:mt-2 lg:border-[var(--sidebar-hover)] lg:px-0 lg:pb-0 lg:pt-2" : ""
                                 }`}
                             >
-                                <span className={angosto ? "lg:sr-only" : ""}>{grupo.titulo}</span>
+                                <span className={`block max-h-5 overflow-hidden whitespace-nowrap transition-[max-height,opacity] duration-(--duracion-larga) ease-(--curva-salida) ${angosto ? "lg:max-h-0 lg:opacity-0" : ""}`}>{grupo.titulo}</span>
                             </p>
 
                             {grupo.enlaces.filter((enlace) => !enlace.soloAuditores || puedeAuditar(rol)).map((enlace) => {
@@ -227,16 +235,28 @@ export default function Sidebar({
                                            lector de pantalla. El color por si solo no lo dice. */
                                         aria-current={activo ? "page" : undefined}
                                         title={angosto ? enlace.etiqueta : undefined}
-                                        className={`mx-2.5 flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13.5px] transition-colors ${
-                                            angosto ? "lg:justify-center lg:px-0" : ""
+                                        className={`relative isolate mx-2.5 flex items-center rounded-md py-2 pl-2.5 pr-2.5 text-[13.5px] transition-[padding,background-color,color] duration-(--duracion-larga) ease-(--curva-salida) ${
+                                            angosto ? "lg:pl-[14px] lg:pr-0" : ""
                                         } ${
                                             activo
-                                                ? "bg-[rgb(255_106_26_/_0.16)] font-semibold text-[#ffd9c2]"
+                                                ? "font-semibold text-[#ffd9c2]"
                                                 : "hover:bg-[var(--sidebar-hover)]"
                                         }`}
                                     >
+                                        {/* Pildora de la pagina activa: es UNA sola (mismo layoutId), asi que al cambiar de
+                                            opcion se desliza de un enlace al otro en vez de apagarse y encenderse. Va detras
+                                            del texto (-z-10 dentro del isolate) y es decorativa: la pagina actual la sigue
+                                            anunciando aria-current. Con "reducir movimiento" salta sin animar. */}
+                                        {activo ? (
+                                            <m.span
+                                                layoutId="pildora-menu"
+                                                aria-hidden="true"
+                                                className="absolute inset-0 -z-10 rounded-md bg-[rgb(255_106_26_/_0.16)]"
+                                                transition={{ type: "spring", stiffness: 520, damping: 42 }}
+                                            />
+                                        ) : null}
                                         <Icon name={enlace.icono} className="size-4 shrink-0 opacity-85" />
-                                        <span className={angosto ? "lg:sr-only" : ""}>{enlace.etiqueta}</span>
+                                        <span className={`ml-2.5 max-w-[180px] overflow-hidden whitespace-nowrap transition-[max-width,margin,opacity] duration-(--duracion-larga) ease-(--curva-salida) ${angosto ? "lg:ml-0 lg:max-w-0 lg:opacity-0" : ""}`}>{enlace.etiqueta}</span>
                                     </Link>
                                 );
                             })}
@@ -251,12 +271,12 @@ export default function Sidebar({
                         aria-controls="menu-lateral"
                         aria-keyshortcuts="Control+B Meta+B"
                         title={plegado ? "Expandir el menú (Ctrl+B)" : "Plegar el menú (Ctrl+B)"}
-                        className={`mx-2.5 mt-auto hidden items-center gap-2.5 rounded-md px-2.5 py-2 text-[12.5px] text-[var(--sidebar-muted)] transition-colors hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-ink)] lg:flex ${
-                            plegado ? "lg:justify-center lg:px-0" : ""
+                        className={`mx-2.5 mt-auto hidden items-center rounded-md py-2 pl-2.5 pr-2.5 text-[12.5px] text-[var(--sidebar-muted)] transition-[padding,background-color,color] duration-(--duracion-larga) ease-(--curva-salida) hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-ink)] lg:flex ${
+                            plegado ? "lg:pl-[14px] lg:pr-0" : ""
                         }`}
                     >
                         <Icon name="panel" className="size-4 shrink-0" />
-                        <span className={plegado ? "sr-only" : ""}>{plegado ? "Expandir el menú" : "Plegar el menú"}</span>
+                        <span className={`overflow-hidden whitespace-nowrap transition-[max-width,margin,opacity] duration-(--duracion-larga) ease-(--curva-salida) ${plegado ? "ml-0 max-w-0 opacity-0" : "ml-2.5 max-w-[180px]"}`}>{plegado ? "Expandir el menú" : "Plegar el menú"}</span>
                     </button>
             </aside>
         </>

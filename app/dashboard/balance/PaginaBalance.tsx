@@ -192,7 +192,7 @@ function TablaBalance({
                         {balance.filas.map((f) => (
                             <tr key={f.id_cuenta} className="border-b border-[var(--border-subtle)] last:border-0 hover:bg-[var(--background-raised)]">
                                 <td className="px-3 py-2">
-                                    <Link href={mayor(f.id_cuenta)} className="underline-offset-4 hover:text-[var(--accent)] hover:underline" title="Ver su libro mayor">
+                                    <Link href={mayor(f.id_cuenta)} className="underline-offset-4 hover:text-[var(--accent-text)] hover:underline" title="Ver su libro mayor">
                                         <span className="tabular text-[var(--foreground-muted)]">{f.codigo}</span> {f.nombre}
                                     </Link>
                                     <BotonExplicar pregunta={`¿Por qué la cuenta ${f.codigo} ${f.nombre} tiene este saldo en el período?`} />

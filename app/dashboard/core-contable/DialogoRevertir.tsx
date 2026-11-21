@@ -10,6 +10,7 @@
 
 import { useId, useState, useTransition } from "react";
 import { Boton } from "@/components/ui/Boton";
+import { DialogoModal } from "@/components/ui/DialogoModal";
 import { Icon } from "@/components/ui/Icon";
 import { revertirAsiento } from "./actions";
 
@@ -65,10 +66,11 @@ export function DialogoRevertir({
 
     const panel = (
         <section
-            aria-labelledby={`${idBase}-titulo`}
+            // Flotante: el título lo anuncia el <dialog> que lo envuelve.
+            aria-labelledby={flotante ? undefined : `${idBase}-titulo`}
             className={`rounded-xl border border-[var(--aviso)] p-4 text-[13px] ${
                 flotante
-                    ? "max-h-full w-full max-w-md overflow-y-auto whitespace-normal bg-[var(--surface)] shadow-xl"
+                    ? "max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto whitespace-normal bg-[var(--surface)] shadow-xl"
                     : "w-full bg-[var(--aviso-bg)] sm:max-w-md"
             }`}
         >
@@ -124,7 +126,7 @@ export function DialogoRevertir({
             ) : null}
 
             <div className="mt-4 flex flex-wrap gap-2">
-                <Boton variante="acento" disabled={enCurso || !motivoValido} onClick={alConfirmar}>
+                <Boton variante="acento" aria-busy={enCurso} disabled={enCurso || !motivoValido} onClick={alConfirmar}>
                     {enCurso ? "Revirtiendo…" : "Registrar reversa"}
                 </Boton>
                 <Boton variante="neutro" disabled={enCurso} onClick={() => setAbierto(false)}>
@@ -134,21 +136,18 @@ export function DialogoRevertir({
         </section>
     );
 
-    // Modal fijo: ni el scroll horizontal de la tabla ni sus columnas lo recortan o lo aprietan.
+    // Modal nativo (capa superior): ni el scroll horizontal de la tabla ni sus columnas lo recortan o lo aprietan.
     return flotante ? (
         <>
             {botonQueAbre}
-            <div
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby={`${idBase}-titulo`}
-                className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-                onClick={(evento) => {
-                    if (evento.target === evento.currentTarget && !enCurso) setAbierto(false);
-                }}
+            <DialogoModal
+                idTitulo={`${idBase}-titulo`}
+                alCerrar={() => setAbierto(false)}
+                bloqueado={enCurso}
+                className="w-[min(28rem,calc(100vw-2rem))]"
             >
                 {panel}
-            </div>
+            </DialogoModal>
         </>
     ) : (
         panel

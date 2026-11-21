@@ -443,7 +443,7 @@ export function ChatCopiloto({
                                 aria-pressed={anclado}
                                 aria-label="Anclar el copiloto al costado"
                                 title={anclado ? "Volver a flotante" : "Anclar al costado"}
-                                className="grid size-8 place-items-center rounded-md text-[var(--foreground-muted)] transition-colors hover:bg-[var(--background-raised)] hover:text-[var(--foreground)] aria-pressed:text-[var(--accent)] max-lg:hidden"
+                                className="grid size-8 place-items-center rounded-md text-[var(--foreground-muted)] transition-colors hover:bg-[var(--background-raised)] hover:text-[var(--foreground)] aria-pressed:text-[var(--accent-text)] max-lg:hidden"
                             >
                                 <Icon name="panel" className="size-4" />
                             </button>
@@ -537,7 +537,7 @@ export function ChatCopiloto({
                                                 key={pregunta}
                                                 type="button"
                                                 onClick={() => void enviar(pregunta)}
-                                                className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface)] px-2.5 py-1 text-[12px] text-[var(--foreground)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                                                className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface)] px-2.5 py-1 text-[12px] text-[var(--foreground)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent-text)]"
                                             >
                                                 {pregunta}
                                             </button>

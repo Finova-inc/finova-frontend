@@ -98,7 +98,7 @@ export function EnlaceNota({ notas, rubro }: { readonly notas: NotasDeRubros; re
     return (
         <Link
             href={`/dashboard/balance/notas?ejercicio=${notas.ejercicio}#nota-${rubro}`}
-            className="no-imprimir ml-2 text-[11px] font-medium text-[var(--accent)] underline-offset-4 hover:underline"
+            className="no-imprimir ml-2 text-[11px] font-medium text-[var(--accent-text)] underline-offset-4 hover:underline"
         >
             Nota {numero}
         </Link>
