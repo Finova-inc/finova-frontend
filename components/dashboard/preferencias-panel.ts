@@ -13,6 +13,8 @@
 
 export const COOKIE_MENU = "finova_menu";
 export const COOKIE_COPILOTO = "finova_copiloto";
+/** Ancho en px del copiloto anclado si se arrastro el divisor (lib/ancho-copiloto.ts). */
+export const COOKIE_ANCHO_COPILOTO = "finova_copiloto_ancho";
 export const MENU_PLEGADO = "plegado";
 export const COPILOTO_ANCLADO = "anclado";
 

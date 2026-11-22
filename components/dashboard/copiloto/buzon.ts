@@ -44,3 +44,13 @@ export const preguntasPendientes = crearBuzon<string>();
 /** Texto que la persona selecciono en una pantalla para adjuntarlo a su pregunta (PreguntarSeleccion). */
 export const seleccionesPendientes = crearBuzon<string>();
 export const propuestasPendientes = crearBuzon<PropuestaAsiento>();
+
+/** El boton de la cabecera abre el copiloto anclado al costado, o lo cierra si ya esta asi. */
+export const EVENTO_COPILOTO_CABECERA = "finova:copiloto-cabecera";
+/** Al cerrar el panel, el foco vuelve a ese boton. */
+export const ID_BOTON_CABECERA = "boton-copiloto";
+
+/** Lo que el boton de la cabecera muestra del panel: si esta abierto, avisos sin ver y respuesta nueva. */
+export type IndicadorCopiloto = { readonly abierto: boolean; readonly avisos: number; readonly respuestaNueva: boolean };
+/** Lo escribe CopilotoFlotante y lo lee BotonCopilotoCabecera; nadie lo toma. */
+export const indicadorCopiloto = crearBuzon<IndicadorCopiloto>();

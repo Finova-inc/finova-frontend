@@ -9,6 +9,8 @@
    si cambian alla, se cambian aqui.
    ========================================================================== */
 
+import { hoyEnChile, nombreMesLargo } from "./formato.ts";
+
 export const MAX_MENSAJE = 2000;
 export const MAX_HISTORIAL = 20;
 export const MAX_TEXTO_HISTORIAL = 4000;
@@ -46,7 +48,42 @@ export type PropuestaAsiento = {
 export type AvisosCopiloto = {
     borradores_por_revisar: number;
     mes_en_curso: { anio: number; mes: number; estado: "abierto" | "cerrado" | "sin_abrir" };
+    /** F29 del mes anterior; null si el backend no pudo calcularlo (opcional: un backend anterior no lo manda). */
+    f29?: { periodo: string; vence: string; estado: string; total_a_pagar: string } | null;
+    /** Documentos del SII del mes anterior sin borrador ni asiento. */
+    documentos_por_contabilizar?: { periodo: string; pendientes: number } | null;
 };
+
+/** Desde cuántos días antes del plazo el F29 cuenta como aviso. */
+export const DIAS_AVISO_F29 = 7;
+
+const diasHasta = (desde: string, hasta: string) =>
+    Math.round((Date.parse(`${hasta}T00:00:00Z`) - Date.parse(`${desde}T00:00:00Z`)) / 86_400_000);
+
+const nombreDelPeriodo = (periodo: string) => nombreMesLargo(Number(periodo.slice(5, 7))).toLowerCase();
+
+/**
+ * El F29 del mes anterior merece aviso: no está declarado, vence en DIAS_AVISO_F29 días o menos (o ya
+ * venció) y tiene algo que declarar. Sin movimiento ni propuesta no avisa: una empresa que no usa el
+ * F29 en Finova no debe ver el aviso todos los meses.
+ */
+export function f29PorVencer(avisos: AvisosCopiloto | null | undefined, hoy: string): boolean {
+    const f = avisos?.f29;
+    if (!f || f.estado === "declarada") return false;
+    if (f.estado === "sin_propuesta" && /^0+(\.0+)?$/.test(f.total_a_pagar)) return false;
+    return diasHasta(hoy, f.vence) <= DIAS_AVISO_F29;
+}
+
+/** Cuántos avisos tiene la empresa: el número del botón del copiloto. */
+export function contarAvisos(avisos: AvisosCopiloto | null | undefined, hoy: string): number {
+    if (!avisos) return 0;
+    return [
+        f29PorVencer(avisos, hoy),
+        (avisos.documentos_por_contabilizar?.pendientes ?? 0) > 0,
+        avisos.borradores_por_revisar > 0,
+        avisos.mes_en_curso.estado === "sin_abrir",
+    ].filter(Boolean).length;
+}
 
 /** Lo que el backend manda por el stream, un evento por linea `data:`. */
 export type EventoChat =
@@ -352,9 +389,22 @@ export function sugerenciasPara(ruta: string): readonly string[] {
 export function sugerenciasConAvisos(
     base: readonly string[],
     avisos: AvisosCopiloto | null | undefined,
+    hoy: string = hoyEnChile(),
 ): readonly string[] {
     if (!avisos) return base;
     const extra: string[] = [];
+    if (f29PorVencer(avisos, hoy) && avisos.f29) {
+        extra.push(`¿Cuánto IVA pago en el F29 de ${nombreDelPeriodo(avisos.f29.periodo)} y cuándo vence?`);
+    }
+    const docs = avisos.documentos_por_contabilizar;
+    if (docs && docs.pendientes > 0) {
+        const mes = nombreDelPeriodo(docs.periodo);
+        extra.push(
+            docs.pendientes === 1
+                ? `Tengo un documento del SII de ${mes} por contabilizar: ¿cuál es?`
+                : `Tengo ${docs.pendientes} documentos del SII de ${mes} por contabilizar: ¿cuáles son?`,
+        );
+    }
     const n = avisos.borradores_por_revisar;
     if (n === 1) extra.push("Tengo un borrador sin cuadrar o incompleto: ¿qué le falta?");
     else if (n > 1) extra.push(`Tengo ${n} borradores sin cuadrar o incompletos: ¿qué les falta?`);

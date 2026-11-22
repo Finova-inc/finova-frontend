@@ -181,7 +181,7 @@ export default function Sidebar({
             <aside
                 id="menu-lateral"
                 /* Cerrado y chico: invisible, para que tampoco reciba el foco del teclado. */
-                className={`fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col gap-1 overflow-y-auto overflow-x-hidden bg-[var(--sidebar-bg)] py-5 text-[var(--sidebar-ink)] transition-[translate,visibility,width] duration-(--duracion-larga) ease-(--curva-salida) lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:shrink-0 lg:translate-x-0 lg:visible ${
+                className={`fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col gap-1 overflow-y-auto overflow-x-hidden border-r border-[var(--sidebar-borde)] bg-[var(--sidebar-bg)] py-5 text-[var(--sidebar-ink)] transition-[translate,visibility,width] duration-(--duracion-larga) ease-(--curva-salida) lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:shrink-0 lg:translate-x-0 lg:visible ${
                     abierto ? "visible translate-x-0" : "invisible -translate-x-full"
                 } ${angosto ? "lg:w-16" : "lg:w-[236px]"}`}
             >
@@ -239,7 +239,7 @@ export default function Sidebar({
                                             angosto ? "lg:pl-[14px] lg:pr-0" : ""
                                         } ${
                                             activo
-                                                ? "font-semibold text-[#ffd9c2]"
+                                                ? "font-semibold text-[var(--sidebar-activo-ink)]"
                                                 : "hover:bg-[var(--sidebar-hover)]"
                                         }`}
                                     >
@@ -251,7 +251,7 @@ export default function Sidebar({
                                             <m.span
                                                 layoutId="pildora-menu"
                                                 aria-hidden="true"
-                                                className="absolute inset-0 -z-10 rounded-md bg-[rgb(255_106_26_/_0.16)]"
+                                                className="absolute inset-0 -z-10 rounded-md bg-[var(--sidebar-activo-bg)]"
                                                 transition={{ type: "spring", stiffness: 520, damping: 42 }}
                                             />
                                         ) : null}

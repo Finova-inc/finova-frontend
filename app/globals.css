@@ -111,6 +111,22 @@
        CarruselLogin.tsx, que es quien cambia la diapositiva. */
     --animate-carrusel: carrusel-avance 8s linear forwards;
 
+    /* Halo muy tenue que respira detras del boton del copiloto en la cabecera.
+       Solo opacity y scale; con "reducir movimiento" queda quieto y visible. */
+    --animate-brillo: brillo 4s ease-in-out infinite;
+
+    @keyframes brillo {
+        0%,
+        100% {
+            opacity: 0.15;
+            transform: scale(0.96);
+        }
+        50% {
+            opacity: 0.35;
+            transform: scale(1.04);
+        }
+    }
+
     @keyframes pop {
         0% {
             opacity: 0;
@@ -270,14 +286,18 @@
     --surface: #fffdfa;
     --border-strong: rgb(20 17 15 / 0.18);
 
-    /* Barra lateral del panel. Mas oscura que --color-ink incluso en tema
-       claro: es un elemento de navegacion permanente, no una superficie de
-       lectura, y el contraste con el lienzo ayuda a ignorarla mientras se
-       trabaja. */
-    --sidebar-bg: #17130f;
-    --sidebar-ink: #f0ece5;
-    --sidebar-muted: #968c81;
-    --sidebar-hover: rgb(255 255 255 / 0.06);
+    /* Barra lateral del panel. En claro es papel sombreado, un punto por
+       debajo del lienzo y separada por un filo: una barra casi negra sobre el
+       papel calido pesaba mas que el contenido. En oscuro sigue mas oscura
+       que el fondo (ver .dark). */
+    --sidebar-bg: var(--color-bone);
+    --sidebar-ink: var(--color-ink);
+    --sidebar-muted: var(--color-graphite);
+    --sidebar-hover: rgb(20 17 15 / 0.06);
+    --sidebar-borde: rgb(20 17 15 / 0.08);
+    /* Opcion activa: el naranjo de marca, oscurecido para llegar a 4,5:1 sobre su pildora. */
+    --sidebar-activo-ink: #9a3008;
+    --sidebar-activo-bg: rgb(255 106 26 / 0.12);
 
     /* Vitrina del login (.login-vitrina). */
     --vitrina-bg: var(--color-bone);
@@ -346,6 +366,12 @@
     --border-strong: rgb(255 255 255 / 0.2);
 
     --sidebar-bg: #0f0c0a;
+    --sidebar-ink: #f0ece5;
+    --sidebar-muted: #968c81;
+    --sidebar-hover: rgb(255 255 255 / 0.06);
+    --sidebar-borde: transparent;
+    --sidebar-activo-ink: #ffd9c2;
+    --sidebar-activo-bg: rgb(255 106 26 / 0.16);
 
     --vitrina-bg: #17130f;
     --vitrina-ink: #ffffff;

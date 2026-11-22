@@ -18,6 +18,10 @@ import { Icon, type IconName } from "@/components/ui/Icon";
    (crítico): destaca la cifra sin pintar su número, que sigue en tinta de
    texto. `icono` es una marca discreta del sprite del sistema.
 
+   La cifra se achica con el ancho de su tarjeta (cqi), no con el de la
+   pantalla: con el menú abierto y el copiloto anclado, a 1366 px, un monto
+   largo se salía de la tarjeta.
+
    `valor` undefined significa que la consulta falló: se dibuja un guion y el
    lector de pantalla lee «No pudimos consultarlo». "$0" y "no se pudo
    consultar" son cosas distintas, y en un panel contable confundirlas lleva a
@@ -32,21 +36,21 @@ const CLASES: Record<TamanoCifra, { caja: string; borde: string; titulo: string;
         caja: "px-4 py-3",
         borde: "border-[var(--border-subtle)]",
         titulo: "text-[11.5px]",
-        valor: "mt-0.5 text-[19px] tracking-[-0.01em]",
+        valor: "mt-0.5 text-[clamp(0.9375rem,10cqi,19px)] tracking-[-0.01em]",
         nota: "mt-0.5 text-[11px]",
     },
     normal: {
         caja: "px-4 py-3.5",
         borde: "border-[var(--border-strong)]",
         titulo: "text-xs",
-        valor: "mt-1 text-2xl",
+        valor: "mt-1 text-[clamp(1rem,10cqi,1.5rem)]",
         nota: "mt-1.5 text-xs",
     },
     grande: {
         caja: "px-4 py-3.5",
         borde: "border-[var(--border-strong)]",
         titulo: "text-xs",
-        valor: "mt-1 text-3xl",
+        valor: "mt-1 text-[clamp(1.125rem,10cqi,1.875rem)]",
         nota: "mt-1.5 text-xs",
     },
 };
@@ -89,7 +93,7 @@ export function Cifra({
     const tinte = TONOS[tono];
 
     return (
-        <div className={`rounded-xl border ${tinte.borde ?? clases.borde} ${tinte.fondo} ${clases.caja}`}>
+        <div className={`@container min-w-0 rounded-xl border ${tinte.borde ?? clases.borde} ${tinte.fondo} ${clases.caja}`}>
             <div className="flex items-start justify-between gap-2">
                 <p className={`${clases.titulo} font-medium text-[var(--foreground-muted)]`}>{titulo}</p>
                 {icono ? (

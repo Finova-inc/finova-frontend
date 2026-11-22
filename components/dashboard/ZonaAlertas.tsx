@@ -1,3 +1,4 @@
+import { BotonExplicar } from "@/components/dashboard/copiloto/BotonExplicar";
 import Link from "next/link";
 
 import { VerMas } from "@/components/dashboard/VerMas";
@@ -44,6 +45,8 @@ export type Alerta = {
     readonly monto?: string;
     /** Enlace de resolucion. */
     readonly accion?: { readonly texto: string; readonly href: string };
+    /** Pregunta lista para el copiloto: dibuja «Preguntar», que abre el chat y la envia. */
+    readonly pregunta?: string;
 };
 
 const MAXIMO_VISIBLES = 4;
@@ -131,6 +134,12 @@ function FilaAlerta({ alerta }: { readonly alerta: Alerta }) {
             {alerta.monto ? (
                 <span className="tabular shrink-0 pl-2 font-display text-[15px] font-semibold">
                     {formatearCLP(alerta.monto)}
+                </span>
+            ) : null}
+
+            {alerta.pregunta ? (
+                <span className="shrink-0 pl-1">
+                    <BotonExplicar pregunta={alerta.pregunta} etiqueta="Preguntar" />
                 </span>
             ) : null}
 
