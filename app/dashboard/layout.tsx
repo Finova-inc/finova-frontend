@@ -1,13 +1,16 @@
 import Sidebar from "@/components/Sidebar";
 import { CerrarSesionBoton } from "@/components/CerrarSesionBoton";
 import { SelectorEmpresa } from "@/components/dashboard/SelectorEmpresa";
+import { BarraBusqueda } from "@/components/dashboard/BarraBusqueda";
 import { CopilotoFlotante } from "@/components/dashboard/copiloto/CopilotoFlotante";
+import { BotonCopilotoCabecera } from "@/components/dashboard/copiloto/BotonCopilotoCabecera";
 import { MovimientoProvider } from "@/components/dashboard/MovimientoProvider";
 import { SaltarAlContenido } from "@/components/ui/SaltarAlContenido";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
+    COOKIE_ANCHO_COPILOTO,
     COOKIE_COPILOTO,
     COOKIE_MENU,
     COPILOTO_ANCLADO,
@@ -15,6 +18,7 @@ import {
 } from "@/components/dashboard/preferencias-panel";
 import { PreguntarSeleccion } from "@/components/dashboard/copiloto/PreguntarSeleccion";
 import { ApiError, authApi, type EmpresaDelUsuario } from "@/lib/api";
+import { leerAncho } from "@/lib/ancho-copiloto";
 import { exigirTokenSesion, obtenerEmpresaDelToken, obtenerRolDelToken, obtenerUsuarioDelToken } from "@/lib/session";
 
 /* ============================================================================
@@ -49,6 +53,7 @@ export default async function DashboardLayout({
     const preferencias = await cookies();
     const menuPlegado = preferencias.get(COOKIE_MENU)?.value === MENU_PLEGADO;
     const copilotoAnclado = preferencias.get(COOKIE_COPILOTO)?.value === COPILOTO_ANCLADO;
+    const anchoCopiloto = leerAncho(preferencias.get(COOKIE_ANCHO_COPILOTO)?.value);
 
     // Un fallo aquí no debe tumbar el panel: sin empresas el selector
     // simplemente no se dibuja, y el resto de la pantalla sigue funcionando.
@@ -70,7 +75,7 @@ export default async function DashboardLayout({
                 <Sidebar plegadoInicial={menuPlegado} rol={rol} />
 
                 <div className="flex min-w-0 flex-1 flex-col">
-                    {/* La cabecera es sticky para que el selector de empresa y el tema
+                    {/* La cabecera es sticky para que el selector de empresa, la busqueda y el tema
                         sigan al alcance al recorrer una tabla larga. z-10 la mantiene
                         sobre el contenido al desplazarse. */}
                     <header className="sticky top-0 z-10 flex h-[60px] items-center gap-4 border-b border-[var(--border-subtle)] bg-[var(--surface)] pl-16 pr-4 sm:pr-6 lg:pl-6">
@@ -81,7 +86,11 @@ export default async function DashboardLayout({
                             />
                         ) : null}
 
+                        {/* La key reinicia la barra (texto y recientes) al cambiar de empresa. */}
+                        <BarraBusqueda key={idEmpresaActual ?? "sin-empresa"} idUsuario={idUsuario} idEmpresa={idEmpresaActual} />
+
                         <div className="ml-auto flex items-center gap-2">
+                            <BotonCopilotoCabecera />
                             <ThemeToggle variant="panel" />
                             <CerrarSesionBoton />
                         </div>
@@ -89,11 +98,9 @@ export default async function DashboardLayout({
 
                     <div className="flex min-w-0 flex-1">
                         {/* El relleno lateral vive aqui, una sola vez, y el vertical va
-                            con padding-block para no anular los costados. El pb-24 deja sitio al
-                            boton flotante del copiloto (56px + 24px de margen) para que, al
-                            llegar al final, no tape lo ultimo de la pantalla. El id delimita
+                            con padding-block para no anular los costados. El id delimita
                             donde seleccionar texto ofrece preguntarle al copiloto. */}
-                        <main id="contenido-panel" className="w-full min-w-0 max-w-[1600px] px-4 pb-24 pt-5 sm:px-6">
+                        <main id="contenido-panel" className="w-full min-w-0 max-w-[1600px] px-4 pb-10 pt-5 sm:px-6">
                             {children}
                         </main>
                         {/* Bajo la cabecera y despues del contenido: anclado, el copiloto es la
@@ -106,6 +113,7 @@ export default async function DashboardLayout({
                             idUsuario={idUsuario}
                             idEmpresa={idEmpresaActual}
                             ancladoInicial={copilotoAnclado}
+                            anchoInicial={anchoCopiloto}
                         />
                     </div>
                 </div>

@@ -175,31 +175,33 @@ export default async function F29Page({ searchParams }: { searchParams: Promise<
                 </Aviso>
             ) : null}
 
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <Indicador titulo="IVA débito fiscal · 538" valor={formatearCLP(totales.debitos)} nota={`${datos.documentos.ventas} ventas del RCV`} />
-                <Indicador
-                    titulo="IVA crédito fiscal · 537"
-                    valor={formatearCLP(totales.creditos)}
-                    nota={remanenteAnterior !== "0" ? `Incluye ${formatearCLP(remanenteAnterior)} de remanente` : `${datos.documentos.compras} compras del RCV`}
-                />
-                {totales.iva_determinado !== "0" ? (
-                    <Indicador titulo="IVA a pagar · 89" valor={formatearCLP(totales.iva_determinado)} nota="Débitos menos créditos" />
-                ) : (
+            <div className="@container">
+                <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-4">
+                    <Indicador titulo="IVA débito fiscal · 538" valor={formatearCLP(totales.debitos)} nota={`${datos.documentos.ventas} ventas del RCV`} />
                     <Indicador
-                        titulo="Remanente · 77"
-                        valor={formatearCLP(totales.remanente_siguiente)}
-                        nota={`Crédito que pasa a ${nombreDelMes(mesSiguiente)}`}
+                        titulo="IVA crédito fiscal · 537"
+                        valor={formatearCLP(totales.creditos)}
+                        nota={remanenteAnterior !== "0" ? `Incluye ${formatearCLP(remanenteAnterior)} de remanente` : `${datos.documentos.compras} compras del RCV`}
                     />
-                )}
-                <Indicador
-                    titulo="Total a pagar · 91"
-                    valor={formatearCLP(totales.total_a_pagar)}
-                    nota={
-                        totales.retencion_cambio_sujeto && totales.retencion_cambio_sujeto !== "0"
-                            ? `Incluye ${formatearCLP(totales.retencion_honorarios)} de honorarios y ${formatearCLP(totales.retencion_cambio_sujeto)} de IVA retenido`
-                            : `Incluye ${formatearCLP(totales.retencion_honorarios)} de retención de honorarios`
-                    }
-                />
+                    {totales.iva_determinado !== "0" ? (
+                        <Indicador titulo="IVA a pagar · 89" valor={formatearCLP(totales.iva_determinado)} nota="Débitos menos créditos" />
+                    ) : (
+                        <Indicador
+                            titulo="Remanente · 77"
+                            valor={formatearCLP(totales.remanente_siguiente)}
+                            nota={`Crédito que pasa a ${nombreDelMes(mesSiguiente)}`}
+                        />
+                    )}
+                    <Indicador
+                        titulo="Total a pagar · 91"
+                        valor={formatearCLP(totales.total_a_pagar)}
+                        nota={
+                            totales.retencion_cambio_sujeto && totales.retencion_cambio_sujeto !== "0"
+                                ? `Incluye ${formatearCLP(totales.retencion_honorarios)} de honorarios y ${formatearCLP(totales.retencion_cambio_sujeto)} de IVA retenido`
+                                : `Incluye ${formatearCLP(totales.retencion_honorarios)} de retención de honorarios`
+                        }
+                    />
+                </div>
             </div>
 
             <Panel>

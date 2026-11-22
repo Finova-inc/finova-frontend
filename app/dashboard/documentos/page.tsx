@@ -283,11 +283,13 @@ export default async function DocumentosPage({ searchParams }: { searchParams: P
                 <>
                     {/* Los totales de TODO el filtro, no solo de la página: viven aquí y no se repiten al pie de la tabla. */}
                     {rcv ? (
-                        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                            <Indicador titulo="Neto" valor={formatearCLP(rcv.totales.neto)} />
-                            <Indicador titulo="Exento" valor={formatearCLP(rcv.totales.exento)} />
-                            <Indicador titulo={libro.id === "compras" ? "IVA crédito fiscal" : "IVA débito fiscal"} valor={formatearCLP(rcv.totales.iva)} />
-                            <Indicador titulo="Total" valor={formatearCLP(rcv.totales.total)} nota="Las notas de crédito restan" />
+                        <div className="@container">
+                            <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-4">
+                                <Indicador titulo="Neto" valor={formatearCLP(rcv.totales.neto)} />
+                                <Indicador titulo="Exento" valor={formatearCLP(rcv.totales.exento)} />
+                                <Indicador titulo={libro.id === "compras" ? "IVA crédito fiscal" : "IVA débito fiscal"} valor={formatearCLP(rcv.totales.iva)} />
+                                <Indicador titulo="Total" valor={formatearCLP(rcv.totales.total)} nota="Las notas de crédito restan" />
+                            </div>
                         </div>
                     ) : honorarios ? (
                         <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">

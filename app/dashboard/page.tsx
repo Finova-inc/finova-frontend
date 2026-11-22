@@ -195,7 +195,7 @@ export default async function DashboardPage({
             </section>
 
             {/* ---- Cifras clave: saldos a la fecha de corte y resultado ---- */}
-            <section className="animate-entrada [animation-delay:50ms]">
+            <section className="@container animate-entrada [animation-delay:50ms]">
                 <EncabezadoZona
                     titulo="Cifras clave"
                     nota={
@@ -211,7 +211,7 @@ export default async function DashboardPage({
                         )
                     }
                 />
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-4 @md:grid-cols-2 @4xl:grid-cols-4">
                     <Cifra titulo="Efectivo" icono="bank" valor={clp(resumen?.saldos.efectivo)} nota="Caja y bancos" />
                     <Cifra
                         titulo="Por cobrar"
@@ -316,6 +316,7 @@ function construirAlertas(datos: DatosPanel): Alerta[] {
         const limite = `Plazo: ${diaPlazo} de ${nombreMesLargo(mesPlazo).toLowerCase()}.`;
         const sigueAbierto = vencido ? " Si ya lo declaraste, anótalo en el F29 para quitar este aviso." : "";
         const accion = { texto: "Ver F29", href: `/dashboard/f29?periodo=${datos.periodoAlerta}` };
+        const pregunta = `¿Cuánto IVA pago en el F29 de ${nombreMes} y cuándo vence?`;
         const urgencia = severidadPlazoF29(plazo.dias);
 
         // Propuesta en curso o IVA neto cero: no hay monto que mostrar, pero el F29 igual se presenta.
@@ -327,6 +328,7 @@ function construirAlertas(datos: DatosPanel): Alerta[] {
             detalle: `Revisa la propuesta y presenta la declaración en el SII. ${limite}${sigueAbierto}`,
             insignia,
             accion,
+            pregunta,
         };
 
         if (hayMovimiento && ivaF29) {
@@ -342,6 +344,7 @@ function construirAlertas(datos: DatosPanel): Alerta[] {
                     insignia,
                     monto: ivaF29.iva_neto.replace(/^-/, ""),
                     accion,
+                    pregunta,
                 });
             } else if (!esCero(ivaF29.iva_neto)) {
                 alertas.push({
@@ -354,6 +357,7 @@ function construirAlertas(datos: DatosPanel): Alerta[] {
                     insignia,
                     monto: ivaF29.iva_neto,
                     accion,
+                    pregunta,
                 });
             } else {
                 alertas.push(sinMonto);
@@ -372,6 +376,7 @@ function construirAlertas(datos: DatosPanel): Alerta[] {
             titulo: "Esta empresa aún no tiene plan de cuentas",
             detalle: "Configúralo eligiendo las cuentas que usa la empresa para empezar a registrar asientos.",
             accion: { texto: "Configurar plan", href: "/dashboard/plan-cuentas" },
+            pregunta: "¿Cómo configuro el plan de cuentas de esta empresa?",
         });
     }
 
@@ -387,6 +392,7 @@ function construirAlertas(datos: DatosPanel): Alerta[] {
                     : `No hay período abierto para ${nombrePeriodo(anio, mes)}`,
                 detalle: "Sin un período abierto no se pueden registrar asientos de este mes.",
                 accion: { texto: actual ? "Ver períodos" : "Abrir período", href: "/dashboard/periodos" },
+                pregunta: "¿Por qué no puedo registrar asientos este mes y cómo lo arreglo?",
             });
         }
 
@@ -405,6 +411,7 @@ function construirAlertas(datos: DatosPanel): Alerta[] {
                         : `${terminadosAbiertos.length} meses terminados siguen abiertos`,
                 detalle: "Ciérralos en orden, desde el más antiguo, cuando ya estén declarados.",
                 accion: { texto: "Cerrar períodos", href: "/dashboard/periodos" },
+                pregunta: "¿Qué me falta revisar antes de cerrar los meses terminados?",
             });
         }
     }
@@ -422,6 +429,7 @@ function construirAlertas(datos: DatosPanel): Alerta[] {
                     : `${pendientesSii} documentos del SII por contabilizar`,
             detalle: "Finova propone un borrador por documento; tú lo revisas y lo contabilizas.",
             accion: { texto: "Ver documentos", href: `/dashboard?periodo=${datos.periodoAlerta}#por-contabilizar` },
+            pregunta: `¿Qué documentos del SII de ${nombreMesLargo(Number(datos.periodoAlerta.slice(5, 7))).toLowerCase()} me faltan contabilizar?`,
         });
     }
 
@@ -437,6 +445,7 @@ function construirAlertas(datos: DatosPanel): Alerta[] {
                     : `${cantidadBorradores} borradores sin contabilizar`,
             detalle: "No forman parte del libro hasta que se contabilizan.",
             accion: { texto: "Revisar", href: "/dashboard/core-contable" },
+            pregunta: "¿Qué les falta a mis borradores para contabilizarlos?",
         });
     }
 

@@ -34,6 +34,7 @@ import { formatearFecha } from "@/lib/formato";
 import { valorarRespuesta } from "./acciones";
 import { preguntasPendientes, propuestasPendientes, seleccionesPendientes } from "./buzon";
 import { leerDetalle, suscribir } from "./contexto-pantalla";
+import { MenuCopiloto } from "./MenuCopiloto";
 import { BurbujaAsistente, BurbujaUsuario, Sugerencias, type MensajeVista } from "./partes";
 
 /* ============================================================================
@@ -403,12 +404,10 @@ export function ChatCopiloto({
 
     return (
         <div className="relative flex min-h-0 flex-1 flex-col">
-            {/* Anclado (desde lg) no hay cabecera: los botones quedan en la esquina superior. */}
+            {/* Anclado (desde lg) no hay cabecera: las opciones van en el menu del tablero (MenuCopiloto). */}
             <div
                 className={`flex items-center gap-2 border-b border-[var(--border-subtle)] px-4 py-3 ${
-                    anclado
-                        ? "lg:absolute lg:right-2 lg:top-2 lg:z-10 lg:gap-0.5 lg:rounded-lg lg:border lg:bg-[var(--surface)] lg:p-0.5"
-                        : ""
+                    anclado ? "lg:hidden" : ""
                 }`}
             >
                 <div
@@ -475,7 +474,7 @@ export function ChatCopiloto({
                         const el = evento.currentTarget;
                         pegadoAbajo.current = el.scrollHeight - el.scrollTop - el.clientHeight < MARGEN_PEGADO_PX;
                     }}
-                    className={`flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-40 pt-4 ${anclado ? "lg:pt-14" : ""}`}
+                    className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-40 pt-4"
                 >
                     <div className={`flex flex-1 flex-col gap-5 ${ancho}`}>
                         {mensajes.length === 0 ? (
@@ -567,6 +566,22 @@ export function ChatCopiloto({
                                 aria-invalid={errorEntrada !== null}
                                 className={CAMPO}
                             />
+                            {anclado && alCerrar && (
+                                <div className="max-lg:hidden">
+                                    <MenuCopiloto
+                                        opciones={[
+                                            ...(mensajes.length > 0
+                                                ? [{ icono: "plus", etiqueta: "Nueva", descripcion: "Empezar una conversación nueva", alElegir: nuevaConversacion } as const]
+                                                : []),
+                                            ...(alCambiarLado
+                                                ? [{ icono: "float", etiqueta: "Flotante", descripcion: "Soltar el copiloto como ventana flotante", alElegir: alCambiarLado } as const]
+                                                : []),
+                                            { icono: "expand", etiqueta: "Ampliar", descripcion: "Abrir el copiloto en pantalla completa", href: RUTA_MODULO_COPILOTO, alElegir: alCerrar },
+                                            { icono: "close", etiqueta: "Cerrar", descripcion: "Cerrar el copiloto", alElegir: alCerrar },
+                                        ]}
+                                    />
+                                </div>
+                            )}
                             {respondiendo ? (
                                 <Boton soloIcono onClick={() => controlador.current?.abort()} aria-label="Detener la respuesta" title="Detener">
                                     <Icon name="close" className="size-4" />
