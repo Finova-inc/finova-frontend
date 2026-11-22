@@ -122,6 +122,14 @@ export default async function LibroDiarioPage({
     if (resultados.some((r) => r.status === "rejected" && r.reason instanceof ApiError && r.reason.status === 401)) {
         redirect("/login");
     }
+    // Una página que no existe (?pagina=5 con 21 comprobantes) lleva a la última en vez de mostrar «201–200 de 21» y una tabla vacía.
+    if (vista === "comprobantes" && listado.status === "fulfilled" && listado.value) {
+        const { total, por_pagina, items } = listado.value;
+        if (total > 0 && items.length === 0) {
+            const ultima = Math.max(1, Math.ceil(total / por_pagina));
+            redirect(urlCon(parametros, { pagina: ultima > 1 ? ultima : undefined }));
+        }
+    }
 
     const principal = vista === "libro" ? libro : listado;
     const errorPrincipal =

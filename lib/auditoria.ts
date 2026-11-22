@@ -53,6 +53,8 @@ const ETIQUETA_ENTIDAD: Readonly<Record<string, string>> = {
     "notas-eeff": "Notas de los estados financieros",
     sii: "Importación del SII",
     auditoria: "Auditoría",
+    auth: "Sesión",
+    copiloto: "Copiloto",
 };
 
 /** Los tipos de registro que el filtro ofrece. "users" no: filtrar por "usuarios" ya trae también esas filas. */

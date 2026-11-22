@@ -329,7 +329,34 @@ function construirAlertas(datos: DatosPanel): Alerta[] {
             accion,
         };
 
-        if (hayMovimiento && ivaF29) {
+        // Con el F29 aprobado la cifra es la del F29 (remanente, PPM y retenciones incluidos), no la del libro: así el Panel y la pantalla del F29 dicen lo mismo.
+        const totalAprobado = propuesta?.total_a_pagar ?? null;
+        const remanenteAprobado = propuesta?.remanente_siguiente ?? null;
+        if (totalAprobado !== null && !esCero(totalAprobado)) {
+            alertas.push({
+                id: "f29",
+                severidad: urgencia === "info" ? "aviso" : urgencia,
+                icono: "alert",
+                titulo: `F29 de ${nombreMes}: IVA a pagar${vencido ? " (plazo vencido)" : ""}`,
+                detalle: `Según el F29 aprobado. ${limite}${sigueAbierto}`,
+                insignia,
+                monto: totalAprobado,
+                accion,
+            });
+        } else if (totalAprobado !== null && remanenteAprobado !== null && !esCero(remanenteAprobado)) {
+            alertas.push({
+                id: "f29",
+                severidad: vencido ? "aviso" : "info",
+                icono: vencido ? "alert" : "check",
+                titulo: `F29 de ${nombreMes}: remanente de crédito`,
+                detalle: `Según el F29 aprobado no hay IVA que pagar; el remanente pasa al mes siguiente. ${limite}${sigueAbierto}`,
+                insignia,
+                monto: remanenteAprobado,
+                accion,
+            });
+        } else if (totalAprobado !== null) {
+            alertas.push(sinMonto);
+        } else if (hayMovimiento && ivaF29) {
             const desglose = `Débito ${formatearCLP(ivaF29.iva_debito)} − crédito ${formatearCLP(ivaF29.iva_credito)} según el libro.`;
             if (esNegativo(ivaF29.iva_neto)) {
                 alertas.push({
@@ -338,7 +365,7 @@ function construirAlertas(datos: DatosPanel): Alerta[] {
                     severidad: vencido ? "aviso" : "info",
                     icono: vencido ? "alert" : "check",
                     titulo: `F29 de ${nombreMes}: remanente de crédito`,
-                    detalle: `${desglose} No hay IVA que pagar; el remanente pasa al mes siguiente. ${limite}${sigueAbierto}`,
+                    detalle: `${desglose} El libro no muestra IVA que pagar, pero es solo una estimación: el F29 suma remanente, PPM y retenciones. ${limite}${sigueAbierto}`,
                     insignia,
                     monto: ivaF29.iva_neto.replace(/^-/, ""),
                     accion,
@@ -403,7 +430,10 @@ function construirAlertas(datos: DatosPanel): Alerta[] {
                     terminadosAbiertos.length === 1
                         ? `${conMayuscula(nombrePeriodo(primero.anio, primero.mes))} terminó y sigue abierto`
                         : `${terminadosAbiertos.length} meses terminados siguen abiertos`,
-                detalle: "Ciérralos en orden, desde el más antiguo, cuando ya estén declarados.",
+                detalle:
+                    terminadosAbiertos.length === 1
+                        ? "Ciérralo cuando ya esté declarado."
+                        : "Ciérralos en orden, desde el más antiguo, cuando ya estén declarados.",
                 accion: { texto: "Cerrar períodos", href: "/dashboard/periodos" },
             });
         }

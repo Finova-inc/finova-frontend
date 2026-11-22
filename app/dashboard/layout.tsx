@@ -73,7 +73,7 @@ export default async function DashboardLayout({
                     {/* La cabecera es sticky para que el selector de empresa y el tema
                         sigan al alcance al recorrer una tabla larga. z-10 la mantiene
                         sobre el contenido al desplazarse. */}
-                    <header className="sticky top-0 z-10 flex h-[60px] items-center gap-4 border-b border-[var(--border-subtle)] bg-[var(--surface)] pl-16 pr-4 sm:pr-6 lg:pl-6">
+                    <header className="sticky top-0 z-10 flex h-[60px] items-center gap-2 border-b border-[var(--border-subtle)] bg-[var(--surface)] pl-16 pr-3 sm:gap-4 sm:pr-6 lg:pl-6">
                         {empresas.length > 0 ? (
                             <SelectorEmpresa
                                 empresas={empresas}
@@ -81,7 +81,7 @@ export default async function DashboardLayout({
                             />
                         ) : null}
 
-                        <div className="ml-auto flex items-center gap-2">
+                        <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
                             <ThemeToggle variant="panel" />
                             <CerrarSesionBoton />
                         </div>

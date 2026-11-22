@@ -107,8 +107,9 @@ export function ZonaAlertas({ alertas }: ZonaAlertasProps) {
 
 function FilaAlerta({ alerta }: { readonly alerta: Alerta }) {
     return (
-        <article className="flex items-center gap-3 bg-[var(--surface)] py-2 pr-4">
-            <div className={`w-[3px] self-stretch ${FRANJA[alerta.severidad]}`} />
+        // En pantalla angosta el monto y el enlace bajan de línea en vez de pisar el título; la franja es absoluta para cubrir todas las líneas.
+        <article className="relative flex flex-wrap items-center gap-x-3 gap-y-1 bg-[var(--surface)] py-2 pl-[15px] pr-4 sm:flex-nowrap">
+            <div className={`absolute inset-y-0 left-0 w-[3px] ${FRANJA[alerta.severidad]}`} />
 
             <div
                 className={`ml-3 hidden size-7 shrink-0 place-items-center rounded-md sm:grid ${CAJA_ICONO[alerta.severidad]}`}
@@ -116,7 +117,7 @@ function FilaAlerta({ alerta }: { readonly alerta: Alerta }) {
                 <Icon name={alerta.icono} className="size-3.5" />
             </div>
 
-            <div className="min-w-0 flex-1 pl-3 sm:pl-0">
+            <div className="min-w-0 basis-40 flex-1 pl-3 sm:pl-0">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                     <span className="text-sm font-semibold leading-snug">{alerta.titulo}</span>
                     {alerta.insignia ? (
