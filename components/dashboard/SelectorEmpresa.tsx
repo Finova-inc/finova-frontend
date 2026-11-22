@@ -154,7 +154,7 @@ export function SelectorEmpresa({ empresas, idEmpresaActual }: SelectorEmpresaPr
                 type="button"
                 onClick={abrir}
                 aria-haspopup="dialog"
-                className="inline-flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--background-raised)] px-3 py-1.5 text-[13px] font-medium transition-colors hover:border-[var(--border-strong)]"
+                className="inline-flex min-w-0 items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--background-raised)] px-3 py-1.5 text-[13px] font-medium transition-colors hover:border-[var(--border-strong)]"
             >
                 <Icon name="building" className="size-3.5 shrink-0" />
                 <span className="max-w-[22ch] truncate">

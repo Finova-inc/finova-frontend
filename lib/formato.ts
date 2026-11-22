@@ -82,6 +82,16 @@ export function formatearMontoCorto(monto: string | number): string {
 }
 
 /**
+ * Zona para mostrar una fecha. Un instante (trae hora, como created_at) se
+ * muestra en horario de Chile: el servidor corre en UTC y un registro de las
+ * 23:37 del 21 diria "22". Una fecha sola ("2026-11-21") se lee tal cual, sin
+ * correrla un dia por la zona.
+ */
+function zonaDeLaFecha(iso: string): string {
+    return /\d{2}:\d{2}/.test(iso) ? "America/Santiago" : "UTC";
+}
+
+/**
  * Fecha corta: "05-09-2026".
  *
  * Reemplaza la copia local que vivia en la pagina de empresas.
@@ -94,6 +104,7 @@ export function formatearFecha(iso: string): string {
     }
 
     return fecha.toLocaleDateString("es-CL", {
+        timeZone: zonaDeLaFecha(iso),
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
@@ -141,6 +152,7 @@ export function formatearFechaLarga(iso: string): string {
     }
 
     return fecha.toLocaleDateString("es-CL", {
+        timeZone: zonaDeLaFecha(iso),
         day: "numeric",
         month: "short",
         year: "numeric",

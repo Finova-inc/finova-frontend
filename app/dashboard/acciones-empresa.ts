@@ -155,8 +155,11 @@ export async function eliminarEmpresa(
     const idEmpresaActual = await obtenerEmpresaDelToken();
 
     let objetivo: EmpresaDelUsuario | undefined;
+    let otra: EmpresaDelUsuario | undefined;
     try {
-        objetivo = (await authApi.misEmpresas({ token, cache: "no-store" })).find((e) => e.id_empresa === id_empresa);
+        const todas = await authApi.misEmpresas({ token, cache: "no-store" });
+        objetivo = todas.find((e) => e.id_empresa === id_empresa);
+        otra = todas.find((e) => e.id_empresa !== id_empresa);
     } catch (error) {
         return { errores: traducirError(error, "No pudimos eliminar la empresa. Inténtalo de nuevo.", SIN_PERMISO_ELIMINAR) };
     }
@@ -167,31 +170,32 @@ export async function eliminarEmpresa(
     }
     const razon_social = objetivo.razon_social ?? "la empresa";
 
+    // Si es la empresa activa, se cambia a otra ANTES de eliminarla: una vez dada de baja, el token que apunta a ella
+    // deja de valer y cualquier llamada posterior (incluido cambiar de empresa) termina en «Tu sesión expiró».
+    // El backend autoriza la baja por la pertenencia a esa empresa, no por el token, así que se elimina con el token nuevo.
+    let tokenParaEliminar = token;
+    let aviso = `Eliminaste ${razon_social}.`;
+    if (id_empresa === idEmpresaActual && otra) {
+        try {
+            const respuesta = await authApi.cambiarEmpresa(otra.id_empresa, { token });
+            await guardarSesion(respuesta.access_token);
+            tokenParaEliminar = respuesta.access_token;
+            aviso = `Eliminaste ${razon_social}. Ahora estás en ${otra.razon_social ?? "otra de tus empresas"}.`;
+        } catch (error) {
+            return {
+                errores: traducirError(error, "No pudimos cambiarte a otra empresa antes de eliminar esta. No eliminamos nada.", SIN_PERMISO_ELIMINAR),
+            };
+        }
+    }
+
     try {
-        await empresasApi.eliminar(id_empresa, { token });
+        await empresasApi.eliminar(id_empresa, { token: tokenParaEliminar });
     } catch (error) {
+        // Si ya se cambió de empresa, el panel se vuelve a pintar con la nueva.
+        revalidatePath("/dashboard", "layout");
         return {
             errores: traducirError(error, "No pudimos eliminar la empresa. Inténtalo de nuevo.", SIN_PERMISO_ELIMINAR),
         };
-    }
-
-    let aviso = `Eliminaste ${razon_social}.`;
-
-    if (id_empresa === idEmpresaActual) {
-        try {
-            // El backend no deja eliminar la única empresa, así que siempre queda otra.
-            const [siguiente] = await authApi.misEmpresas({ token, cache: "no-store" });
-            const respuesta = await authApi.cambiarEmpresa(siguiente.id_empresa, { token });
-            await guardarSesion(respuesta.access_token);
-            aviso = `Eliminaste ${razon_social}. Ahora estás en ${siguiente.razon_social ?? "otra de tus empresas"}.`;
-        } catch {
-            revalidatePath("/dashboard", "layout");
-            return {
-                errores: [
-                    `Eliminaste ${razon_social}, pero no pudimos cambiarte a otra empresa. Elige una de la lista.`,
-                ],
-            };
-        }
     }
 
     revalidatePath("/dashboard", "layout");
