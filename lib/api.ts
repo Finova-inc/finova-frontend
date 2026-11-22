@@ -1629,6 +1629,27 @@ export type MensajeCopiloto = {
     readonly pantalla?: string;
 };
 
+/* ----------------------------------------------------------------------------
+   Barra de búsqueda (GET /busqueda)
+   ---------------------------------------------------------------------------- */
+
+export type TipoResultadoBusqueda = "asiento" | "borrador" | "tercero" | "cuenta" | "documento";
+
+/** Un resultado de la barra: hasta 5 por tipo, de la empresa activa. */
+export type ResultadoBusqueda = {
+    readonly tipo: TipoResultadoBusqueda;
+    readonly id: string;
+    readonly titulo: string;
+    readonly detalle: string;
+    /** AAAA-MM-DD, o null si el registro no tiene fecha. */
+    readonly fecha: string | null;
+};
+
+export const busquedaApi = {
+    buscar: (q: string, opciones?: ApiFetchOptions) =>
+        api.get<ResultadoBusqueda[]>(`/busqueda${consulta({ q })}`, opciones),
+};
+
 /** GET /copiloto/estado: si hay API key y cuánto del tope diario lleva gastado el usuario. */
 export type EstadoCopiloto = {
     readonly disponible: boolean;

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Icon } from "@/components/ui/Icon";
+import { olvidarRecientes } from "@/lib/busqueda";
 import { olvidarTodo } from "@/lib/copiloto-memoria";
 
 /**
@@ -19,10 +20,11 @@ export function CerrarSesionBoton() {
 
     async function cerrarSesion() {
         setSaliendo(true);
-        // Las conversaciones del copiloto guardadas en este navegador no deben
-        // quedar para quien entre despues.
+        // Las conversaciones del copiloto y los recientes de la busqueda guardados
+        // en este navegador no deben quedar para quien entre despues.
         try {
             olvidarTodo(window.localStorage);
+            olvidarRecientes(window.localStorage);
         } catch {
             // Sin acceso al almacenamiento no hay nada guardado.
         }

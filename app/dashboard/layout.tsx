@@ -1,6 +1,7 @@
 import Sidebar from "@/components/Sidebar";
 import { CerrarSesionBoton } from "@/components/CerrarSesionBoton";
 import { SelectorEmpresa } from "@/components/dashboard/SelectorEmpresa";
+import { BarraBusqueda } from "@/components/dashboard/BarraBusqueda";
 import { CopilotoFlotante } from "@/components/dashboard/copiloto/CopilotoFlotante";
 import { MovimientoProvider } from "@/components/dashboard/MovimientoProvider";
 import { SaltarAlContenido } from "@/components/ui/SaltarAlContenido";
@@ -70,7 +71,7 @@ export default async function DashboardLayout({
                 <Sidebar plegadoInicial={menuPlegado} rol={rol} />
 
                 <div className="flex min-w-0 flex-1 flex-col">
-                    {/* La cabecera es sticky para que el selector de empresa y el tema
+                    {/* La cabecera es sticky para que el selector de empresa, la busqueda y el tema
                         sigan al alcance al recorrer una tabla larga. z-10 la mantiene
                         sobre el contenido al desplazarse. */}
                     <header className="sticky top-0 z-10 flex h-[60px] items-center gap-4 border-b border-[var(--border-subtle)] bg-[var(--surface)] pl-16 pr-4 sm:pr-6 lg:pl-6">
@@ -85,6 +86,9 @@ export default async function DashboardLayout({
                             <ThemeToggle variant="panel" />
                             <CerrarSesionBoton />
                         </div>
+                        {/* La key reinicia la barra (texto y recientes) al cambiar de empresa. */}
+                        <BarraBusqueda key={idEmpresaActual ?? "sin-empresa"} idUsuario={idUsuario} idEmpresa={idEmpresaActual} />
+
                     </header>
 
                     <div className="flex min-w-0 flex-1">
