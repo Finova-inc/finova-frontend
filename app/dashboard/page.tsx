@@ -195,7 +195,7 @@ export default async function DashboardPage({
             </section>
 
             {/* ---- Cifras clave: saldos a la fecha de corte y resultado ---- */}
-            <section className="animate-entrada [animation-delay:50ms]">
+            <section className="@container animate-entrada [animation-delay:50ms]">
                 <EncabezadoZona
                     titulo="Cifras clave"
                     nota={
@@ -211,7 +211,7 @@ export default async function DashboardPage({
                         )
                     }
                 />
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-4 @md:grid-cols-2 @4xl:grid-cols-4">
                     <Cifra titulo="Efectivo" icono="bank" valor={clp(resumen?.saldos.efectivo)} nota="Caja y bancos" />
                     <Cifra
                         titulo="Por cobrar"
