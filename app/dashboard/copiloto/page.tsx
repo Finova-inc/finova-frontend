@@ -3,8 +3,9 @@ import { ModuloCopiloto } from "@/components/dashboard/copiloto/ModuloCopiloto";
 import { exigirTokenSesion, obtenerEmpresaDelToken, obtenerUsuarioDelToken } from "@/lib/session";
 
 /* /dashboard/copiloto — el Copiloto IA como un modulo mas del panel. Es la
-   misma conversacion del boton flotante, guardada en el navegador por usuario
-   y empresa; en esta pantalla el boton flotante no se dibuja. */
+   misma conversacion del copiloto flotante o anclado, guardada en el navegador
+   por usuario y empresa; en esta pantalla ese panel y su boton de la cabecera
+   no se dibujan. */
 
 export const metadata: Metadata = { title: "Copiloto IA" };
 

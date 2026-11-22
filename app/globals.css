@@ -111,6 +111,22 @@
        CarruselLogin.tsx, que es quien cambia la diapositiva. */
     --animate-carrusel: carrusel-avance 8s linear forwards;
 
+    /* Halo muy tenue que respira detras del boton del copiloto en la cabecera.
+       Solo opacity y scale; con "reducir movimiento" queda quieto y visible. */
+    --animate-brillo: brillo 4s ease-in-out infinite;
+
+    @keyframes brillo {
+        0%,
+        100% {
+            opacity: 0.15;
+            transform: scale(0.96);
+        }
+        50% {
+            opacity: 0.35;
+            transform: scale(1.04);
+        }
+    }
+
     @keyframes pop {
         0% {
             opacity: 0;
@@ -350,6 +366,12 @@
     --border-strong: rgb(255 255 255 / 0.2);
 
     --sidebar-bg: #0f0c0a;
+    --sidebar-ink: #f0ece5;
+    --sidebar-muted: #968c81;
+    --sidebar-hover: rgb(255 255 255 / 0.06);
+    --sidebar-borde: transparent;
+    --sidebar-activo-ink: #ffd9c2;
+    --sidebar-activo-bg: rgb(255 106 26 / 0.16);
 
     --vitrina-bg: #17130f;
     --vitrina-ink: #ffffff;
@@ -366,12 +388,6 @@
     --hl-pink: #ff7aa8;
     --hl-sky: #5aa8ff;
     --hl-violet: #a78bfa;
-    --sidebar-ink: #f0ece5;
-    --sidebar-muted: #968c81;
-    --sidebar-hover: rgb(255 255 255 / 0.06);
-    --sidebar-borde: transparent;
-    --sidebar-activo-ink: #ffd9c2;
-    --sidebar-activo-bg: rgb(255 106 26 / 0.16);
 
     --halo: 24%;
 }
