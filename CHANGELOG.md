@@ -42,6 +42,7 @@ dependen del backend, se anotan en su propio apartado.
 - `POST /copiloto/chat` (módulo `copiloto` del backend, con `ANTHROPIC_API_KEY` configurada).
 
 ### Cambiado
+- Menú lateral en modo claro: pasa de casi negro a papel sombreado (`--color-bone`) con un filo a la derecha, y la opción activa en naranjo oscuro. En modo oscuro no cambia. Tokens nuevos `--sidebar-borde`, `--sidebar-activo-ink` y `--sidebar-activo-bg` (FIN-xx pendiente).
 - Auditoría: el detalle de un evento ya no muestra «vacío → pasó a vacío» (en las eliminaciones), no pone «Sin detalle de cambios» sobre los datos de una creación, cambia el uuid de «Creado por», «Cerrado por» y similares por el nombre del miembro de la empresa, nombra «Empresa nueva» y otras claves que salían crudas, y resume las listas («3 elementos») en vez de cortar su JSON (FIN-xx pendiente).
 - Panel: el enlace «Auditoría» del menú lateral solo se muestra a quien puede verla (administrador y contador); el layout le entrega el rol del token al menú (FIN-xx pendiente).
 - Copiloto IA: paleta derivada de la del panel en cada tema, para que combine: en claro suma el crema de la marca y en oscuro es negro, con un resplandor naranjo y lila de la marca y el borde de la columna anclada en naranjo. El flotante lleva una línea de color arriba; anclado no tiene cabecera propia y queda bajo la del panel (FIN-xx pendiente).
