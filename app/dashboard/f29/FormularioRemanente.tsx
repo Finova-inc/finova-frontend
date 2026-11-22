@@ -131,7 +131,7 @@ export function FormularioRemanente({
                     <span className="text-[var(--critico)]">El remanente tiene que ser un monto en pesos, sin decimales.</span>
                 ) : reajustado !== null ? (
                     <>
-                        Reajustado por la UTM, entra al código 504 como{" "}
+                        Al guardar, reajustado por la UTM, entrará al código 504 como{" "}
                         <span className="tabular font-semibold text-[var(--foreground)]">{formatearCLP(reajustado)}</span>.
                     </>
                 ) : (

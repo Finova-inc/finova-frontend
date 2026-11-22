@@ -135,20 +135,40 @@ function CampoPesos({
     readonly etiqueta: string;
 }) {
     const [enFoco, setEnFoco] = useState(false);
+    const [aviso, setAviso] = useState(false);
 
     return (
-        <input
-            inputMode="numeric"
-            autoComplete="off"
-            aria-label={etiqueta}
-            placeholder="0"
-            maxLength={19}
-            value={enFoco ? valor : separarMiles(valor)}
-            onFocus={() => setEnFoco(true)}
-            onBlur={() => setEnFoco(false)}
-            onChange={(evento) => alCambiar(soloDigitos(evento.target.value))}
-            className={`tabular text-right ${CLASES_CELDA}`}
-        />
+        <>
+            <input
+                inputMode="numeric"
+                autoComplete="off"
+                aria-label={etiqueta}
+                placeholder="0"
+                maxLength={19}
+                value={enFoco ? valor : separarMiles(valor)}
+                onFocus={() => setEnFoco(true)}
+                onBlur={() => {
+                    setEnFoco(false);
+                    setAviso(false);
+                }}
+                onChange={(evento) => {
+                    const escrito = evento.target.value;
+                    // Un signo o decimales ("1500,5", "-500") no se pueden leer como pesos enteros: se rechazan en vez de convertirlos en otra cifra.
+                    if (/[-,]|\.\d{1,2}$/.test(escrito)) {
+                        setAviso(true);
+                        return;
+                    }
+                    setAviso(false);
+                    alCambiar(soloDigitos(escrito));
+                }}
+                className={`tabular text-right ${CLASES_CELDA}`}
+            />
+            {aviso && (
+                <span role="alert" className="block text-right text-xs text-red-600">
+                    Solo pesos enteros, sin decimales ni signo.
+                </span>
+            )}
+        </>
     );
 }
 

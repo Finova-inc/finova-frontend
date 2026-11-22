@@ -78,7 +78,7 @@ export function ImportadorSii({
 
     return (
         <div>
-            <form ref={formulario} onSubmit={alRevisar} className="grid gap-4 md:grid-cols-[9rem_1.2fr_11rem_1.4fr_auto] md:items-end">
+            <form ref={formulario} onSubmit={alRevisar} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[9rem_1.2fr_11rem_1.4fr_auto] xl:items-end">
                 {/* El origen no viaja en el formulario (sin name): la revisión y la importación siguen recibiendo solo tipo, período y archivo. */}
                 <label className="flex flex-col gap-1.5 text-[12.5px] font-medium">
                     Origen
@@ -132,7 +132,7 @@ export function ImportadorSii({
                         />
                     </div>
                 ) : (
-                    <div className="hidden md:block" />
+                    <div className="hidden xl:block" />
                 )}
 
                 {vista.botonIrAlSii ? (
