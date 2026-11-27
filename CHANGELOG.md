@@ -65,6 +65,7 @@ dependen del backend, se anotan en su propio apartado.
 - Herramientas de Claude para el equipo: el plugin `ponytail` (cambios mínimos, sin sobreingeniería) pasa a recomendado y queda declarado en `.claude/settings.json` junto a `superpowers` y `claude-mem`. `CLAUDE.md` aclara que las reglas del repo mandan sobre él (FIN-xx pendiente).
 
 ### Corregido
+- Copiloto: cambiar de módulo mientras responde ya no cancela la respuesta ni borra la pregunta. La respuesta sigue llegando y está al volver, en el módulo o en el panel; solo se corta con «Detener», «Nueva conversación», al cambiar de empresa o al cerrar sesión. Si se recarga a mitad, la pregunta queda con un aviso de respuesta interrumpida (FIN-xx pendiente).
 - Panel, Documentos y F29: los montos de las tarjetas de cifras ya no se salen de la tarjeta en pantallas medianas (1366×768) ni con el copiloto anclado. La cifra se achica con el ancho de su tarjeta y las columnas (4, 2 o 1) dependen del espacio disponible, no del ancho de la pantalla (FIN-xx pendiente).
 - Auditoría: una página más allá de la última (`?pagina=500`) mostraba la tabla vacía con el pie «151–150 de 138»; ahora redirige a la última página con los mismos filtros, sin el detalle abierto. La página que se pide al backend se limita a 1.000.000, su tope (FIN-xx pendiente).
 

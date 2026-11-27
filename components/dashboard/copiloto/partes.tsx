@@ -3,6 +3,7 @@ import { Boton } from "@/components/ui/Boton";
 import { BotonCsv } from "@/components/ui/BotonCsv";
 import { Icon } from "@/components/ui/Icon";
 import type { PropuestaAsiento } from "@/lib/copiloto";
+import type { MensajeVista } from "@/lib/copiloto-conversacion";
 import type { Valoracion } from "@/lib/copiloto-memoria";
 import { filasACsv } from "@/lib/csv";
 import { formatearCLP, formatearFechaContable } from "@/lib/formato";
@@ -16,29 +17,6 @@ import {
 } from "@/lib/texto-enriquecido";
 
 /* Piezas de presentacion del chat del copiloto. Sin estado: lo maneja ChatCopiloto. */
-
-export type EstadoMensaje = "respondiendo" | "listo" | "error";
-
-export type MensajeVista = {
-    readonly id: number;
-    readonly rol: "usuario" | "asistente";
-    readonly texto: string;
-    readonly estado: EstadoMensaje;
-    /** Que esta consultando el copiloto en este momento ("Revisando el libro mayor…"). */
-    readonly consultando: string | null;
-    /** Nota bajo la respuesta (detenida, incompleta) o el error si estado es "error". */
-    readonly aviso: string | null;
-    /** Pantalla abierta al preguntar (mensajes del usuario). */
-    readonly pantalla?: string;
-    /** Texto de la pantalla adjunto a la pregunta (mensajes del usuario). */
-    readonly seleccion?: string;
-    /** Fila de uso de la respuesta, para valorarla (mensajes del asistente). */
-    readonly idUso?: string;
-    readonly valoracion?: Valoracion;
-    /** Comprobante citado -> id del asiento, para enlazarlo (mensajes del asistente). */
-    readonly enlaces?: Readonly<Record<string, string>>;
-    readonly propuesta?: PropuestaAsiento;
-};
 
 type Enlaces = Readonly<Record<string, string>> | undefined;
 

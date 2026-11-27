@@ -8,43 +8,32 @@ import { Etiqueta } from "@/components/ui/Etiqueta";
 import { Icon } from "@/components/ui/Icon";
 import type { EstadoCopiloto } from "@/lib/api";
 import {
-    armarHistorial,
-    etiquetaHerramienta,
-    leerEventosSse,
     MAX_MENSAJE,
-    mensajeDeError,
     preguntasRestantes,
     sugerenciasConAvisos,
     sugerenciasPara,
-    unirEnlaces,
     validarPregunta,
     type AvisosCopiloto,
     type PropuestaAsiento,
 } from "@/lib/copiloto";
-import {
-    claveDeMemoria,
-    guardarMemoria,
-    leerMemoria,
-    type Almacen,
-    type MensajeGuardado,
-    type Valoracion,
-} from "@/lib/copiloto-memoria";
+import { conversaciones } from "@/lib/copiloto-conversacion";
+import { claveDeMemoria, type Valoracion } from "@/lib/copiloto-memoria";
 import { describirPantalla } from "@/lib/copiloto-pantalla";
 import { formatearFecha } from "@/lib/formato";
 import { valorarRespuesta } from "./acciones";
 import { preguntasPendientes, propuestasPendientes, seleccionesPendientes } from "./buzon";
 import { leerDetalle, suscribir } from "./contexto-pantalla";
 import { MenuCopiloto } from "./MenuCopiloto";
-import { BurbujaAsistente, BurbujaUsuario, Sugerencias, type MensajeVista } from "./partes";
+import { BurbujaAsistente, BurbujaUsuario, Sugerencias } from "./partes";
 
 /* ============================================================================
    Chat del copiloto. Se usa en el panel flotante (CopilotoFlotante) y en el
    modulo /dashboard/copiloto, con la misma conversacion guardada.
 
    Le habla a /api/copiloto/chat (mismo sitio; el route handler agrega el
-   token) y lee la respuesta a medida que llega. Se monta la primera vez que se
-   abre el panel y despues sigue montado aunque se cierre: asi una respuesta en
-   curso termina igual.
+   token) y lee la respuesta a medida que llega. La conversacion y la peticion
+   no son estado de este componente (lib/copiloto-conversacion.ts): al cambiar
+   de pantalla la respuesta sigue llegando y esta ahi al volver.
 
    La conversacion se guarda en el navegador (lib/copiloto-memoria.ts), por
    usuario y empresa: vuelve al recargar y se borra con "Nueva conversacion",
@@ -85,36 +74,6 @@ type ChatCopilotoProps = {
     readonly idEmpresa: string | null;
 };
 
-/** localStorage, o null si el navegador no deja usarlo (modo privado, bloqueado). */
-function almacen(): Almacen | null {
-    try {
-        return window.localStorage;
-    } catch {
-        return null;
-    }
-}
-
-function aGuardados(mensajes: readonly MensajeVista[]): MensajeGuardado[] {
-    return mensajes
-        .filter((m) => m.estado === "listo")
-        .map(({ id, rol, texto, aviso, pantalla, seleccion, idUso, valoracion, enlaces, propuesta }) => {
-            // Los comprobantes ambiguos ("") no se enlazan: no vale la pena guardarlos.
-            const conId = Object.entries(enlaces ?? {}).filter(([, idAsiento]) => idAsiento !== "");
-            return {
-                id,
-                rol,
-                texto,
-                aviso,
-                ...(pantalla ? { pantalla } : {}),
-                ...(seleccion ? { seleccion } : {}),
-                ...(idUso ? { idUso } : {}),
-                ...(valoracion ? { valoracion } : {}),
-                ...(conId.length > 0 ? { enlaces: Object.fromEntries(conId) } : {}),
-                ...(propuesta ? { propuesta } : {}),
-            };
-        });
-}
-
 export function ChatCopiloto({
     abierto,
     alCerrar,
@@ -130,22 +89,15 @@ export function ChatCopiloto({
     const detalle = useSyncExternalStore(suscribir, leerDetalle, () => null);
     const clave = claveDeMemoria(idUsuario, idEmpresa);
 
-    // Se lee una sola vez, al montar, y el montaje ocurre solo en el navegador.
-    const [guardada] = useState(() => leerMemoria(almacen(), clave, new Date()));
-    const [restauradaEl, setRestauradaEl] = useState<string | null>(guardada?.guardadoEn ?? null);
-    const [mensajes, setMensajes] = useState<MensajeVista[]>(() =>
-        (guardada?.mensajes ?? []).map((m) => ({ ...m, estado: "listo", consultando: null })),
-    );
+    // En el servidor este chat no se dibuja: leer solo corre en el navegador.
+    const leer = () => conversaciones.leer(clave);
+    const { mensajes, restauradaEl, medida, tokensHoy } = useSyncExternalStore(conversaciones.suscribir, leer, leer);
     const [entrada, setEntrada] = useState("");
     const [errorEntrada, setErrorEntrada] = useState<string | null>(null);
     const [estado, setEstado] = useState<(EstadoCopiloto & { avisos?: AvisosCopiloto | null }) | null>(null);
-    /** Lo que costaron las preguntas de esta sesion, para estimar cuantas quedan. */
-    const [medida, setMedida] = useState({ preguntas: 0, tokens: 0 });
-    const controlador = useRef<AbortController | null>(null);
     const lista = useRef<HTMLDivElement>(null);
     const pegadoAbajo = useRef(true);
     const campo = useRef<HTMLTextAreaElement>(null);
-    const recienMontado = useRef(true);
 
     const respondiendo = mensajes.some((m) => m.estado === "respondiendo");
     const enModulo = alCerrar === undefined;
@@ -155,7 +107,7 @@ export function ChatCopiloto({
     const noDisponible = estado !== null && !estado.disponible;
     const restantes = estado
         ? preguntasRestantes(
-              estado.tokens_hoy,
+              tokensHoy ?? estado.tokens_hoy,
               estado.tope_diario,
               medida.preguntas > 0 ? medida.tokens / medida.preguntas : 0,
           )
@@ -182,9 +134,6 @@ export function ChatCopiloto({
         if (seleccion && abierto) campo.current?.focus();
     }, [seleccion, abierto]);
 
-    // Al cambiar de empresa (el componente se remonta) o cerrar sesion, se corta la respuesta en curso.
-    useEffect(() => () => controlador.current?.abort(), []);
-
     useEffect(() => {
         if (abierto) campo.current?.focus();
     }, [abierto]);
@@ -200,24 +149,15 @@ export function ChatCopiloto({
         fetch("/api/copiloto/estado", { signal: corte.signal })
             .then((respuesta) => (respuesta.ok ? (respuesta.json() as Promise<EstadoCopiloto>) : null))
             .then((datos) => {
-                if (datos) setEstado(datos);
+                if (!datos) return;
+                setEstado(datos);
+                conversaciones.olvidarTokensHoy(clave);
             })
             .catch(() => {
                 // Sin estado no se muestra el aviso; el servidor igual aplica el tope.
             });
         return () => corte.abort();
-    }, [abierto]);
-
-    // Se guarda al terminar cada respuesta, no mientras llega el texto. La primera
-    // pasada se salta: reescribir lo recien leido le renovaria el vencimiento.
-    useEffect(() => {
-        if (recienMontado.current) {
-            recienMontado.current = false;
-            return;
-        }
-        if (respondiendo) return;
-        guardarMemoria(almacen(), clave, aGuardados(mensajes), new Date());
-    }, [mensajes, respondiendo, clave]);
+    }, [abierto, clave]);
 
     async function enviar(pregunta: string) {
         if (respondiendo || bloqueado) return;
@@ -226,114 +166,16 @@ export function ChatCopiloto({
             setErrorEntrada(error);
             return;
         }
-        const texto = pregunta.trim();
-        const historial = armarHistorial(mensajes.filter((m) => m.estado === "listo"));
-        const idPregunta = mensajes.length > 0 ? mensajes[mensajes.length - 1].id + 1 : 0;
-        const idRespuesta = idPregunta + 1;
-        const conPantalla = pantalla ? { pantalla } : {};
-        const conSeleccion = seleccion ? { seleccion } : {};
-        setMensajes((previos) => [
-            ...previos,
-            {
-                id: idPregunta,
-                rol: "usuario",
-                texto,
-                estado: "listo",
-                consultando: null,
-                aviso: null,
-                ...conPantalla,
-                ...conSeleccion,
-            },
-            { id: idRespuesta, rol: "asistente", texto: "", estado: "respondiendo", consultando: null, aviso: null },
-        ]);
+        const adjunto = { ...(pantalla ? { pantalla } : {}), ...(seleccion ? { seleccion } : {}) };
         setEntrada("");
         setErrorEntrada(null);
         seleccionesPendientes.tomar();
         pegadoAbajo.current = true;
 
-        const actualizar = (cambio: (m: MensajeVista) => Partial<MensajeVista>) =>
-            setMensajes((previos) => previos.map((m) => (m.id === idRespuesta ? { ...m, ...cambio(m) } : m)));
-        const corte = new AbortController();
-        controlador.current = corte;
-
-        try {
-            const respuesta = await fetch("/api/copiloto/chat", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ mensaje: texto, historial, ...conPantalla, ...conSeleccion }),
-                signal: corte.signal,
-            });
-            if (respuesta.status === 401) {
-                router.push("/login");
-                return;
-            }
-            if (!respuesta.ok || !respuesta.body) {
-                const datos: unknown = await respuesta.json().catch(() => null);
-                const mensaje = (datos as { message?: unknown } | null)?.message;
-                actualizar(() => ({
-                    estado: "error",
-                    aviso: mensajeDeError(respuesta.status, typeof mensaje === "string" ? mensaje : null),
-                }));
-                return;
-            }
-
-            const lector = respuesta.body.getReader();
-            const decodificador = new TextDecoder();
-            let resto = "";
-            let termino = false;
-            for (;;) {
-                const { value, done } = await lector.read();
-                if (done) break;
-                const leido = leerEventosSse(resto + decodificador.decode(value, { stream: true }));
-                resto = leido.resto;
-                for (const evento of leido.eventos) {
-                    if (evento.tipo === "texto") {
-                        actualizar((m) => ({ texto: m.texto + evento.texto, consultando: null }));
-                    } else if (evento.tipo === "herramienta") {
-                        actualizar(() => ({ consultando: etiquetaHerramienta(evento.nombre) }));
-                    } else if (evento.tipo === "enlaces") {
-                        actualizar((m) => ({ enlaces: unirEnlaces(m.enlaces, evento.asientos) }));
-                    } else if (evento.tipo === "propuesta_asiento") {
-                        actualizar(() => ({ propuesta: evento.propuesta }));
-                    } else if (evento.tipo === "fin") {
-                        termino = true;
-                        actualizar(() => ({
-                            estado: "listo",
-                            consultando: null,
-                            aviso: evento.aviso,
-                            ...(evento.id_uso ? { idUso: evento.id_uso } : {}),
-                        }));
-                        const { tokens_hoy: tokensHoy, tokens_pregunta: tokensPregunta } = evento;
-                        if (tokensHoy !== undefined) {
-                            setEstado((previo) => (previo ? { ...previo, tokens_hoy: tokensHoy } : previo));
-                        }
-                        if (tokensPregunta !== undefined && tokensPregunta > 0) {
-                            setMedida((m) => ({ preguntas: m.preguntas + 1, tokens: m.tokens + tokensPregunta }));
-                        }
-                    } else if (evento.tipo === "error") {
-                        termino = true;
-                        actualizar(() => ({ estado: "error", consultando: null, aviso: evento.mensaje }));
-                    }
-                }
-            }
-            if (!termino) {
-                actualizar(() => ({
-                    estado: "error",
-                    consultando: null,
-                    aviso: "La respuesta se cortó antes de terminar. Intenta de nuevo.",
-                }));
-            }
-        } catch {
-            actualizar(() =>
-                corte.signal.aborted
-                    ? { estado: "listo", consultando: null, aviso: "Detuviste la respuesta." }
-                    : { estado: "error", consultando: null, aviso: mensajeDeError(0, null) },
-            );
-        } finally {
-            if (controlador.current === corte) controlador.current = null;
-            if (!corte.signal.aborted) alResponder?.();
-            campo.current?.focus();
-        }
+        const resultado = await conversaciones.enviar(clave, { texto: pregunta.trim(), ...adjunto });
+        if (resultado === "sesion-expirada") router.push("/login");
+        if (resultado === "terminada") alResponder?.();
+        campo.current?.focus();
     }
 
     function alEnviar(evento: FormEvent<HTMLFormElement>) {
@@ -350,12 +192,8 @@ export function ChatCopiloto({
     }
 
     function nuevaConversacion() {
-        controlador.current?.abort();
-        setMensajes([]);
-        setRestauradaEl(null);
+        conversaciones.vaciar(clave);
         setErrorEntrada(null);
-        // El efecto de guardado no corre si habia una respuesta a medias: se borra aqui.
-        guardarMemoria(almacen(), clave, [], new Date());
         campo.current?.focus();
     }
 
@@ -372,8 +210,7 @@ export function ChatCopiloto({
         const mensaje = mensajes.find((m) => m.id === idMensaje);
         if (!mensaje?.idUso) return;
         const anterior = mensaje.valoracion;
-        const marcar = (marca: Valoracion | undefined) =>
-            setMensajes((previos) => previos.map((m) => (m.id === idMensaje ? { ...m, valoracion: marca } : m)));
+        const marcar = (marca: Valoracion | undefined) => conversaciones.marcarValoracion(clave, idMensaje, marca);
         marcar(valor ?? undefined);
         // La pregunta que origino esta respuesta: el mensaje del usuario justo antes.
         const indice = mensajes.findIndex((m) => m.id === idMensaje);
@@ -583,7 +420,7 @@ export function ChatCopiloto({
                                 </div>
                             )}
                             {respondiendo ? (
-                                <Boton soloIcono onClick={() => controlador.current?.abort()} aria-label="Detener la respuesta" title="Detener">
+                                <Boton soloIcono onClick={() => conversaciones.detener(clave)} aria-label="Detener la respuesta" title="Detener">
                                     <Icon name="close" className="size-4" />
                                 </Boton>
                             ) : (

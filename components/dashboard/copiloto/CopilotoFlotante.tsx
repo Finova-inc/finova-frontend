@@ -18,6 +18,7 @@ import {
     preguntasPendientes,
     seleccionesPendientes,
 } from "./buzon";
+import { conversaciones } from "@/lib/copiloto-conversacion";
 import { ChatCopiloto, RUTA_MODULO_COPILOTO } from "./ChatCopiloto";
 
 /* ============================================================================
@@ -99,6 +100,10 @@ export function CopilotoFlotante({ idUsuario, idEmpresa, ancladoInicial = false,
             .catch(() => {});
         return () => corte.abort();
     }, []);
+
+    // El layout solo lo desmonta al salir del panel o al cambiar de empresa (su key): se corta
+    // la respuesta en curso. Navegar entre modulos no pasa por aqui.
+    useEffect(() => () => conversaciones.cortarTodas(), []);
 
     function cerrar() {
         setAbierto(false);
