@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent, type KeyboardEvent } from "react";
 import { Boton } from "@/components/ui/Boton";
@@ -8,43 +7,31 @@ import { Etiqueta } from "@/components/ui/Etiqueta";
 import { Icon } from "@/components/ui/Icon";
 import type { EstadoCopiloto } from "@/lib/api";
 import {
-    armarHistorial,
-    etiquetaHerramienta,
-    leerEventosSse,
     MAX_MENSAJE,
-    mensajeDeError,
     preguntasRestantes,
     sugerenciasConAvisos,
     sugerenciasPara,
-    unirEnlaces,
     validarPregunta,
     type AvisosCopiloto,
     type PropuestaAsiento,
 } from "@/lib/copiloto";
-import {
-    claveDeMemoria,
-    guardarMemoria,
-    leerMemoria,
-    type Almacen,
-    type MensajeGuardado,
-    type Valoracion,
-} from "@/lib/copiloto-memoria";
+import { conversaciones } from "@/lib/copiloto-conversacion";
+import { claveDeMemoria, type Valoracion } from "@/lib/copiloto-memoria";
 import { describirPantalla } from "@/lib/copiloto-pantalla";
 import { formatearFecha } from "@/lib/formato";
 import { valorarRespuesta } from "./acciones";
 import { preguntasPendientes, propuestasPendientes, seleccionesPendientes } from "./buzon";
 import { leerDetalle, suscribir } from "./contexto-pantalla";
 import { MenuCopiloto } from "./MenuCopiloto";
-import { BurbujaAsistente, BurbujaUsuario, Sugerencias, type MensajeVista } from "./partes";
+import { BurbujaAsistente, BurbujaUsuario, Sugerencias } from "./partes";
 
 /* ============================================================================
-   Chat del copiloto. Se usa en el panel flotante (CopilotoFlotante) y en el
-   modulo /dashboard/copiloto, con la misma conversacion guardada.
+   Chat del copiloto: el contenido de la columna lateral (CopilotoFlotante).
 
    Le habla a /api/copiloto/chat (mismo sitio; el route handler agrega el
-   token) y lee la respuesta a medida que llega. Se monta la primera vez que se
-   abre el panel y despues sigue montado aunque se cierre: asi una respuesta en
-   curso termina igual.
+   token) y lee la respuesta a medida que llega. La conversacion y la peticion
+   no son estado de este componente (lib/copiloto-conversacion.ts): al cambiar
+   de pantalla la respuesta sigue llegando y esta ahi al volver.
 
    La conversacion se guarda en el navegador (lib/copiloto-memoria.ts), por
    usuario y empresa: vuelve al recargar y se borra con "Nueva conversacion",
@@ -68,59 +55,27 @@ const POCAS_PREGUNTAS = 3;
 /** Con un texto adjunto, se puede preguntar sin escribir nada. */
 const PREGUNTAS_SOBRE_SELECCION = ["Explícame esto", "¿Está bien?", "¿Qué hago con esto?"] as const;
 
-export const RUTA_MODULO_COPILOTO = "/dashboard/copiloto";
 const RUTA_NUEVO_ASIENTO = "/dashboard/core-contable/nuevo";
 
 type ChatCopilotoProps = {
     /** Para llevar el foco al cuadro de texto cada vez que se abre el panel. */
     readonly abierto: boolean;
-    /** Solo en el panel flotante: sin esto, el chat es el modulo de pantalla completa. */
-    readonly alCerrar?: () => void;
+    readonly alCerrar: () => void;
     /** Avisa que termino una respuesta (para marcar el boton si el panel esta cerrado). */
     readonly alResponder?: () => void;
-    /** Solo en el panel flotante: si esta anclado al costado y como cambiarlo. */
-    readonly anclado?: boolean;
-    readonly alCambiarLado?: () => void;
+    /** Desde 1024 px: si ocupa todo el espacio de la pantalla abierta, y como cambiarlo. */
+    readonly agrandado: boolean;
+    readonly alAgrandar: (agrandado: boolean) => void;
     readonly idUsuario: string | null;
     readonly idEmpresa: string | null;
 };
-
-/** localStorage, o null si el navegador no deja usarlo (modo privado, bloqueado). */
-function almacen(): Almacen | null {
-    try {
-        return window.localStorage;
-    } catch {
-        return null;
-    }
-}
-
-function aGuardados(mensajes: readonly MensajeVista[]): MensajeGuardado[] {
-    return mensajes
-        .filter((m) => m.estado === "listo")
-        .map(({ id, rol, texto, aviso, pantalla, seleccion, idUso, valoracion, enlaces, propuesta }) => {
-            // Los comprobantes ambiguos ("") no se enlazan: no vale la pena guardarlos.
-            const conId = Object.entries(enlaces ?? {}).filter(([, idAsiento]) => idAsiento !== "");
-            return {
-                id,
-                rol,
-                texto,
-                aviso,
-                ...(pantalla ? { pantalla } : {}),
-                ...(seleccion ? { seleccion } : {}),
-                ...(idUso ? { idUso } : {}),
-                ...(valoracion ? { valoracion } : {}),
-                ...(conId.length > 0 ? { enlaces: Object.fromEntries(conId) } : {}),
-                ...(propuesta ? { propuesta } : {}),
-            };
-        });
-}
 
 export function ChatCopiloto({
     abierto,
     alCerrar,
     alResponder,
-    anclado = false,
-    alCambiarLado,
+    agrandado,
+    alAgrandar,
     idUsuario,
     idEmpresa,
 }: ChatCopilotoProps) {
@@ -130,32 +85,23 @@ export function ChatCopiloto({
     const detalle = useSyncExternalStore(suscribir, leerDetalle, () => null);
     const clave = claveDeMemoria(idUsuario, idEmpresa);
 
-    // Se lee una sola vez, al montar, y el montaje ocurre solo en el navegador.
-    const [guardada] = useState(() => leerMemoria(almacen(), clave, new Date()));
-    const [restauradaEl, setRestauradaEl] = useState<string | null>(guardada?.guardadoEn ?? null);
-    const [mensajes, setMensajes] = useState<MensajeVista[]>(() =>
-        (guardada?.mensajes ?? []).map((m) => ({ ...m, estado: "listo", consultando: null })),
-    );
+    // En el servidor este chat no se dibuja: leer solo corre en el navegador.
+    const leer = () => conversaciones.leer(clave);
+    const { mensajes, restauradaEl, medida, tokensHoy } = useSyncExternalStore(conversaciones.suscribir, leer, leer);
     const [entrada, setEntrada] = useState("");
     const [errorEntrada, setErrorEntrada] = useState<string | null>(null);
     const [estado, setEstado] = useState<(EstadoCopiloto & { avisos?: AvisosCopiloto | null }) | null>(null);
-    /** Lo que costaron las preguntas de esta sesion, para estimar cuantas quedan. */
-    const [medida, setMedida] = useState({ preguntas: 0, tokens: 0 });
-    const controlador = useRef<AbortController | null>(null);
     const lista = useRef<HTMLDivElement>(null);
     const pegadoAbajo = useRef(true);
     const campo = useRef<HTMLTextAreaElement>(null);
-    const recienMontado = useRef(true);
 
     const respondiendo = mensajes.some((m) => m.estado === "respondiendo");
-    const enModulo = alCerrar === undefined;
-    // En el modulo la pantalla abierta es el propio chat: no aporta contexto.
-    const pantalla = enModulo ? null : describirPantalla(ruta, Object.fromEntries(parametros.entries()), detalle);
+    const pantalla = describirPantalla(ruta, Object.fromEntries(parametros.entries()), detalle);
 
     const noDisponible = estado !== null && !estado.disponible;
     const restantes = estado
         ? preguntasRestantes(
-              estado.tokens_hoy,
+              tokensHoy ?? estado.tokens_hoy,
               estado.tope_diario,
               medida.preguntas > 0 ? medida.tokens / medida.preguntas : 0,
           )
@@ -182,9 +128,6 @@ export function ChatCopiloto({
         if (seleccion && abierto) campo.current?.focus();
     }, [seleccion, abierto]);
 
-    // Al cambiar de empresa (el componente se remonta) o cerrar sesion, se corta la respuesta en curso.
-    useEffect(() => () => controlador.current?.abort(), []);
-
     useEffect(() => {
         if (abierto) campo.current?.focus();
     }, [abierto]);
@@ -200,24 +143,15 @@ export function ChatCopiloto({
         fetch("/api/copiloto/estado", { signal: corte.signal })
             .then((respuesta) => (respuesta.ok ? (respuesta.json() as Promise<EstadoCopiloto>) : null))
             .then((datos) => {
-                if (datos) setEstado(datos);
+                if (!datos) return;
+                setEstado(datos);
+                conversaciones.olvidarTokensHoy(clave);
             })
             .catch(() => {
                 // Sin estado no se muestra el aviso; el servidor igual aplica el tope.
             });
         return () => corte.abort();
-    }, [abierto]);
-
-    // Se guarda al terminar cada respuesta, no mientras llega el texto. La primera
-    // pasada se salta: reescribir lo recien leido le renovaria el vencimiento.
-    useEffect(() => {
-        if (recienMontado.current) {
-            recienMontado.current = false;
-            return;
-        }
-        if (respondiendo) return;
-        guardarMemoria(almacen(), clave, aGuardados(mensajes), new Date());
-    }, [mensajes, respondiendo, clave]);
+    }, [abierto, clave]);
 
     async function enviar(pregunta: string) {
         if (respondiendo || bloqueado) return;
@@ -226,114 +160,16 @@ export function ChatCopiloto({
             setErrorEntrada(error);
             return;
         }
-        const texto = pregunta.trim();
-        const historial = armarHistorial(mensajes.filter((m) => m.estado === "listo"));
-        const idPregunta = mensajes.length > 0 ? mensajes[mensajes.length - 1].id + 1 : 0;
-        const idRespuesta = idPregunta + 1;
-        const conPantalla = pantalla ? { pantalla } : {};
-        const conSeleccion = seleccion ? { seleccion } : {};
-        setMensajes((previos) => [
-            ...previos,
-            {
-                id: idPregunta,
-                rol: "usuario",
-                texto,
-                estado: "listo",
-                consultando: null,
-                aviso: null,
-                ...conPantalla,
-                ...conSeleccion,
-            },
-            { id: idRespuesta, rol: "asistente", texto: "", estado: "respondiendo", consultando: null, aviso: null },
-        ]);
+        const adjunto = { ...(pantalla ? { pantalla } : {}), ...(seleccion ? { seleccion } : {}) };
         setEntrada("");
         setErrorEntrada(null);
         seleccionesPendientes.tomar();
         pegadoAbajo.current = true;
 
-        const actualizar = (cambio: (m: MensajeVista) => Partial<MensajeVista>) =>
-            setMensajes((previos) => previos.map((m) => (m.id === idRespuesta ? { ...m, ...cambio(m) } : m)));
-        const corte = new AbortController();
-        controlador.current = corte;
-
-        try {
-            const respuesta = await fetch("/api/copiloto/chat", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ mensaje: texto, historial, ...conPantalla, ...conSeleccion }),
-                signal: corte.signal,
-            });
-            if (respuesta.status === 401) {
-                router.push("/login");
-                return;
-            }
-            if (!respuesta.ok || !respuesta.body) {
-                const datos: unknown = await respuesta.json().catch(() => null);
-                const mensaje = (datos as { message?: unknown } | null)?.message;
-                actualizar(() => ({
-                    estado: "error",
-                    aviso: mensajeDeError(respuesta.status, typeof mensaje === "string" ? mensaje : null),
-                }));
-                return;
-            }
-
-            const lector = respuesta.body.getReader();
-            const decodificador = new TextDecoder();
-            let resto = "";
-            let termino = false;
-            for (;;) {
-                const { value, done } = await lector.read();
-                if (done) break;
-                const leido = leerEventosSse(resto + decodificador.decode(value, { stream: true }));
-                resto = leido.resto;
-                for (const evento of leido.eventos) {
-                    if (evento.tipo === "texto") {
-                        actualizar((m) => ({ texto: m.texto + evento.texto, consultando: null }));
-                    } else if (evento.tipo === "herramienta") {
-                        actualizar(() => ({ consultando: etiquetaHerramienta(evento.nombre) }));
-                    } else if (evento.tipo === "enlaces") {
-                        actualizar((m) => ({ enlaces: unirEnlaces(m.enlaces, evento.asientos) }));
-                    } else if (evento.tipo === "propuesta_asiento") {
-                        actualizar(() => ({ propuesta: evento.propuesta }));
-                    } else if (evento.tipo === "fin") {
-                        termino = true;
-                        actualizar(() => ({
-                            estado: "listo",
-                            consultando: null,
-                            aviso: evento.aviso,
-                            ...(evento.id_uso ? { idUso: evento.id_uso } : {}),
-                        }));
-                        const { tokens_hoy: tokensHoy, tokens_pregunta: tokensPregunta } = evento;
-                        if (tokensHoy !== undefined) {
-                            setEstado((previo) => (previo ? { ...previo, tokens_hoy: tokensHoy } : previo));
-                        }
-                        if (tokensPregunta !== undefined && tokensPregunta > 0) {
-                            setMedida((m) => ({ preguntas: m.preguntas + 1, tokens: m.tokens + tokensPregunta }));
-                        }
-                    } else if (evento.tipo === "error") {
-                        termino = true;
-                        actualizar(() => ({ estado: "error", consultando: null, aviso: evento.mensaje }));
-                    }
-                }
-            }
-            if (!termino) {
-                actualizar(() => ({
-                    estado: "error",
-                    consultando: null,
-                    aviso: "La respuesta se cortó antes de terminar. Intenta de nuevo.",
-                }));
-            }
-        } catch {
-            actualizar(() =>
-                corte.signal.aborted
-                    ? { estado: "listo", consultando: null, aviso: "Detuviste la respuesta." }
-                    : { estado: "error", consultando: null, aviso: mensajeDeError(0, null) },
-            );
-        } finally {
-            if (controlador.current === corte) controlador.current = null;
-            if (!corte.signal.aborted) alResponder?.();
-            campo.current?.focus();
-        }
+        const resultado = await conversaciones.enviar(clave, { texto: pregunta.trim(), ...adjunto });
+        if (resultado === "sesion-expirada") router.push("/login");
+        if (resultado === "terminada") alResponder?.();
+        campo.current?.focus();
     }
 
     function alEnviar(evento: FormEvent<HTMLFormElement>) {
@@ -350,12 +186,8 @@ export function ChatCopiloto({
     }
 
     function nuevaConversacion() {
-        controlador.current?.abort();
-        setMensajes([]);
-        setRestauradaEl(null);
+        conversaciones.vaciar(clave);
         setErrorEntrada(null);
-        // El efecto de guardado no corre si habia una respuesta a medias: se borra aqui.
-        guardarMemoria(almacen(), clave, [], new Date());
         campo.current?.focus();
     }
 
@@ -363,8 +195,9 @@ export function ChatCopiloto({
     function llenarFormulario(propuesta: PropuestaAsiento) {
         propuestasPendientes.dejar(propuesta);
         if (ruta !== RUTA_NUEVO_ASIENTO) router.push(RUTA_NUEVO_ASIENTO);
-        // En el celular el panel tapa el formulario.
-        if (alCerrar && window.matchMedia("(max-width: 639px)").matches) alCerrar();
+        // En el celular el panel tapa el formulario; agrandado, tambien.
+        alAgrandar(false);
+        if (window.matchMedia("(max-width: 639px)").matches) alCerrar();
     }
 
     // La marca se pinta de inmediato y se revierte si el servidor no la guardo.
@@ -372,8 +205,7 @@ export function ChatCopiloto({
         const mensaje = mensajes.find((m) => m.id === idMensaje);
         if (!mensaje?.idUso) return;
         const anterior = mensaje.valoracion;
-        const marcar = (marca: Valoracion | undefined) =>
-            setMensajes((previos) => previos.map((m) => (m.id === idMensaje ? { ...m, valoracion: marca } : m)));
+        const marcar = (marca: Valoracion | undefined) => conversaciones.marcarValoracion(clave, idMensaje, marca);
         marcar(valor ?? undefined);
         // La pregunta que origino esta respuesta: el mensaje del usuario justo antes.
         const indice = mensajes.findIndex((m) => m.id === idMensaje);
@@ -395,30 +227,20 @@ export function ChatCopiloto({
           : sinPreguntas
             ? "Llegaste al límite de hoy. Vuelve mañana."
             : "Enter envía · Shift + Enter, nueva línea";
-    // Anclado, la columna llena el espacio que deja el contenido; la conversacion queda centrada y legible.
-    const ancho = enModulo
-        ? "mx-auto w-full max-w-[720px]"
-        : anclado
-          ? "lg:mx-auto lg:w-full lg:max-w-[720px]"
-          : "";
+    // La conversacion queda centrada y legible; agrandado, mas ancha para las tablas.
+    const ancho = `lg:mx-auto lg:w-full ${agrandado ? "lg:max-w-[1100px]" : "lg:max-w-[720px]"}`;
 
     return (
         <div className="relative flex min-h-0 flex-1 flex-col">
-            {/* Anclado (desde lg) no hay cabecera: las opciones van en el menu del tablero (MenuCopiloto). */}
-            <div
-                className={`flex items-center gap-2 border-b border-[var(--border-subtle)] px-4 py-3 ${
-                    anclado ? "lg:hidden" : ""
-                }`}
-            >
+            {/* Solo bajo 1024 px: en la columna, las opciones van en el menu del tablero (MenuCopiloto). */}
+            <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] px-4 py-3 lg:hidden">
                 <div
                     aria-hidden="true"
-                    className={`grid size-8 shrink-0 place-items-center rounded-lg bg-[var(--background-raised)] text-[var(--accent)] ${
-                        anclado ? "lg:hidden" : ""
-                    }`}
+                    className="grid size-8 shrink-0 place-items-center rounded-lg bg-[var(--background-raised)] text-[var(--accent)]"
                 >
                     <Icon name="sparkle" className="size-4" />
                 </div>
-                <div className={`min-w-0 flex-1 ${anclado ? "lg:sr-only" : ""}`}>
+                <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                         <h2 className="font-display text-[15px] font-semibold text-[var(--foreground)]">Copiloto IA</h2>
                         <Etiqueta tono="aviso">Beta</Etiqueta>
@@ -432,36 +254,9 @@ export function ChatCopiloto({
                         <Icon name="undo" className="size-4" />
                     </Boton>
                 )}
-                {alCerrar && (
-                    <>
-                        {alCambiarLado && (
-                            // Solo desde 1024 px: bajo eso no cabe una columna al costado.
-                            <button
-                                type="button"
-                                onClick={alCambiarLado}
-                                aria-pressed={anclado}
-                                aria-label="Anclar el copiloto al costado"
-                                title={anclado ? "Volver a flotante" : "Anclar al costado"}
-                                className="grid size-8 place-items-center rounded-md text-[var(--foreground-muted)] transition-colors hover:bg-[var(--background-raised)] hover:text-[var(--foreground)] aria-pressed:text-[var(--accent-text)] max-lg:hidden"
-                            >
-                                <Icon name="panel" className="size-4" />
-                            </button>
-                        )}
-                        {/* En el celular el panel ya es pantalla completa. */}
-                        <Link
-                            href={RUTA_MODULO_COPILOTO}
-                            onClick={alCerrar}
-                            aria-label="Abrir el copiloto en pantalla completa"
-                            title="Pantalla completa"
-                            className="grid size-8 place-items-center rounded-md text-[var(--foreground-muted)] transition-colors hover:bg-[var(--background-raised)] hover:text-[var(--foreground)] max-sm:hidden"
-                        >
-                            <Icon name="expand" className="size-4" />
-                        </Link>
-                        <Boton variante="fantasma" soloIcono onClick={alCerrar} aria-label="Cerrar el copiloto" title="Cerrar">
-                            <Icon name="close" className="size-4" />
-                        </Boton>
-                    </>
-                )}
+                <Boton variante="fantasma" soloIcono onClick={alCerrar} aria-label="Cerrar el copiloto" title="Cerrar">
+                    <Icon name="close" className="size-4" />
+                </Boton>
             </div>
 
             <div className="relative flex min-h-0 flex-1 flex-col">
@@ -566,24 +361,21 @@ export function ChatCopiloto({
                                 aria-invalid={errorEntrada !== null}
                                 className={CAMPO}
                             />
-                            {anclado && alCerrar && (
-                                <div className="max-lg:hidden">
-                                    <MenuCopiloto
-                                        opciones={[
-                                            ...(mensajes.length > 0
-                                                ? [{ icono: "plus", etiqueta: "Nueva", descripcion: "Empezar una conversación nueva", alElegir: nuevaConversacion } as const]
-                                                : []),
-                                            ...(alCambiarLado
-                                                ? [{ icono: "float", etiqueta: "Flotante", descripcion: "Soltar el copiloto como ventana flotante", alElegir: alCambiarLado } as const]
-                                                : []),
-                                            { icono: "expand", etiqueta: "Ampliar", descripcion: "Abrir el copiloto en pantalla completa", href: RUTA_MODULO_COPILOTO, alElegir: alCerrar },
-                                            { icono: "close", etiqueta: "Cerrar", descripcion: "Cerrar el copiloto", alElegir: alCerrar },
-                                        ]}
-                                    />
-                                </div>
-                            )}
+                            <div className="max-lg:hidden">
+                                <MenuCopiloto
+                                    opciones={[
+                                        ...(mensajes.length > 0
+                                            ? [{ icono: "plus", etiqueta: "Nueva", descripcion: "Empezar una conversación nueva", alElegir: nuevaConversacion } as const]
+                                            : []),
+                                        agrandado
+                                            ? { icono: "shrink", etiqueta: "Reducir", descripcion: "Volver el copiloto al costado", alElegir: () => alAgrandar(false) }
+                                            : { icono: "expand", etiqueta: "Agrandar", descripcion: "Usar todo el espacio de esta pantalla", alElegir: () => alAgrandar(true) },
+                                        { icono: "close", etiqueta: "Cerrar", descripcion: "Cerrar el copiloto", alElegir: alCerrar },
+                                    ]}
+                                />
+                            </div>
                             {respondiendo ? (
-                                <Boton soloIcono onClick={() => controlador.current?.abort()} aria-label="Detener la respuesta" title="Detener">
+                                <Boton soloIcono onClick={() => conversaciones.detener(clave)} aria-label="Detener la respuesta" title="Detener">
                                     <Icon name="close" className="size-4" />
                                 </Boton>
                             ) : (

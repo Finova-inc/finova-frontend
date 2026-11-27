@@ -1,30 +1,25 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { useSyncExternalStore } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { EVENTO_COPILOTO_CABECERA, ID_BOTON_CABECERA, indicadorCopiloto } from "./buzon";
-import { RUTA_MODULO_COPILOTO } from "./ChatCopiloto";
 
 /* ============================================================================
    Acceso al copiloto en la cabecera del panel, junto al cambio de tema. Es el
-   unico boton que lo abre (ademas de Ctrl+J): lo abre anclado al costado, o
-   lo cierra si ya esta abierto asi. Quien escucha es CopilotoFlotante, por un
-   evento del navegador; de vuelta, CopilotoFlotante publica en
-   indicadorCopiloto si esta abierto, los avisos sin ver y si hay una
-   respuesta nueva, que el boton muestra como numero o punto.
+   unico acceso (ademas de Ctrl+J): abre su columna al costado, o la cierra si
+   ya esta abierta. Quien escucha es CopilotoFlotante, por un evento del
+   navegador; de vuelta, CopilotoFlotante publica en indicadorCopiloto si esta
+   abierto, los avisos sin ver y si hay una respuesta nueva, que el boton
+   muestra como numero o punto.
 
    Un halo muy tenue con los colores del copiloto respira detras para que se
-   note que es la IA; con "reducir movimiento" queda quieto. En el modulo del
-   copiloto no se dibuja: ahi el chat ya ocupa la pantalla.
+   note que es la IA; con "reducir movimiento" queda quieto.
    ========================================================================== */
 
 const sinIndicador = () => null;
 
 export function BotonCopilotoCabecera() {
-    const ruta = usePathname();
     const indicador = useSyncExternalStore(indicadorCopiloto.suscribir, indicadorCopiloto.mirar, sinIndicador);
-    if (ruta === RUTA_MODULO_COPILOTO) return null;
 
     const abierto = indicador?.abierto ?? false;
     const avisos = indicador?.avisos ?? 0;

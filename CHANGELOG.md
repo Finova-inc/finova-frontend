@@ -40,6 +40,7 @@ dependen del backend, se anotan en su propio apartado.
 - Costos de IA: la página interna muestra las valoraciones de las respuestas, y el simulador calcula el perfil «Máximo» con los tokens que cuentan para el tope (FIN-xx pendiente).
 
 ### Eliminado
+- Copiloto: se quitan las opciones «Flotante» y «Ampliar», la pantalla `/dashboard/copiloto` y su entrada «Copiloto IA» del menú lateral. Se abre desde el botón de la cabecera o con `Ctrl+J`. La cookie `finova_copiloto` deja de usarse (FIN-xx pendiente).
 - Copiloto: el botón redondo de la esquina inferior derecha. Ahora se abre desde el botón de la cabecera o con Ctrl+J, y el contenido del panel ya no reserva espacio abajo para él (FIN-xx pendiente).
 
 ### Dependencias del backend
@@ -52,6 +53,7 @@ dependen del backend, se anotan en su propio apartado.
 - `POST /copiloto/chat` (módulo `copiloto` del backend, con `ANTHROPIC_API_KEY` configurada).
 
 ### Cambiado
+- Copiloto: desde 1024 px es siempre una columna al costado. Su menú «⋯» suma «Agrandar», que le da todo el espacio de la pantalla abierta, y «Reducir», que la devuelve; la pantalla no pierde lo escrito, y navegar o cerrar el chat lo reduce (FIN-xx pendiente).
 - Menú lateral en modo claro: pasa de casi negro a papel sombreado (`--color-bone`) con un filo a la derecha, y la opción activa en naranjo oscuro. En modo oscuro no cambia. Tokens nuevos `--sidebar-borde`, `--sidebar-activo-ink` y `--sidebar-activo-bg` (FIN-xx pendiente).
 - Auditoría: el detalle de un evento ya no muestra «vacío → pasó a vacío» (en las eliminaciones), no pone «Sin detalle de cambios» sobre los datos de una creación, cambia el uuid de «Creado por», «Cerrado por» y similares por el nombre del miembro de la empresa, nombra «Empresa nueva» y otras claves que salían crudas, y resume las listas («3 elementos») en vez de cortar su JSON (FIN-xx pendiente).
 - Panel: el enlace «Auditoría» del menú lateral solo se muestra a quien puede verla (administrador y contador); el layout le entrega el rol del token al menú (FIN-xx pendiente).
@@ -65,6 +67,7 @@ dependen del backend, se anotan en su propio apartado.
 - Herramientas de Claude para el equipo: el plugin `ponytail` (cambios mínimos, sin sobreingeniería) pasa a recomendado y queda declarado en `.claude/settings.json` junto a `superpowers` y `claude-mem`. `CLAUDE.md` aclara que las reglas del repo mandan sobre él (FIN-xx pendiente).
 
 ### Corregido
+- Copiloto: cambiar de módulo mientras responde ya no cancela la respuesta ni borra la pregunta. La respuesta sigue llegando y queda en el chat; solo se corta con «Detener», «Nueva conversación», al cambiar de empresa o al cerrar sesión. Si se recarga a mitad, la pregunta queda con un aviso de respuesta interrumpida (FIN-xx pendiente).
 - Panel, Documentos y F29: los montos de las tarjetas de cifras ya no se salen de la tarjeta en pantallas medianas (1366×768) ni con el copiloto anclado. La cifra se achica con el ancho de su tarjeta y las columnas (4, 2 o 1) dependen del espacio disponible, no del ancho de la pantalla (FIN-xx pendiente).
 - Auditoría: una página más allá de la última (`?pagina=500`) mostraba la tabla vacía con el pie «151–150 de 138»; ahora redirige a la última página con los mismos filtros, sin el detalle abierto. La página que se pide al backend se limita a 1.000.000, su tope (FIN-xx pendiente).
 

@@ -1,11 +1,10 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Icon, type IconName } from "@/components/ui/Icon";
 
 /* ============================================================================
-   Opciones del copiloto anclado (nueva, flotante, ampliar, cerrar), en un menu
+   Opciones de la columna del copiloto (nueva, agrandar o reducir, cerrar), en un menu
    discreto dentro del tablero donde se escribe, para que la columna no tenga
    una barra de botones encima de la conversacion.
 
@@ -17,7 +16,8 @@ export type OpcionMenu = {
     readonly icono: IconName;
     readonly etiqueta: string;
     readonly descripcion: string;
-} & ({ readonly alElegir: () => void; readonly href?: never } | { readonly href: string; readonly alElegir?: () => void });
+    readonly alElegir: () => void;
+};
 
 const ITEM =
     "flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-[13px] text-[var(--foreground)] outline-none hover:bg-[var(--background-raised)] focus-visible:bg-[var(--background-raised)]";
@@ -64,15 +64,6 @@ export function MenuCopiloto({ opciones }: { readonly opciones: readonly OpcionM
         }
     }
 
-    function contenido(opcion: OpcionMenu): ReactNode {
-        return (
-            <>
-                <Icon name={opcion.icono} className="size-4 shrink-0 text-[var(--foreground-muted)]" />
-                <span>{opcion.etiqueta}</span>
-            </>
-        );
-    }
-
     return (
         <div ref={caja} className="relative">
             <button
@@ -95,39 +86,24 @@ export function MenuCopiloto({ opciones }: { readonly opciones: readonly OpcionM
                     onKeyDown={alTeclear}
                     className="absolute bottom-full right-0 z-20 mb-2 w-40 animate-aparecer rounded-lg border border-[var(--border-subtle)] bg-[var(--surface)] p-1 shadow-[0_8px_24px_rgb(0_0_0/0.18)]"
                 >
-                    {opciones.map((opcion) =>
-                        opcion.href ? (
-                            <Link
-                                key={opcion.etiqueta}
-                                href={opcion.href}
-                                role="menuitem"
-                                tabIndex={-1}
-                                title={opcion.descripcion}
-                                onClick={() => {
-                                    setAbierto(false);
-                                    opcion.alElegir?.();
-                                }}
-                                className={ITEM}
-                            >
-                                {contenido(opcion)}
-                            </Link>
-                        ) : (
-                            <button
-                                key={opcion.etiqueta}
-                                type="button"
-                                role="menuitem"
-                                tabIndex={-1}
-                                title={opcion.descripcion}
-                                onClick={() => {
-                                    cerrar(false);
-                                    opcion.alElegir?.();
-                                }}
-                                className={ITEM}
-                            >
-                                {contenido(opcion)}
-                            </button>
-                        ),
-                    )}
+                    {opciones.map((opcion) => (
+                        <button
+                            key={opcion.etiqueta}
+                            type="button"
+                            role="menuitem"
+                            tabIndex={-1}
+                            title={opcion.descripcion}
+                            onClick={() => {
+                                // El foco vuelve al boton; si la opcion cierra el panel, ella lo mueve despues.
+                                cerrar(true);
+                                opcion.alElegir();
+                            }}
+                            className={ITEM}
+                        >
+                            <Icon name={opcion.icono} className="size-4 shrink-0 text-[var(--foreground-muted)]" />
+                            <span>{opcion.etiqueta}</span>
+                        </button>
+                    ))}
                 </div>
             )}
         </div>

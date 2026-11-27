@@ -77,13 +77,6 @@ const ICON_PATHS = {
             <circle cx="19" cy="12" r="1" />
         </>
     ),
-    /** Ventana flotante (soltar el panel anclado). */
-    float: (
-        <>
-            <rect x="3" y="4" width="18" height="16" rx="2" />
-            <rect x="12" y="12" width="6" height="5" rx="1" />
-        </>
-    ),
     /** Alerta de inconsistencia. */
     alert: (
         <>
@@ -244,7 +237,16 @@ const ICON_PATHS = {
             <path d="M8 11V7a4 4 0 0 1 8 0v4" />
         </>
     ),
-    /** Abrir el copiloto en pantalla completa: flechas hacia las esquinas. */
+    /** Reducir el copiloto agrandado: flechas hacia el centro. */
+    shrink: (
+        <>
+            <path d="M19 11h-6V5" />
+            <path d="M13 11l7-7" />
+            <path d="M5 13h6v6" />
+            <path d="M11 13l-7 7" />
+        </>
+    ),
+    /** Agrandar el copiloto: flechas hacia las esquinas. */
     expand: (
         <>
             <path d="M14 4h6v6" />

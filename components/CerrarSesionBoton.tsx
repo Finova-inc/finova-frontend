@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { Icon } from "@/components/ui/Icon";
 import { olvidarRecientes } from "@/lib/busqueda";
+import { conversaciones } from "@/lib/copiloto-conversacion";
 import { olvidarTodo } from "@/lib/copiloto-memoria";
 
 /**
@@ -22,6 +23,8 @@ export function CerrarSesionBoton() {
         setSaliendo(true);
         // Las conversaciones del copiloto y los recientes de la busqueda guardados
         // en este navegador no deben quedar para quien entre despues.
+        // Primero se corta lo que este respondiendo, para que no se vuelva a guardar.
+        conversaciones.cortarTodas();
         try {
             olvidarTodo(window.localStorage);
             olvidarRecientes(window.localStorage);
