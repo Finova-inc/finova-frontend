@@ -45,7 +45,7 @@ export const preguntasPendientes = crearBuzon<string>();
 export const seleccionesPendientes = crearBuzon<string>();
 export const propuestasPendientes = crearBuzon<PropuestaAsiento>();
 
-/** El boton de la cabecera abre el copiloto anclado al costado, o lo cierra si ya esta asi. */
+/** El boton de la cabecera abre la columna del copiloto, o la cierra si ya esta abierta. */
 export const EVENTO_COPILOTO_CABECERA = "finova:copiloto-cabecera";
 /** Al cerrar el panel, el foco vuelve a ese boton. */
 export const ID_BOTON_CABECERA = "boton-copiloto";

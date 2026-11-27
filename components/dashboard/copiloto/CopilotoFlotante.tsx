@@ -2,12 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import {
-    COOKIE_ANCHO_COPILOTO,
-    COOKIE_COPILOTO,
-    COPILOTO_ANCLADO,
-    guardarPreferencia,
-} from "@/components/dashboard/preferencias-panel";
+import { COOKIE_ANCHO_COPILOTO, guardarPreferencia } from "@/components/dashboard/preferencias-panel";
 import { ANCHO_MIN, MIN_CONTENIDO, PASO_TECLADO, limitarAncho } from "@/lib/ancho-copiloto";
 import { contarAvisos, type AvisosCopiloto } from "@/lib/copiloto";
 import { hoyEnChile } from "@/lib/formato";
@@ -19,56 +14,53 @@ import {
     seleccionesPendientes,
 } from "./buzon";
 import { conversaciones } from "@/lib/copiloto-conversacion";
-import { ChatCopiloto, RUTA_MODULO_COPILOTO } from "./ChatCopiloto";
+import { ChatCopiloto } from "./ChatCopiloto";
 
 /* ============================================================================
-   Copiloto IA como chat flotante o anclado al costado. Se abre con el boton
-   de la cabecera del panel (BotonCopilotoCabecera, que lo abre anclado) o con
-   Ctrl+J. La version grande es el modulo /dashboard/copiloto.
+   Copiloto IA: columna al costado de la pantalla abierta. Se abre con el boton
+   de la cabecera del panel (BotonCopilotoCabecera) o con Ctrl+J. (El nombre
+   del archivo es de cuando tambien flotaba.)
 
    - Vive en app/dashboard/layout.tsx, que no se remonta al navegar. El layout
      le pasa la empresa activa como key, asi que al cambiar de empresa empieza
      de cero.
-   - El panel no es modal: se puede seguir usando la pantalla de atras. En el
-     celular ocupa toda la pantalla (la X de su cabecera lo cierra).
+   - El panel no es modal: se puede seguir usando la pantalla de al lado.
    - Ctrl+J (Cmd+J en Mac) lo abre y lo cierra desde cualquier pantalla.
    - Al montarse pide los avisos de la empresa (F29 por vencer, documentos por
      contabilizar, borradores, mes sin abrir; sin gastar tokens) y el boton
      de la cabecera (via indicadorCopiloto) muestra cuantos hay hasta que se abre el chat, que los sugiere como preguntas.
    - Un "Explicar esto" de otra pantalla (buzon.ts) lo abre; el chat envia
      la pregunta.
-   - z-30: por encima del contenido, por debajo del menu lateral del celular
-     (z-40) y de los dialogos (z-50).
-   - En el modulo no se dibuja: ahi el chat ya ocupa la pantalla. Al salir, el
-     chat se monta de nuevo y lee la conversacion guardada en el navegador.
    - El chat se monta recien la primera vez que se abre: asi lee la
      conversacion guardada sin diferencias con el HTML del servidor.
-   - Anclado (desde 1024 px): en vez de flotar, es una columna a la derecha,
-     bajo la cabecera del panel, que llena todo el espacio que deja el
-     contenido (max 1320 px, 380 px como minimo para el chat): asi no queda
-     un hueco al plegar el menu. Sin cabecera propia ni linea de color, para
-     no cortar la del panel: sus opciones van en un menu del tablero
-     (MenuCopiloto). La eleccion se guarda en una cookie (preferencias-panel.ts).
-     Bajo 1024 px no cabe una columna y se comporta como flotante.
-   - Anclado, el borde izquierdo es un divisor: arrastrarlo (o las flechas
-     con el foco en el) fija el ancho del chat, guardado en otra cookie; doble
-     clic vuelve a llenar el espacio libre. Limites en lib/ancho-copiloto.ts.
+   - Desde 1024 px es una columna a la derecha, bajo la cabecera del panel, que
+     llena el espacio que deja el contenido (380 px como minimo). Sin cabecera
+     propia ni linea de color, para no cortar la del panel: sus opciones van en
+     un menu del tablero (MenuCopiloto). Bajo 1024 px no cabe una columna: es
+     una ventana sobre la pantalla, a pantalla completa en el celular.
+   - "Agrandar" (en el menu) le da todo el espacio de la pantalla abierta y
+     "Reducir" lo devuelve al costado. La pantalla solo se oculta (layout.tsx,
+     por data-agrandado): no pierde lo escrito. Navegar o cerrar lo reduce.
+   - z-30: por encima del contenido, por debajo del menu lateral del celular
+     (z-40) y de los dialogos (z-50).
+   - El borde izquierdo es un divisor: arrastrarlo (o las flechas con el foco
+     en el) fija el ancho del chat, guardado en una cookie; doble clic vuelve a
+     llenar el espacio libre. Limites en lib/ancho-copiloto.ts.
    ========================================================================== */
 
 type CopilotoFlotanteProps = {
     /** Para guardar la conversacion en el navegador; null si el token no se pudo leer. */
     readonly idUsuario: string | null;
     readonly idEmpresa: string | null;
-    /** De la cookie: el layout la lee para dibujarlo en su lugar desde el servidor. */
-    readonly ancladoInicial?: boolean;
     /** De la cookie: ancho en px elegido con el divisor, o null para llenar el espacio libre. */
     readonly anchoInicial?: number | null;
 };
 
-export function CopilotoFlotante({ idUsuario, idEmpresa, ancladoInicial = false, anchoInicial = null }: CopilotoFlotanteProps) {
+export function CopilotoFlotante({ idUsuario, idEmpresa, anchoInicial = null }: CopilotoFlotanteProps) {
     const ruta = usePathname();
     const [abierto, setAbierto] = useState(false);
-    const [anclado, setAnclado] = useState(ancladoInicial);
+    const [agrandado, setAgrandado] = useState(false);
+    const [rutaVista, setRutaVista] = useState(ruta);
     const [ancho, setAncho] = useState(anchoInicial);
     const panel = useRef<HTMLElement>(null);
     const [montado, setMontado] = useState(false);
@@ -77,12 +69,19 @@ export function CopilotoFlotante({ idUsuario, idEmpresa, ancladoInicial = false,
     // El chat se monta al abrirlo por primera vez: desde ahi los avisos ya se vieron como sugerencias.
     const avisosSinVer = montado ? 0 : cantidadAvisos;
     const abiertoActual = useRef(abierto);
-    const ancladoActual = useRef(anclado);
+
+    // Al navegar o cerrar vuelve al costado: agrandado taparia la pantalla recien elegida.
+    // Se ajusta durante el render, sin un efecto que dibuje un cuadro de mas.
+    if (rutaVista !== ruta) {
+        setRutaVista(ruta);
+        setAgrandado(false);
+    } else if (agrandado && !abierto) {
+        setAgrandado(false);
+    }
 
     useEffect(() => {
         abiertoActual.current = abierto;
-        ancladoActual.current = anclado;
-    }, [abierto, anclado]);
+    }, [abierto]);
 
     // El boton de la cabecera muestra si esta abierto, los avisos y la respuesta nueva.
     useEffect(() => {
@@ -110,11 +109,7 @@ export function CopilotoFlotante({ idUsuario, idEmpresa, ancladoInicial = false,
         document.getElementById(ID_BOTON_CABECERA)?.focus();
     }
 
-    // En el modulo el chat ya esta en pantalla: ni el atajo ni los pedidos abren el flotante.
-    const enModulo = ruta === RUTA_MODULO_COPILOTO;
-
     useEffect(() => {
-        if (enModulo) return;
         const alTeclear = (e: KeyboardEvent) => {
             if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.key.toLowerCase() !== "j") return;
             e.preventDefault();
@@ -124,19 +119,14 @@ export function CopilotoFlotante({ idUsuario, idEmpresa, ancladoInicial = false,
         };
         window.addEventListener("keydown", alTeclear);
         return () => window.removeEventListener("keydown", alTeclear);
-    }, [enModulo]);
+    }, []);
 
-    // Boton de la cabecera (BotonCopilotoCabecera): abre anclado al costado, o cierra si ya lo esta.
+    // Boton de la cabecera (BotonCopilotoCabecera): abre el panel, o lo cierra si ya esta abierto.
     useEffect(() => {
-        if (enModulo) return;
         const alPedir = () => {
-            if (abiertoActual.current && ancladoActual.current) {
+            if (abiertoActual.current) {
                 setAbierto(false);
                 return;
-            }
-            if (!ancladoActual.current) {
-                guardarPreferencia(COOKIE_COPILOTO, COPILOTO_ANCLADO);
-                setAnclado(true);
             }
             setMontado(true);
             setRespuestaSinVer(false);
@@ -144,11 +134,10 @@ export function CopilotoFlotante({ idUsuario, idEmpresa, ancladoInicial = false,
         };
         window.addEventListener(EVENTO_COPILOTO_CABECERA, alPedir);
         return () => window.removeEventListener(EVENTO_COPILOTO_CABECERA, alPedir);
-    }, [enModulo]);
+    }, []);
 
     // "Explicar esto" y el texto seleccionado en una pantalla abren el chat; el chat los toma.
     useEffect(() => {
-        if (enModulo) return;
         const abrirSiHay = () => {
             if (!preguntasPendientes.mirar() && !seleccionesPendientes.mirar()) return;
             setMontado(true);
@@ -161,8 +150,7 @@ export function CopilotoFlotante({ idUsuario, idEmpresa, ancladoInicial = false,
             dejarPregunta();
             dejarSeleccion();
         };
-    }, [enModulo]);
-
+    }, []);
 
     useEffect(() => {
         if (!abierto) return;
@@ -173,14 +161,6 @@ export function CopilotoFlotante({ idUsuario, idEmpresa, ancladoInicial = false,
         window.addEventListener("keydown", alTeclear);
         return () => window.removeEventListener("keydown", alTeclear);
     }, [abierto]);
-
-    if (enModulo) return null;
-
-
-    function cambiarLado() {
-        guardarPreferencia(COOKIE_COPILOTO, anclado ? null : COPILOTO_ANCLADO);
-        setAnclado(!anclado);
-    }
 
     /** Ancho permitido para el panel segun el espacio de la fila (contenido + copiloto). */
     function anchoPara(pedido: number): number {
@@ -220,16 +200,15 @@ export function CopilotoFlotante({ idUsuario, idEmpresa, ancladoInicial = false,
         fijarAncho(anchoPara(actual + paso));
     }
 
-    // Desde lg, anclado: columna fija a la altura de la pantalla, sin sombra ni esquinas.
+    // Desde lg: columna fija a la altura de la pantalla, sin sombra ni esquinas.
     // Con ancho elegido: ese ancho (crece solo si sobra espacio), y el min() deja siempre
     // MIN_CONTENIDO (el relleno del contenido): el chat llega hasta el menu de modulos sin
-    // desbordar la fila, tambien si la ventana se achica despues.
-    const claseAnclado = anclado
-        ? `copiloto-anclado lg:sticky lg:top-[60px] lg:bottom-auto lg:right-auto lg:z-auto lg:h-[calc(100dvh-60px)] lg:w-auto lg:min-w-[380px] lg:rounded-none lg:border-y-0 lg:border-r-0 lg:border-l lg:shadow-none ${
-              ancho === null ? "lg:flex-1" : "lg:[flex:1_0_min(var(--ancho-copiloto),calc(100%_-_48px))]"
-          }`
-        : "";
-    const estiloAncho = anclado && ancho !== null ? ({ "--ancho-copiloto": `${ancho}px` } as React.CSSProperties) : undefined;
+    // desbordar la fila, tambien si la ventana se achica despues. Agrandado, ocupa la fila.
+    const usaAncho = !agrandado && ancho !== null;
+    const claseColumna = `copiloto-anclado lg:sticky lg:top-[60px] lg:bottom-auto lg:right-auto lg:z-auto lg:h-[calc(100dvh-60px)] lg:w-auto lg:min-w-[380px] lg:rounded-none lg:border-y-0 lg:border-r-0 lg:border-l lg:shadow-none ${
+        usaAncho ? "lg:[flex:1_0_min(var(--ancho-copiloto),calc(100%_-_48px))]" : "lg:flex-1"
+    }`;
+    const estiloAncho = usaAncho ? ({ "--ancho-copiloto": `${ancho}px` } as React.CSSProperties) : undefined;
 
     return (
         <>
@@ -237,18 +216,16 @@ export function CopilotoFlotante({ idUsuario, idEmpresa, ancladoInicial = false,
                 ref={panel}
                 style={estiloAncho}
                 id="panel-copiloto"
+                data-agrandado={agrandado ? "" : undefined}
                 role="dialog"
                 aria-modal="false"
                 aria-label="Copiloto IA"
-                className={`copiloto-tema no-imprimir fixed inset-0 z-30 flex-col bg-[var(--surface)] text-[var(--foreground)] sm:inset-auto sm:bottom-6 sm:right-6 sm:h-[min(640px,calc(100dvh-8rem))] sm:w-[400px] sm:overflow-hidden sm:rounded-2xl sm:border sm:border-[var(--border-subtle)] sm:shadow-[0_16px_48px_rgb(0_0_0/0.22)] ${claseAnclado} ${
+                className={`copiloto-tema no-imprimir fixed inset-0 z-30 flex-col bg-[var(--surface)] text-[var(--foreground)] sm:inset-auto sm:bottom-6 sm:right-6 sm:h-[min(640px,calc(100dvh-8rem))] sm:w-[400px] sm:overflow-hidden sm:rounded-2xl sm:border sm:border-[var(--border-subtle)] sm:shadow-[0_16px_48px_rgb(0_0_0/0.22)] ${claseColumna} ${
                     abierto ? "flex animate-pantalla" : "hidden"
                 }`}
             >
-                <div
-                    aria-hidden="true"
-                    className={`h-[3px] shrink-0 bg-[image:var(--copiloto-franja)] ${anclado ? "lg:hidden" : ""}`}
-                />
-                {anclado && (
+                <div aria-hidden="true" className="h-[3px] shrink-0 bg-[image:var(--copiloto-franja)] lg:hidden" />
+                {!agrandado && (
                     <div
                         role="separator"
                         aria-orientation="vertical"
@@ -271,8 +248,8 @@ export function CopilotoFlotante({ idUsuario, idEmpresa, ancladoInicial = false,
                     <ChatCopiloto
                         abierto={abierto}
                         alCerrar={cerrar}
-                        anclado={anclado}
-                        alCambiarLado={cambiarLado}
+                        agrandado={agrandado}
+                        alAgrandar={setAgrandado}
                         alResponder={() => {
                             if (!abiertoActual.current) setRespuestaSinVer(true);
                         }}

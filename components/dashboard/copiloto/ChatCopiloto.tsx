@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent, type KeyboardEvent } from "react";
 import { Boton } from "@/components/ui/Boton";
@@ -27,8 +26,7 @@ import { MenuCopiloto } from "./MenuCopiloto";
 import { BurbujaAsistente, BurbujaUsuario, Sugerencias } from "./partes";
 
 /* ============================================================================
-   Chat del copiloto. Se usa en el panel flotante (CopilotoFlotante) y en el
-   modulo /dashboard/copiloto, con la misma conversacion guardada.
+   Chat del copiloto: el contenido de la columna lateral (CopilotoFlotante).
 
    Le habla a /api/copiloto/chat (mismo sitio; el route handler agrega el
    token) y lee la respuesta a medida que llega. La conversacion y la peticion
@@ -57,19 +55,17 @@ const POCAS_PREGUNTAS = 3;
 /** Con un texto adjunto, se puede preguntar sin escribir nada. */
 const PREGUNTAS_SOBRE_SELECCION = ["Explícame esto", "¿Está bien?", "¿Qué hago con esto?"] as const;
 
-export const RUTA_MODULO_COPILOTO = "/dashboard/copiloto";
 const RUTA_NUEVO_ASIENTO = "/dashboard/core-contable/nuevo";
 
 type ChatCopilotoProps = {
     /** Para llevar el foco al cuadro de texto cada vez que se abre el panel. */
     readonly abierto: boolean;
-    /** Solo en el panel flotante: sin esto, el chat es el modulo de pantalla completa. */
-    readonly alCerrar?: () => void;
+    readonly alCerrar: () => void;
     /** Avisa que termino una respuesta (para marcar el boton si el panel esta cerrado). */
     readonly alResponder?: () => void;
-    /** Solo en el panel flotante: si esta anclado al costado y como cambiarlo. */
-    readonly anclado?: boolean;
-    readonly alCambiarLado?: () => void;
+    /** Desde 1024 px: si ocupa todo el espacio de la pantalla abierta, y como cambiarlo. */
+    readonly agrandado: boolean;
+    readonly alAgrandar: (agrandado: boolean) => void;
     readonly idUsuario: string | null;
     readonly idEmpresa: string | null;
 };
@@ -78,8 +74,8 @@ export function ChatCopiloto({
     abierto,
     alCerrar,
     alResponder,
-    anclado = false,
-    alCambiarLado,
+    agrandado,
+    alAgrandar,
     idUsuario,
     idEmpresa,
 }: ChatCopilotoProps) {
@@ -100,9 +96,7 @@ export function ChatCopiloto({
     const campo = useRef<HTMLTextAreaElement>(null);
 
     const respondiendo = mensajes.some((m) => m.estado === "respondiendo");
-    const enModulo = alCerrar === undefined;
-    // En el modulo la pantalla abierta es el propio chat: no aporta contexto.
-    const pantalla = enModulo ? null : describirPantalla(ruta, Object.fromEntries(parametros.entries()), detalle);
+    const pantalla = describirPantalla(ruta, Object.fromEntries(parametros.entries()), detalle);
 
     const noDisponible = estado !== null && !estado.disponible;
     const restantes = estado
@@ -201,8 +195,9 @@ export function ChatCopiloto({
     function llenarFormulario(propuesta: PropuestaAsiento) {
         propuestasPendientes.dejar(propuesta);
         if (ruta !== RUTA_NUEVO_ASIENTO) router.push(RUTA_NUEVO_ASIENTO);
-        // En el celular el panel tapa el formulario.
-        if (alCerrar && window.matchMedia("(max-width: 639px)").matches) alCerrar();
+        // En el celular el panel tapa el formulario; agrandado, tambien.
+        alAgrandar(false);
+        if (window.matchMedia("(max-width: 639px)").matches) alCerrar();
     }
 
     // La marca se pinta de inmediato y se revierte si el servidor no la guardo.
@@ -232,30 +227,20 @@ export function ChatCopiloto({
           : sinPreguntas
             ? "Llegaste al límite de hoy. Vuelve mañana."
             : "Enter envía · Shift + Enter, nueva línea";
-    // Anclado, la columna llena el espacio que deja el contenido; la conversacion queda centrada y legible.
-    const ancho = enModulo
-        ? "mx-auto w-full max-w-[720px]"
-        : anclado
-          ? "lg:mx-auto lg:w-full lg:max-w-[720px]"
-          : "";
+    // La conversacion queda centrada y legible; agrandado, mas ancha para las tablas.
+    const ancho = `lg:mx-auto lg:w-full ${agrandado ? "lg:max-w-[1100px]" : "lg:max-w-[720px]"}`;
 
     return (
         <div className="relative flex min-h-0 flex-1 flex-col">
-            {/* Anclado (desde lg) no hay cabecera: las opciones van en el menu del tablero (MenuCopiloto). */}
-            <div
-                className={`flex items-center gap-2 border-b border-[var(--border-subtle)] px-4 py-3 ${
-                    anclado ? "lg:hidden" : ""
-                }`}
-            >
+            {/* Solo bajo 1024 px: en la columna, las opciones van en el menu del tablero (MenuCopiloto). */}
+            <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] px-4 py-3 lg:hidden">
                 <div
                     aria-hidden="true"
-                    className={`grid size-8 shrink-0 place-items-center rounded-lg bg-[var(--background-raised)] text-[var(--accent)] ${
-                        anclado ? "lg:hidden" : ""
-                    }`}
+                    className="grid size-8 shrink-0 place-items-center rounded-lg bg-[var(--background-raised)] text-[var(--accent)]"
                 >
                     <Icon name="sparkle" className="size-4" />
                 </div>
-                <div className={`min-w-0 flex-1 ${anclado ? "lg:sr-only" : ""}`}>
+                <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                         <h2 className="font-display text-[15px] font-semibold text-[var(--foreground)]">Copiloto IA</h2>
                         <Etiqueta tono="aviso">Beta</Etiqueta>
@@ -269,36 +254,9 @@ export function ChatCopiloto({
                         <Icon name="undo" className="size-4" />
                     </Boton>
                 )}
-                {alCerrar && (
-                    <>
-                        {alCambiarLado && (
-                            // Solo desde 1024 px: bajo eso no cabe una columna al costado.
-                            <button
-                                type="button"
-                                onClick={alCambiarLado}
-                                aria-pressed={anclado}
-                                aria-label="Anclar el copiloto al costado"
-                                title={anclado ? "Volver a flotante" : "Anclar al costado"}
-                                className="grid size-8 place-items-center rounded-md text-[var(--foreground-muted)] transition-colors hover:bg-[var(--background-raised)] hover:text-[var(--foreground)] aria-pressed:text-[var(--accent-text)] max-lg:hidden"
-                            >
-                                <Icon name="panel" className="size-4" />
-                            </button>
-                        )}
-                        {/* En el celular el panel ya es pantalla completa. */}
-                        <Link
-                            href={RUTA_MODULO_COPILOTO}
-                            onClick={alCerrar}
-                            aria-label="Abrir el copiloto en pantalla completa"
-                            title="Pantalla completa"
-                            className="grid size-8 place-items-center rounded-md text-[var(--foreground-muted)] transition-colors hover:bg-[var(--background-raised)] hover:text-[var(--foreground)] max-sm:hidden"
-                        >
-                            <Icon name="expand" className="size-4" />
-                        </Link>
-                        <Boton variante="fantasma" soloIcono onClick={alCerrar} aria-label="Cerrar el copiloto" title="Cerrar">
-                            <Icon name="close" className="size-4" />
-                        </Boton>
-                    </>
-                )}
+                <Boton variante="fantasma" soloIcono onClick={alCerrar} aria-label="Cerrar el copiloto" title="Cerrar">
+                    <Icon name="close" className="size-4" />
+                </Boton>
             </div>
 
             <div className="relative flex min-h-0 flex-1 flex-col">
@@ -403,22 +361,19 @@ export function ChatCopiloto({
                                 aria-invalid={errorEntrada !== null}
                                 className={CAMPO}
                             />
-                            {anclado && alCerrar && (
-                                <div className="max-lg:hidden">
-                                    <MenuCopiloto
-                                        opciones={[
-                                            ...(mensajes.length > 0
-                                                ? [{ icono: "plus", etiqueta: "Nueva", descripcion: "Empezar una conversación nueva", alElegir: nuevaConversacion } as const]
-                                                : []),
-                                            ...(alCambiarLado
-                                                ? [{ icono: "float", etiqueta: "Flotante", descripcion: "Soltar el copiloto como ventana flotante", alElegir: alCambiarLado } as const]
-                                                : []),
-                                            { icono: "expand", etiqueta: "Ampliar", descripcion: "Abrir el copiloto en pantalla completa", href: RUTA_MODULO_COPILOTO, alElegir: alCerrar },
-                                            { icono: "close", etiqueta: "Cerrar", descripcion: "Cerrar el copiloto", alElegir: alCerrar },
-                                        ]}
-                                    />
-                                </div>
-                            )}
+                            <div className="max-lg:hidden">
+                                <MenuCopiloto
+                                    opciones={[
+                                        ...(mensajes.length > 0
+                                            ? [{ icono: "plus", etiqueta: "Nueva", descripcion: "Empezar una conversación nueva", alElegir: nuevaConversacion } as const]
+                                            : []),
+                                        agrandado
+                                            ? { icono: "shrink", etiqueta: "Reducir", descripcion: "Volver el copiloto al costado", alElegir: () => alAgrandar(false) }
+                                            : { icono: "expand", etiqueta: "Agrandar", descripcion: "Usar todo el espacio de esta pantalla", alElegir: () => alAgrandar(true) },
+                                        { icono: "close", etiqueta: "Cerrar", descripcion: "Cerrar el copiloto", alElegir: alCerrar },
+                                    ]}
+                                />
+                            </div>
                             {respondiendo ? (
                                 <Boton soloIcono onClick={() => conversaciones.detener(clave)} aria-label="Detener la respuesta" title="Detener">
                                     <Icon name="close" className="size-4" />

@@ -11,9 +11,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
     COOKIE_ANCHO_COPILOTO,
-    COOKIE_COPILOTO,
     COOKIE_MENU,
-    COPILOTO_ANCLADO,
     MENU_PLEGADO,
 } from "@/components/dashboard/preferencias-panel";
 import { PreguntarSeleccion } from "@/components/dashboard/copiloto/PreguntarSeleccion";
@@ -49,10 +47,9 @@ export default async function DashboardLayout({
     const idUsuario = await obtenerUsuarioDelToken();
     // Solo para mostrar u ocultar enlaces del menú; el backend autoriza.
     const rol = await obtenerRolDelToken();
-    // Como se reparte el espacio (menu plegado, copiloto anclado): ver preferencias-panel.ts.
+    // Como se reparte el espacio (menu plegado, ancho del copiloto): ver preferencias-panel.ts.
     const preferencias = await cookies();
     const menuPlegado = preferencias.get(COOKIE_MENU)?.value === MENU_PLEGADO;
-    const copilotoAnclado = preferencias.get(COOKIE_COPILOTO)?.value === COPILOTO_ANCLADO;
     const anchoCopiloto = leerAncho(preferencias.get(COOKIE_ANCHO_COPILOTO)?.value);
 
     // Un fallo aquí no debe tumbar el panel: sin empresas el selector
@@ -96,23 +93,22 @@ export default async function DashboardLayout({
                         </div>
                     </header>
 
-                    <div className="flex min-w-0 flex-1">
+                    <div className="group/fila flex min-w-0 flex-1">
                         {/* El relleno lateral vive aqui, una sola vez, y el vertical va
                             con padding-block para no anular los costados. El id delimita
                             donde seleccionar texto ofrece preguntarle al copiloto. */}
-                        <main id="contenido-panel" className="w-full min-w-0 max-w-[1600px] px-4 pb-10 pt-5 sm:px-6">
+                        <main id="contenido-panel" className="w-full min-w-0 max-w-[1600px] px-4 pb-10 pt-5 sm:px-6 lg:group-has-[[data-agrandado]]/fila:hidden">
                             {children}
                         </main>
-                        {/* Bajo la cabecera y despues del contenido: anclado, el copiloto es la
+                        {/* Bajo la cabecera y despues del contenido: desde lg el copiloto es la
                             columna de la derecha y la cabecera del panel sigue de lado a lado;
-                            el orden del DOM coincide con el visual para el teclado. Flotante,
-                            es fixed y su lugar en el DOM no se nota. La empresa como key: al
+                            el orden del DOM coincide con el visual para el teclado. Agrandado,
+                            el contenido se oculta sin desmontarse. La empresa como key: al
                             cambiarla, la conversacion empieza de cero. */}
                         <CopilotoFlotante
                             key={idEmpresaActual ?? "sin-empresa"}
                             idUsuario={idUsuario}
                             idEmpresa={idEmpresaActual}
-                            ancladoInicial={copilotoAnclado}
                             anchoInicial={anchoCopiloto}
                         />
                     </div>

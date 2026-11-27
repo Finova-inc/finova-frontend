@@ -1,22 +1,16 @@
 /* ============================================================================
    Como se reparte el espacio del panel, por navegador: el menu lateral plegado
-   y el copiloto anclado al costado.
+   y el ancho de la columna del copiloto.
 
    Van en cookies y no en localStorage porque el layout del servidor las lee y
    dibuja la pantalla ya plegada: con localStorage el menu se veria ancho un
    instante y despues saltaria. No son datos ni dan permisos: solo como se ve.
-
-   Ademas, el copiloto anclado y abierto pliega el menu para dejarle espacio.
-   Ese aviso (copilotoAnclado) vive solo en el navegador, con el mismo patron
-   de useSyncExternalStore que contexto-pantalla.ts.
    ========================================================================== */
 
 export const COOKIE_MENU = "finova_menu";
-export const COOKIE_COPILOTO = "finova_copiloto";
-/** Ancho en px del copiloto anclado si se arrastro el divisor (lib/ancho-copiloto.ts). */
+/** Ancho en px de la columna del copiloto si se arrastro el divisor (lib/ancho-copiloto.ts). */
 export const COOKIE_ANCHO_COPILOTO = "finova_copiloto_ancho";
 export const MENU_PLEGADO = "plegado";
-export const COPILOTO_ANCLADO = "anclado";
 
 /** Un año; null la borra. */
 export function guardarPreferencia(nombre: string, valor: string | null): void {

@@ -1,10 +1,9 @@
 /* ============================================================================
    Copiloto IA: la conversacion en curso, fuera de los componentes.
 
-   El chat se desmonta al cambiar de pantalla. Si la conversacion y la peticion
-   fueran estado suyo, la respuesta se cortaria y la pregunta se perderia: por
-   eso viven aqui, y el modulo y el panel solo las muestran
-   (useSyncExternalStore con suscribir y leer).
+   Si la conversacion y la peticion fueran estado del chat, desmontarlo
+   cortaria la respuesta y perderia la pregunta: por eso viven aqui, y el chat
+   solo las muestra (useSyncExternalStore con suscribir y leer).
 
    Una respuesta solo se corta con "Detener", "Nueva conversacion" o al salir
    del panel (cambio de empresa, cierre de sesion): cortarTodas.

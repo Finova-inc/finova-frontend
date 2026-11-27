@@ -1,11 +1,9 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { recortarSeleccion } from "@/lib/copiloto";
 import { seleccionesPendientes } from "./buzon";
-import { RUTA_MODULO_COPILOTO } from "./ChatCopiloto";
 
 /* ============================================================================
    Al seleccionar texto en una pantalla del panel aparece, junto a la
@@ -52,12 +50,9 @@ function leerSeleccion(): Posicion | null {
 }
 
 export function PreguntarSeleccion() {
-    const ruta = usePathname();
     const [posicion, setPosicion] = useState<Posicion | null>(null);
-    const enModulo = ruta === RUTA_MODULO_COPILOTO;
 
     useEffect(() => {
-        if (enModulo) return;
         let cuadro = 0;
         // Una lectura por cuadro: selectionchange llega muchas veces mientras se arrastra.
         const revisar = () => {
@@ -79,9 +74,9 @@ export function PreguntarSeleccion() {
             window.removeEventListener("resize", revisar);
             window.removeEventListener("keydown", alTeclear);
         };
-    }, [enModulo]);
+    }, []);
 
-    if (enModulo || !posicion) return null;
+    if (!posicion) return null;
 
     return (
         <button

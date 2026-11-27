@@ -70,7 +70,6 @@ const GRUPOS: readonly GrupoNav[] = [
     {
         titulo: "Inteligencia",
         enlaces: [
-            { href: "/dashboard/copiloto", etiqueta: "Copiloto IA", icono: "sparkle" },
             { href: "/dashboard/auditoria", etiqueta: "Auditoría", icono: "clock", soloAuditores: true },
         ],
     },
@@ -212,7 +211,10 @@ export default function Sidebar({
                 </div>
 
                 <nav className="flex flex-col gap-0.5">
-                    {GRUPOS.map((grupo) => (
+                    {GRUPOS.map((grupo) => ({
+                        ...grupo,
+                        enlaces: grupo.enlaces.filter((enlace) => !enlace.soloAuditores || puedeAuditar(rol)),
+                    })).filter((grupo) => grupo.enlaces.length > 0).map((grupo) => (
                         <div key={grupo.titulo} className="flex flex-col gap-0.5">
                             {/* Plegada, el titulo queda para el lector de pantalla y una linea separa los grupos. */}
                             <p
@@ -223,7 +225,7 @@ export default function Sidebar({
                                 <span className={`block max-h-5 overflow-hidden whitespace-nowrap transition-[max-height,opacity] duration-(--duracion-larga) ease-(--curva-salida) ${angosto ? "lg:max-h-0 lg:opacity-0" : ""}`}>{grupo.titulo}</span>
                             </p>
 
-                            {grupo.enlaces.filter((enlace) => !enlace.soloAuditores || puedeAuditar(rol)).map((enlace) => {
+                            {grupo.enlaces.map((enlace) => {
                                 const activo = esRutaActiva(pathname, enlace.href);
 
                                 return (
